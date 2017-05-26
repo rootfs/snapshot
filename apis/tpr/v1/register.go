@@ -28,7 +28,7 @@ var (
 )
 
 // GroupName is the group name use in this package.
-const GroupName = "snapshot.storage.k8s.io"
+const GroupName = "volumesnapshot.external-storage.k8s.io"
 
 // SchemeGroupVersion is the group version used to register these objects.
 var SchemeGroupVersion = schema.GroupVersion{Group: GroupName, Version: "v1"}
@@ -38,12 +38,18 @@ func Resource(resource string) schema.GroupResource {
 	return SchemeGroupVersion.WithResource(resource).GroupResource()
 }
 
+func init() {
+	// We only register manually written functions here. The registration of the
+	// generated functions takes place in the generated files. The separation
+	// makes the code compile even when the generated files are missing.
+	SchemeBuilder.Register(addKnownTypes)
+}
+
 // addKnownTypes adds the set of types defined in this package to the supplied scheme.
 func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
 		&VolumeSnapshot{},
-		&VolumeSnapshotList{},
-		&VolumeSnapshotDataList{},
+		&VolumesnapshotList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil

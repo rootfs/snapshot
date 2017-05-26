@@ -17,8 +17,11 @@ limitations under the License.
 package main
 
 import (
-	"context"
 	"flag"
+	"os"
+	"os/signal"
+
+	"github.com/golang/glog"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
@@ -33,7 +36,7 @@ import (
 func main() {
 	kubeconfig := flag.String("kubeconfig", "", "Path to a kube config. Only required if out-of-cluster.")
 	flag.Parse()
-
+	flag.Set("logtostderr", "true")
 	// Create the client config. Use kubeconfig if given, otherwise assume in-cluster.
 	config, err := buildConfig(*kubeconfig)
 	if err != nil {
@@ -68,10 +71,15 @@ func main() {
 		SnapshotClient: snapshotClient,
 		SnapshotScheme: snapshotScheme,
 	}
+	glog.Infof("starting snapshot controller")
+	stopCh := make(chan struct{})
+	go controller.Run(stopCh)
 
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
-	go controller.Run(ctx)
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	<-c
+	close(stopCh)
+
 }
 
 func buildConfig(kubeconfig string) (*rest.Config, error) {

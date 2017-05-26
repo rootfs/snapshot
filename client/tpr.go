@@ -34,12 +34,12 @@ import (
 func CreateTPR(clientset kubernetes.Interface) error {
 	tpr := &v1beta1.ThirdPartyResource{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "snapshot." + tprv1.GroupName,
+			Name: "volumesnapshot." + tprv1.GroupName,
 		},
 		Versions: []v1beta1.APIVersion{
 			{Name: tprv1.SchemeGroupVersion.Version},
 		},
-		Description: "An Example ThirdPartyResource",
+		Description: "Volume Snapshot ThirdPartyResource",
 	}
 	_, err := clientset.ExtensionsV1beta1().ThirdPartyResources().Create(tpr)
 	return err
@@ -47,7 +47,7 @@ func CreateTPR(clientset kubernetes.Interface) error {
 
 func WaitForSnapshotResource(snapshotClient *rest.RESTClient) error {
 	return wait.Poll(100*time.Millisecond, 60*time.Second, func() (bool, error) {
-		_, err := snapshotClient.Get().Namespace(apiv1.NamespaceDefault).Resource(tprv1.VolumeSnapshotResource).DoRaw()
+		_, err := snapshotClient.Get().Namespace(apiv1.NamespaceDefault).Resource(tprv1.VolumeSnapshotResourcePlural).DoRaw()
 		if err == nil {
 			return true, nil
 		}
@@ -62,7 +62,7 @@ func WaitForSnapshotProcessed(snapshotClient *rest.RESTClient, name string) erro
 	return wait.Poll(100*time.Millisecond, 10*time.Second, func() (bool, error) {
 		var snapshot tprv1.VolumeSnapshot
 		err := snapshotClient.Get().
-			Resource(tprv1.VolumeSnapshotResource).
+			Resource(tprv1.VolumeSnapshotResourcePlural).
 			Namespace(apiv1.NamespaceDefault).
 			Name(name).
 			Do().Into(&snapshot)

@@ -17,9 +17,7 @@ limitations under the License.
 package controller
 
 import (
-	"context"
-	"fmt"
-
+	"github.com/golang/glog"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	apiv1 "k8s.io/client-go/pkg/api/v1"
@@ -35,24 +33,13 @@ type SnapshotController struct {
 }
 
 // Run starts an Snapshot resource controller
-func (c *SnapshotController) Run(ctx context.Context) error {
-	fmt.Print("Watch snapshot objects\n")
+func (c *SnapshotController) Run(ctx <-chan struct{}) error {
+	glog.Infof("Watch snapshot objects\n")
 
 	// Watch snapshot objects
-	_, err := c.watchSnapshot(ctx)
-	if err != nil {
-		fmt.Printf("Failed to register watch for Snapshot resource: %v\n", err)
-		return err
-	}
-
-	<-ctx.Done()
-	return ctx.Err()
-}
-
-func (c *SnapshotController) watchSnapshot(ctx context.Context) (cache.Controller, error) {
 	source := cache.NewListWatchFromClient(
 		c.SnapshotClient,
-		tprv1.VolumeSnapshotResource,
+		tprv1.VolumeSnapshotResourcePlural,
 		apiv1.NamespaceAll,
 		fields.Everything())
 
@@ -74,20 +61,20 @@ func (c *SnapshotController) watchSnapshot(ctx context.Context) (cache.Controlle
 			DeleteFunc: c.onDelete,
 		})
 
-	go controller.Run(ctx.Done())
-	return controller, nil
+	go controller.Run(ctx)
+	return nil
 }
 
 func (c *SnapshotController) onAdd(obj interface{}) {
 	snapshot := obj.(*tprv1.VolumeSnapshot)
-	fmt.Printf("[CONTROLLER] OnAdd %s\n", snapshot.ObjectMeta.SelfLink)
+	glog.Infof("[CONTROLLER] OnAdd %s\n", snapshot.ObjectMeta.SelfLink)
 
 	// NEVER modify objects from the store. It's a read-only, local cache.
 	// You can use exampleScheme.Copy() to make a deep copy of original object and modify this copy
 	// Or create a copy manually for better performance
 	copyObj, err := c.SnapshotScheme.Copy(snapshot)
 	if err != nil {
-		fmt.Printf("ERROR creating a deep copy of snapshot object: %v\n", err)
+		glog.Infof("ERROR creating a deep copy of snapshot object: %v\n", err)
 		return
 	}
 
@@ -103,26 +90,26 @@ func (c *SnapshotController) onAdd(obj interface{}) {
 	err = c.SnapshotClient.Put().
 		Name(snapshot.ObjectMeta.Name).
 		Namespace(snapshot.ObjectMeta.Namespace).
-		Resource(tprv1.VolumeSnapshotResource).
+		Resource(tprv1.VolumeSnapshotResourcePlural).
 		Body(snapshotCopy).
 		Do().
 		Error()
 
 	if err != nil {
-		fmt.Printf("ERROR updating status: %v\n", err)
+		glog.Infof("ERROR updating status: %v\n", err)
 	} else {
-		fmt.Printf("UPDATED status: %#v\n", snapshotCopy)
+		glog.Infof("UPDATED status: %#v\n", snapshotCopy)
 	}
 }
 
 func (c *SnapshotController) onUpdate(oldObj, newObj interface{}) {
 	oldSnapshot := oldObj.(*tprv1.VolumeSnapshot)
 	newSnapshot := newObj.(*tprv1.VolumeSnapshot)
-	fmt.Printf("[CONTROLLER] OnUpdate oldObj: %s\n", oldSnapshot.ObjectMeta.SelfLink)
-	fmt.Printf("[CONTROLLER] OnUpdate newObj: %s\n", newSnapshot.ObjectMeta.SelfLink)
+	glog.Infof("[CONTROLLER] OnUpdate oldObj: %s\n", oldSnapshot.ObjectMeta.SelfLink)
+	glog.Infof("[CONTROLLER] OnUpdate newObj: %s\n", newSnapshot.ObjectMeta.SelfLink)
 }
 
 func (c *SnapshotController) onDelete(obj interface{}) {
 	snapshot := obj.(*tprv1.VolumeSnapshot)
-	fmt.Printf("[CONTROLLER] OnDelete %s\n", snapshot.ObjectMeta.SelfLink)
+	glog.Infof("[CONTROLLER] OnDelete %s\n", snapshot.ObjectMeta.SelfLink)
 }
