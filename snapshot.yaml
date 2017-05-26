@@ -1,5 +1,5 @@
 apiVersion: volumesnapshot.external-storage.k8s.io/v1
-kind: Snapshot
+kind: Volumesnapshot
 metadata:
   name: demo
 spec:
