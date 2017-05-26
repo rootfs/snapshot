@@ -54,7 +54,7 @@ func NewClient(cfg *rest.Config) (*rest.RESTClient, *runtime.Scheme, error) {
 func CreateTPR(clientset kubernetes.Interface) error {
 	tpr := &v1beta1.ThirdPartyResource{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: tprv1.VolumeSnapshotResource + "." + tprv1.GroupName,
+			Name: tprv1.VolumeSnapshotDataResource + "." + tprv1.GroupName,
 		},
 		Versions: []v1beta1.APIVersion{
 			{Name: tprv1.SchemeGroupVersion.Version},
@@ -67,7 +67,7 @@ func CreateTPR(clientset kubernetes.Interface) error {
 
 func WaitForSnapshotResource(snapshotClient *rest.RESTClient) error {
 	return wait.Poll(100*time.Millisecond, 60*time.Second, func() (bool, error) {
-		_, err := snapshotClient.Get().Namespace(apiv1.NamespaceDefault).Resource(tprv1.VolumeSnapshotResourcePlural).DoRaw()
+		_, err := snapshotClient.Get().Namespace(apiv1.NamespaceDefault).Resource(tprv1.VolumeSnapshotDataResourcePlural).DoRaw()
 		if err == nil {
 			return true, nil
 		}

@@ -17,13 +17,16 @@ limitations under the License.
 package v1
 
 import (
+	"encoding/json"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	core_v1 "k8s.io/client-go/pkg/api/v1"
 )
 
 const (
-	VolumeSnapshotResourcePlural = "volumesnapshotdatas"
-	VolumeSnapshotResource       = "volumesnapshotdata"
+	VolumeSnapshotDataResourcePlural = "volumesnapshotdatas"
+	VolumeSnapshotDataResource       = "volumesnapshotdata"
 )
 
 type VolumeSnapshotStatus struct {
@@ -67,8 +70,7 @@ type VolumeSnapshotCondition struct {
 // the VolumeSnapshotSpec
 type VolumeSnapshot struct {
 	metav1.TypeMeta `json:",inline"`
-	// +optional
-	metav1.ObjectMeta `json:"metadata" protobuf:"bytes,1,opt,name=metadata"`
+	Metadata        metav1.ObjectMeta `json:"metadata" protobuf:"bytes,1,opt,name=metadata"`
 
 	// Spec represents the desired state of the snapshot
 	// +optional
@@ -81,8 +83,7 @@ type VolumeSnapshot struct {
 
 type VolumesnapshotList struct {
 	metav1.TypeMeta `json:",inline"`
-	// +optional
-	metav1.ListMeta `json:"metadata"`
+	Metadata        metav1.ListMeta  `json:"metadata"`
 	Items           []VolumeSnapshot `json:"items"`
 }
 
@@ -107,8 +108,7 @@ type VolumeSnapshotDataStatus struct {
 
 type VolumesnapshotdataList struct {
 	metav1.TypeMeta `json:",inline"`
-	// +optional
-	metav1.ListMeta `json:"metadata"`
+	Metadata        metav1.ListMeta  `json:"metadata"`
 	Items           []VolumeSnapshot `json:"items"`
 }
 
@@ -144,7 +144,7 @@ type VolumeSnapshotDataCondition struct {
 type Volumesnapshotdata struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
-	metav1.ObjectMeta `json:"metadata" protobuf:"bytes,1,opt,name=metadata"`
+	Metadata metav1.ObjectMeta `json:"metadata" protobuf:"bytes,1,opt,name=metadata"`
 
 	// Spec represents the desired state of the snapshot
 	// +optional
@@ -180,4 +180,93 @@ type VolumeSnapshotDataSource struct {
 	// More info: https://kubernetes.io/docs/concepts/storage/volumes#hostpath
 	// +optional
 	HostPath *core_v1.HostPathVolumeSource `json:"hostPath" protobuf:"bytes,3,opt,name=hostPath"`
+}
+
+// Required to satisfy Object interface
+func (v *Volumesnapshotdata) GetObjectKind() schema.ObjectKind {
+	return &v.TypeMeta
+}
+
+// Required to satisfy ObjectMetaAccessor interface
+func (v *Volumesnapshotdata) GetObjectMeta() metav1.Object {
+	return &v.Metadata
+}
+
+// Required to satisfy Object interface
+func (vd *VolumesnapshotdataList) GetObjectKind() schema.ObjectKind {
+	return &vd.TypeMeta
+}
+
+// Required to satisfy ListMetaAccessor interface
+func (vd *VolumesnapshotdataList) GetListMeta() metav1.List {
+	return &vd.Metadata
+}
+
+// Required to satisfy Object interface
+func (v *VolumeSnapshot) GetObjectKind() schema.ObjectKind {
+	return &v.TypeMeta
+}
+
+// Required to satisfy ObjectMetaAccessor interface
+func (v *VolumeSnapshot) GetObjectMeta() metav1.Object {
+	return &v.Metadata
+}
+
+// Required to satisfy Object interface
+func (vd *VolumesnapshotList) GetObjectKind() schema.ObjectKind {
+	return &vd.TypeMeta
+}
+
+// Required to satisfy ListMetaAccessor interface
+func (vd *VolumesnapshotList) GetListMeta() metav1.List {
+	return &vd.Metadata
+}
+
+type VolumesnapshotdataListCopy VolumesnapshotdataList
+type VolumesnapshotdataCopy Volumesnapshotdata
+type VolumesnapshotListCopy VolumesnapshotList
+type VolumeSnapshotCopy VolumeSnapshot
+
+func (e *VolumeSnapshot) UnmarshalJSON(data []byte) error {
+	tmp := VolumeSnapshotCopy{}
+	err := json.Unmarshal(data, &tmp)
+	if err != nil {
+		return err
+	}
+	tmp2 := VolumeSnapshot(tmp)
+	*e = tmp2
+	return nil
+}
+
+func (el *VolumesnapshotList) UnmarshalJSON(data []byte) error {
+	tmp := VolumesnapshotListCopy{}
+	err := json.Unmarshal(data, &tmp)
+	if err != nil {
+		return err
+	}
+	tmp2 := VolumesnapshotList(tmp)
+	*el = tmp2
+	return nil
+}
+
+func (e *Volumesnapshotdata) UnmarshalJSON(data []byte) error {
+	tmp := VolumesnapshotdataCopy{}
+	err := json.Unmarshal(data, &tmp)
+	if err != nil {
+		return err
+	}
+	tmp2 := Volumesnapshotdata(tmp)
+	*e = tmp2
+	return nil
+}
+
+func (el *VolumesnapshotdataList) UnmarshalJSON(data []byte) error {
+	tmp := VolumesnapshotdataListCopy{}
+	err := json.Unmarshal(data, &tmp)
+	if err != nil {
+		return err
+	}
+	tmp2 := VolumesnapshotdataList(tmp)
+	*el = tmp2
+	return nil
 }
