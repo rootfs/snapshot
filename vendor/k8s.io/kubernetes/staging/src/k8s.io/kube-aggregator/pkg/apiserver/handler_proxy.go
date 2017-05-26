@@ -19,15 +19,13 @@ package apiserver
 import (
 	"net/http"
 	"net/url"
-	"sync/atomic"
+	"sync"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/httpstream/spdy"
 	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
-	genericfeatures "k8s.io/apiserver/pkg/features"
 	genericrest "k8s.io/apiserver/pkg/registry/generic/rest"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/transport"
 
@@ -39,21 +37,13 @@ import (
 type proxyHandler struct {
 	contextMapper genericapirequest.RequestContextMapper
 
-	// localDelegate is used to satisfy local APIServices
-	localDelegate http.Handler
-
 	// proxyClientCert/Key are the client cert used to identify this proxy. Backing APIServices use
 	// this to confirm the proxy's identity
 	proxyClientCert []byte
 	proxyClientKey  []byte
 
-	handlingInfo atomic.Value
-}
-
-type proxyHandlingInfo struct {
-	// local indicates that this APIService is locally satisfied
-	local bool
-
+	// lock protects us for updates.
+	lock sync.RWMutex
 	// restConfig holds the information for building a roundtripper
 	restConfig *restclient.Config
 	// transportBuildingError is an error produced while building the transport.  If this
@@ -66,26 +56,11 @@ type proxyHandlingInfo struct {
 }
 
 func (r *proxyHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	value := r.handlingInfo.Load()
-	if value == nil {
-		r.localDelegate.ServeHTTP(w, req)
+	proxyRoundTripper, err := r.getRoundTripper()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	handlingInfo := value.(proxyHandlingInfo)
-	if handlingInfo.local {
-		if r.localDelegate == nil {
-			http.Error(w, "", http.StatusNotFound)
-			return
-		}
-		r.localDelegate.ServeHTTP(w, req)
-		return
-	}
-
-	if handlingInfo.transportBuildingError != nil {
-		http.Error(w, handlingInfo.transportBuildingError.Error(), http.StatusInternalServerError)
-		return
-	}
-	proxyRoundTripper := handlingInfo.proxyRoundTripper
 	if proxyRoundTripper == nil {
 		http.Error(w, "", http.StatusNotFound)
 		return
@@ -105,7 +80,7 @@ func (r *proxyHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// write a new location based on the existing request pointed at the target service
 	location := &url.URL{}
 	location.Scheme = "https"
-	location.Host = handlingInfo.destinationHost
+	location.Host = r.getDestinationHost()
 	location.Path = req.URL.Path
 	location.RawQuery = req.URL.Query().Encode()
 
@@ -123,7 +98,7 @@ func (r *proxyHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	upgrade := false
 	// we need to wrap the roundtripper in another roundtripper which will apply the front proxy headers
-	proxyRoundTripper, upgrade, err = maybeWrapForConnectionUpgrades(handlingInfo.restConfig, proxyRoundTripper, req)
+	proxyRoundTripper, upgrade, err = r.maybeWrapForConnectionUpgrades(proxyRoundTripper, req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -143,19 +118,19 @@ func (r *proxyHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 // maybeWrapForConnectionUpgrades wraps the roundtripper for upgrades.  The bool indicates if it was wrapped
-func maybeWrapForConnectionUpgrades(restConfig *restclient.Config, rt http.RoundTripper, req *http.Request) (http.RoundTripper, bool, error) {
+func (r *proxyHandler) maybeWrapForConnectionUpgrades(rt http.RoundTripper, req *http.Request) (http.RoundTripper, bool, error) {
 	connectionHeader := req.Header.Get("Connection")
 	if len(connectionHeader) == 0 {
 		return rt, false, nil
 	}
 
-	tlsConfig, err := restclient.TLSConfigFor(restConfig)
+	cfg := r.getRESTConfig()
+	tlsConfig, err := restclient.TLSConfigFor(cfg)
 	if err != nil {
 		return nil, true, err
 	}
-	followRedirects := utilfeature.DefaultFeatureGate.Enabled(genericfeatures.StreamingProxyRedirects)
-	upgradeRoundTripper := spdy.NewRoundTripper(tlsConfig, followRedirects)
-	wrappedRT, err := restclient.HTTPWrappersForConfig(restConfig, upgradeRoundTripper)
+	upgradeRoundTripper := spdy.NewRoundTripper(tlsConfig)
+	wrappedRT, err := restclient.HTTPWrappersForConfig(cfg, upgradeRoundTripper)
 	if err != nil {
 		return nil, true, err
 	}
@@ -188,24 +163,48 @@ func (r *responder) Error(err error) {
 
 // these methods provide locked access to fields
 
-func (r *proxyHandler) updateAPIService(apiService *apiregistrationapi.APIService, destinationHost string) {
-	if apiService.Spec.Service == nil {
-		r.handlingInfo.Store(proxyHandlingInfo{local: true})
-		return
-	}
+func (r *proxyHandler) updateAPIService(apiService *apiregistrationapi.APIService) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
 
-	newInfo := proxyHandlingInfo{
-		destinationHost: destinationHost,
-		restConfig: &restclient.Config{
-			TLSClientConfig: restclient.TLSClientConfig{
-				Insecure:   apiService.Spec.InsecureSkipTLSVerify,
-				ServerName: apiService.Spec.Service.Name + "." + apiService.Spec.Service.Namespace + ".svc",
-				CertData:   r.proxyClientCert,
-				KeyData:    r.proxyClientKey,
-				CAData:     apiService.Spec.CABundle,
-			},
+	r.transportBuildingError = nil
+	r.proxyRoundTripper = nil
+
+	r.destinationHost = apiService.Spec.Service.Name + "." + apiService.Spec.Service.Namespace + ".svc"
+	r.restConfig = &restclient.Config{
+		TLSClientConfig: restclient.TLSClientConfig{
+			Insecure: apiService.Spec.InsecureSkipTLSVerify,
+			CertData: r.proxyClientCert,
+			KeyData:  r.proxyClientKey,
+			CAData:   apiService.Spec.CABundle,
 		},
 	}
-	newInfo.proxyRoundTripper, newInfo.transportBuildingError = restclient.TransportFor(newInfo.restConfig)
-	r.handlingInfo.Store(newInfo)
+	r.proxyRoundTripper, r.transportBuildingError = restclient.TransportFor(r.restConfig)
+}
+
+func (r *proxyHandler) removeAPIService() {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	r.transportBuildingError = nil
+	r.proxyRoundTripper = nil
+}
+
+func (r *proxyHandler) getRoundTripper() (http.RoundTripper, error) {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+
+	return r.proxyRoundTripper, r.transportBuildingError
+}
+
+func (r *proxyHandler) getDestinationHost() string {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+	return r.destinationHost
+}
+
+func (r *proxyHandler) getRESTConfig() *restclient.Config {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+	return r.restConfig
 }

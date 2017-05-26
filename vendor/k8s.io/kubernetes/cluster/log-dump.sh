@@ -154,10 +154,6 @@ function save-logs() {
     else
         files="${kern_logfile} ${files} ${initd_logfiles} ${supervisord_logfiles}"
     fi
-
-    echo "Changing logfiles to be world-readable for download"
-    log-dump-ssh "${node_name}" "sudo chmod -R a+r /var/log" || true
-
     echo "Copying '${files}' from ${node_name}"
     copy-logs-from-node "${node_name}" "${dir}" "${files}"
 }
@@ -248,11 +244,6 @@ function dump_nodes() {
 }
 
 setup
-echo "Dumping master logs to ${report_dir}"
+echo "Dumping master and node logs to ${report_dir}"
 dump_masters
-if [[ "${DUMP_ONLY_MASTER_LOGS:-}" != "true" ]]; then
-  echo "Dumping node logs to ${report_dir}"
-  dump_nodes
-else
-  echo "Skipping dumping of node logs"
-fi
+dump_nodes

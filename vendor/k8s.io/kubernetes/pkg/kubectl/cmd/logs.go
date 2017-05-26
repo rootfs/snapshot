@@ -29,7 +29,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/helper"
 	"k8s.io/kubernetes/pkg/api/validation"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
@@ -38,7 +37,7 @@ import (
 )
 
 var (
-	logsExample = templates.Examples(i18n.T(`
+	logs_example = templates.Examples(`
 		# Return snapshot logs from pod nginx with only one container
 		kubectl logs nginx
 
@@ -61,7 +60,7 @@ var (
 		kubectl logs job/hello
 
 		# Return snapshot logs from container nginx-1 of a deployment named nginx
-		kubectl logs deployment/nginx -c nginx-1`))
+		kubectl logs deployment/nginx -c nginx-1`)
 
 	selectorTail int64 = 10
 )
@@ -81,8 +80,7 @@ type LogsOptions struct {
 	Decoder      runtime.Decoder
 
 	Object        runtime.Object
-	GetPodTimeout time.Duration
-	LogsForObject func(object, options runtime.Object, timeout time.Duration) (*restclient.Request, error)
+	LogsForObject func(object, options runtime.Object) (*restclient.Request, error)
 
 	Out io.Writer
 }
@@ -94,7 +92,7 @@ func NewCmdLogs(f cmdutil.Factory, out io.Writer) *cobra.Command {
 		Use:     "logs [-f] [-p] (POD | TYPE/NAME) [-c CONTAINER]",
 		Short:   i18n.T("Print the logs for a container in a pod"),
 		Long:    "Print the logs for a container in a pod or specified resource. If the pod has only one container, the container name is optional.",
-		Example: logsExample,
+		Example: logs_example,
 		PreRun: func(cmd *cobra.Command, args []string) {
 			if len(os.Args) > 1 && os.Args[1] == "log" {
 				printDeprecationWarning("logs", "log")
@@ -115,10 +113,10 @@ func NewCmdLogs(f cmdutil.Factory, out io.Writer) *cobra.Command {
 	cmd.Flags().String("since-time", "", i18n.T("Only return logs after a specific date (RFC3339). Defaults to all logs. Only one of since-time / since may be used."))
 	cmd.Flags().Duration("since", 0, "Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to all logs. Only one of since-time / since may be used.")
 	cmd.Flags().StringP("container", "c", "", "Print the logs of this container")
+
 	cmd.Flags().Bool("interactive", false, "If true, prompt the user for input when required.")
 	cmd.Flags().MarkDeprecated("interactive", "This flag is no longer respected and there is no replacement.")
 	cmdutil.AddInclude3rdPartyFlags(cmd)
-	cmdutil.AddPodRunningTimeoutFlag(cmd, defaultPodLogsTimeout)
 	cmd.Flags().StringP("selector", "l", "", "Selector (label query) to filter on.")
 	return cmd
 }
@@ -158,7 +156,7 @@ func (o *LogsOptions) Complete(f cmdutil.Factory, out io.Writer, cmd *cobra.Comm
 		Timestamps: cmdutil.GetFlagBool(cmd, "timestamps"),
 	}
 	if sinceTime := cmdutil.GetFlagString(cmd, "since-time"); len(sinceTime) > 0 {
-		t, err := helper.ParseRFC3339(sinceTime, metav1.Now)
+		t, err := api.ParseRFC3339(sinceTime, metav1.Now)
 		if err != nil {
 			return err
 		}
@@ -174,10 +172,6 @@ func (o *LogsOptions) Complete(f cmdutil.Factory, out io.Writer, cmd *cobra.Comm
 		// round up to the nearest second
 		sec := int64(math.Ceil(float64(sinceSeconds) / float64(time.Second)))
 		logOptions.SinceSeconds = &sec
-	}
-	o.GetPodTimeout, err = cmdutil.GetPodRunningTimeoutFlag(cmd)
-	if err != nil {
-		return err
 	}
 	o.Options = logOptions
 	o.LogsForObject = f.LogsForObject
@@ -199,7 +193,7 @@ func (o *LogsOptions) Complete(f cmdutil.Factory, out io.Writer, cmd *cobra.Comm
 	mapper, typer := f.Object()
 	decoder := f.Decoder(true)
 	if o.Object == nil {
-		builder := resource.NewBuilder(mapper, f.CategoryExpander(), typer, o.ClientMapper, decoder).
+		builder := resource.NewBuilder(mapper, typer, o.ClientMapper, decoder).
 			NamespaceParam(o.Namespace).DefaultNamespace().
 			SingleResourceType()
 		if o.ResourceArg != "" {
@@ -249,7 +243,7 @@ func (o LogsOptions) RunLogs() error {
 }
 
 func (o LogsOptions) getLogs(obj runtime.Object) error {
-	req, err := o.LogsForObject(obj, o.Options, o.GetPodTimeout)
+	req, err := o.LogsForObject(obj, o.Options)
 	if err != nil {
 		return err
 	}

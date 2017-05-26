@@ -65,8 +65,7 @@ func (test deleteContextTest) run(t *testing.T) {
 	pathOptions.EnvVar = ""
 
 	buf := bytes.NewBuffer([]byte{})
-	errBuf := bytes.NewBuffer([]byte{})
-	cmd := NewCmdConfigDeleteContext(buf, errBuf, pathOptions)
+	cmd := NewCmdConfigDeleteContext(buf, pathOptions)
 	cmd.SetArgs([]string{test.contextToDelete})
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("unexpected error executing command: %v", err)

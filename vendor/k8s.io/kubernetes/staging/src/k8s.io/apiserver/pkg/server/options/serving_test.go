@@ -46,7 +46,7 @@ func setUp(t *testing.T) Config {
 	scheme := runtime.NewScheme()
 	codecs := serializer.NewCodecFactory(scheme)
 
-	config := NewConfig(codecs)
+	config := NewConfig().WithSerializer(codecs)
 	config.RequestContextMapper = genericapirequest.NewRequestContextMapper()
 
 	return *config
@@ -459,8 +459,10 @@ NextTest:
 
 			config.EnableIndex = true
 			secureOptions := &SecureServingOptions{
-				BindAddress: net.ParseIP("127.0.0.1"),
-				BindPort:    6443,
+				ServingOptions: ServingOptions{
+					BindAddress: net.ParseIP("127.0.0.1"),
+					BindPort:    6443,
+				},
 				ServerCert: GeneratableKeyCert{
 					CertKey: CertKey{
 						CertFile: serverCertBundleFile,
@@ -474,8 +476,9 @@ NextTest:
 				t.Errorf("%q - failed applying the SecureServingOptions: %v", title, err)
 				return
 			}
+			config.InsecureServingInfo = nil
 
-			s, err := config.Complete().New(server.EmptyDelegate)
+			s, err := config.Complete().New()
 			if err != nil {
 				t.Errorf("%q - failed creating the server: %v", title, err)
 				return

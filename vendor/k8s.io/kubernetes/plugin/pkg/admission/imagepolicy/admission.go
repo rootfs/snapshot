@@ -39,7 +39,6 @@ import (
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/apis/imagepolicy/v1alpha1"
-	kubeapiserveradmission "k8s.io/kubernetes/pkg/kubeapiserver/admission"
 
 	// install the clientgo image policy API for use with api registry
 	_ "k8s.io/kubernetes/pkg/apis/imagepolicy/install"
@@ -50,7 +49,7 @@ var (
 )
 
 func init() {
-	kubeapiserveradmission.Plugins.Register("ImagePolicyWebhook", func(config io.Reader) (admission.Interface, error) {
+	admission.RegisterPlugin("ImagePolicyWebhook", func(config io.Reader) (admission.Interface, error) {
 		newImagePolicyWebhook, err := NewImagePolicyWebhook(config)
 		if err != nil {
 			return nil, err
@@ -169,7 +168,7 @@ func (a *imagePolicyWebhook) admitPod(attributes admission.Attributes, review *v
 
 	if !review.Status.Allowed {
 		if len(review.Status.Reason) > 0 {
-			return fmt.Errorf("image policy webhook backend denied one or more images: %s", review.Status.Reason)
+			return fmt.Errorf("image policy webook backend denied one or more images: %s", review.Status.Reason)
 		}
 		return errors.New("one or more images rejected by webhook backend")
 	}

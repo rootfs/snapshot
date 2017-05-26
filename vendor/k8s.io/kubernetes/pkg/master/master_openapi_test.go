@@ -40,7 +40,7 @@ import (
 // TestValidOpenAPISpec verifies that the open api is added
 // at the proper endpoint and the spec is valid.
 func TestValidOpenAPISpec(t *testing.T) {
-	etcdserver, config, assert := setUp(t)
+	_, etcdserver, config, assert := setUp(t)
 	defer etcdserver.Terminate(t)
 
 	config.GenericConfig.EnableIndex = true
@@ -53,13 +53,13 @@ func TestValidOpenAPISpec(t *testing.T) {
 	}
 	config.GenericConfig.SwaggerConfig = genericapiserver.DefaultSwaggerConfig()
 
-	master, err := config.Complete().New(genericapiserver.EmptyDelegate)
+	master, err := config.Complete().New()
 	if err != nil {
 		t.Fatalf("Error in bringing up the master: %v", err)
 	}
 
 	// make sure swagger.json is not registered before calling PrepareRun.
-	server := httptest.NewServer(master.GenericAPIServer.Handler.GoRestfulContainer.ServeMux)
+	server := httptest.NewServer(master.GenericAPIServer.HandlerContainer.ServeMux)
 	defer server.Close()
 	resp, err := http.Get(server.URL + "/swagger.json")
 	if !assert.NoError(err) {

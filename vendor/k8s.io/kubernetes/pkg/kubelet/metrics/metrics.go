@@ -40,7 +40,6 @@ const (
 	PodWorkerStartLatencyKey      = "pod_worker_start_latency_microseconds"
 	PLEGRelistLatencyKey          = "pleg_relist_latency_microseconds"
 	PLEGRelistIntervalKey         = "pleg_relist_interval_microseconds"
-	EvictionStatsAgeKey           = "eviction_stats_age_microseconds"
 	// Metrics keys of remote runtime operations
 	RuntimeOperationsKey        = "runtime_operations"
 	RuntimeOperationsLatencyKey = "runtime_operations_latency_microseconds"
@@ -179,14 +178,6 @@ var (
 		},
 		[]string{"operation_type"},
 	)
-	EvictionStatsAge = prometheus.NewSummaryVec(
-		prometheus.SummaryOpts{
-			Subsystem: KubeletSubsystem,
-			Name:      EvictionStatsAgeKey,
-			Help:      "Time between when stats are collected, and when pod is evicted based on those stats by eviction signal",
-		},
-		[]string{"eviction_signal"},
-	)
 )
 
 var registerMetrics sync.Once
@@ -213,7 +204,6 @@ func Register(containerCache kubecontainer.RuntimeCache) {
 		prometheus.MustRegister(RuntimeOperations)
 		prometheus.MustRegister(RuntimeOperationsLatency)
 		prometheus.MustRegister(RuntimeOperationsErrors)
-		prometheus.MustRegister(EvictionStatsAge)
 	})
 }
 

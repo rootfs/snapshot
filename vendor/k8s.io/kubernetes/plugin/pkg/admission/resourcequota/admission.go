@@ -33,7 +33,7 @@ import (
 )
 
 func init() {
-	kubeapiserveradmission.Plugins.Register("ResourceQuota",
+	admission.RegisterPlugin("ResourceQuota",
 		func(config io.Reader) (admission.Interface, error) {
 			// load the configuration provided (if any)
 			configuration, err := LoadConfiguration(config)

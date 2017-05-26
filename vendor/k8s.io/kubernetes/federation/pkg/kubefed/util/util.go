@@ -44,13 +44,8 @@ const (
 	KubeconfigSecretDataKey = "kubeconfig"
 
 	// Used in and to create the kube-dns configmap storing the zone info
-	FedDomainMapKey       = "federations"
-	KubeDnsConfigmapName  = "kube-dns"
-	FedDNSZoneName        = "dns-zone-name"
-	FedNameServer         = "nameserver"
-	FedDNSProvider        = "dns-provider"
-	FedDNSProviderCoreDNS = "coredns"
-	KubeDnsStubDomains    = "stubDomains"
+	FedDomainMapKey      = "federations"
+	KubeDnsConfigmapName = "kube-dns"
 
 	// DefaultFederationSystemNamespace is the namespace in which
 	// federation system components are hosted.
@@ -153,26 +148,18 @@ func (o *SubcommandOptions) SetName(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func CreateKubeconfigSecret(clientset client.Interface, kubeconfig *clientcmdapi.Config, namespace, name, federationName, clusterName string, dryRun bool) (*api.Secret, error) {
+func CreateKubeconfigSecret(clientset client.Interface, kubeconfig *clientcmdapi.Config, namespace, name string, dryRun bool) (*api.Secret, error) {
 	configBytes, err := clientcmd.Write(*kubeconfig)
 	if err != nil {
 		return nil, err
-	}
-	annotations := map[string]string{
-		federationapi.FederationNameAnnotation: federationName,
-	}
-
-	if clusterName != "" {
-		annotations[federationapi.ClusterNameAnnotation] = clusterName
 	}
 
 	// Build the secret object with the minified and flattened
 	// kubeconfig content.
 	secret := &api.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        name,
-			Namespace:   namespace,
-			Annotations: annotations,
+			Name:      name,
+			Namespace: namespace,
 		},
 		Data: map[string][]byte{
 			KubeconfigSecretDataKey: configBytes,
@@ -259,9 +246,9 @@ func GetVersionedClientForRBACOrFail(hostFactory cmdutil.Factory) (client.Interf
 				}
 				return hostFactory.ClientSetForVersion(&gv)
 			}
-			for _, version := range g.Versions {
-				if version.GroupVersion != "" {
-					gv, err := schema.ParseGroupVersion(version.GroupVersion)
+			for i := 0; i < len(g.Versions); i++ {
+				if g.Versions[i].GroupVersion != "" {
+					gv, err := schema.ParseGroupVersion(g.Versions[i].GroupVersion)
 					if err != nil {
 						return nil, err
 					}

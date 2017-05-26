@@ -28,7 +28,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apiserver/pkg/admission"
 	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/ref"
 	"k8s.io/kubernetes/pkg/apis/settings"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	informers "k8s.io/kubernetes/pkg/client/informers/informers_generated/internalversion"
@@ -42,7 +41,7 @@ const (
 )
 
 func init() {
-	kubeapiserveradmission.Plugins.Register(pluginName, func(config io.Reader) (admission.Interface, error) {
+	admission.RegisterPlugin(pluginName, func(config io.Reader) (admission.Interface, error) {
 		return NewPlugin(), nil
 	})
 }
@@ -299,7 +298,7 @@ func mergeVolumes(pip *settings.PodPreset, original []api.Volume) ([]api.Volume,
 }
 
 func (c *podPresetPlugin) addEvent(pod *api.Pod, pip *settings.PodPreset, message string) {
-	ref, err := ref.GetReference(api.Scheme, pod)
+	ref, err := api.GetReference(api.Scheme, pod)
 	if err != nil {
 		glog.Errorf("pip %s: get reference for pod %s failed: %v", pip.GetName(), pod.GetName(), err)
 		return

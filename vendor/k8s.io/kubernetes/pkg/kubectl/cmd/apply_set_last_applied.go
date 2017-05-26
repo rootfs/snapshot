@@ -31,12 +31,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	apijson "k8s.io/apimachinery/pkg/util/json"
-	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api/annotations"
 	"k8s.io/kubernetes/pkg/kubectl"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
-	"k8s.io/kubernetes/pkg/util/i18n"
 )
 
 type SetLastAppliedOptions struct {
@@ -59,12 +58,12 @@ type SetLastAppliedOptions struct {
 }
 
 var (
-	applySetLastAppliedLong = templates.LongDesc(i18n.T(`
+	applySetLastAppliedLong = templates.LongDesc(`
 		Set the latest last-applied-configuration annotations by setting it to match the contents of a file.
 		This results in the last-applied-configuration being updated as though 'kubectl apply -f <file>' was run,
-		without updating any other parts of the object.`))
+		without updating any other parts of the object.`)
 
-	applySetLastAppliedExample = templates.Examples(i18n.T(`
+	applySetLastAppliedExample = templates.Examples(`
 		# Set the last-applied-configuration of a resource to match the contents of a file.
 		kubectl apply set-last-applied -f deploy.yaml
 
@@ -73,14 +72,14 @@ var (
 
 		# Set the last-applied-configuration of a resource to match the contents of a file, will create the annotation if it does not already exist.
 		kubectl apply set-last-applied -f deploy.yaml --create-annotation=true
-		`))
+		`)
 )
 
 func NewCmdApplySetLastApplied(f cmdutil.Factory, out, err io.Writer) *cobra.Command {
 	options := &SetLastAppliedOptions{Out: out, ErrOut: err}
 	cmd := &cobra.Command{
 		Use:     "set-last-applied -f FILENAME",
-		Short:   i18n.T("Set the last-applied-configuration annotation on a live object to match the contents of a file."),
+		Short:   "Set the last-applied-configuration annotation on a live object to match the contents of a file.",
 		Long:    applySetLastAppliedLong,
 		Example: applySetLastAppliedExample,
 		Run: func(cmd *cobra.Command, args []string) {
@@ -121,7 +120,7 @@ func (o *SetLastAppliedOptions) Complete(f cmdutil.Factory, cmd *cobra.Command) 
 }
 
 func (o *SetLastAppliedOptions) Validate(f cmdutil.Factory, cmd *cobra.Command) error {
-	r := resource.NewBuilder(o.Mapper, f.CategoryExpander(), o.Typer, resource.ClientMapperFunc(f.UnstructuredClientForMapping), unstructured.UnstructuredJSONScheme).
+	r := resource.NewBuilder(o.Mapper, o.Typer, resource.ClientMapperFunc(f.UnstructuredClientForMapping), unstructured.UnstructuredJSONScheme).
 		NamespaceParam(o.Namespace).DefaultNamespace().
 		FilenameParam(o.EnforceNamespace, &o.FilenameOptions).
 		Latest().
@@ -160,7 +159,7 @@ func (o *SetLastAppliedOptions) Validate(f cmdutil.Factory, cmd *cobra.Command) 
 		}
 
 		//only add to PatchBufferList when changed
-		if !bytes.Equal(cmdutil.StripComments(oringalBuf), cmdutil.StripComments(diffBuf)) {
+		if !bytes.Equal(stripComments(oringalBuf), stripComments(diffBuf)) {
 			o.PatchBufferList = append(o.PatchBufferList, patchBuf)
 			o.InfoList = append(o.InfoList, info)
 		} else {
@@ -234,7 +233,7 @@ func (o *SetLastAppliedOptions) getPatch(info *resource.Info) ([]byte, []byte, e
 	if err != nil {
 		return nil, localFile, err
 	}
-	annotationsMap[api.LastAppliedConfigAnnotation] = string(localFile)
+	annotationsMap[annotations.LastAppliedConfigAnnotation] = string(localFile)
 	metadataMap["annotations"] = annotationsMap
 	objMap["metadata"] = metadataMap
 	jsonString, err := apijson.Marshal(objMap)

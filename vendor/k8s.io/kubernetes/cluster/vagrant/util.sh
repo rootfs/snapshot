@@ -106,7 +106,7 @@ function verify-prereqs {
 
 # Create a set of provision scripts for the master and each of the nodes
 function create-provision-scripts {
-  kube::util::ensure-temp-dir
+  ensure-temp-dir
 
   (
     echo "#! /bin/bash"

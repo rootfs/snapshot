@@ -67,9 +67,7 @@ func New() *Generator {
 			`+k8s.io/apimachinery/pkg/runtime/schema`,
 			`+k8s.io/apimachinery/pkg/runtime`,
 			`k8s.io/apimachinery/pkg/apis/meta/v1`,
-			`k8s.io/apimachinery/pkg/apis/meta/v1alpha1`,
 			`k8s.io/apiserver/pkg/apis/example/v1`,
-			`k8s.io/kube-aggregator/pkg/apis/apiregistration/v1beta1`,
 			`k8s.io/kubernetes/pkg/api/v1`,
 			`k8s.io/kubernetes/pkg/apis/policy/v1beta1`,
 			`k8s.io/kubernetes/pkg/apis/extensions/v1beta1`,
@@ -139,7 +137,6 @@ func Run(g *Generator) {
 
 	protobufNames := NewProtobufNamer()
 	outputPackages := generator.Packages{}
-	nonOutputPackages := map[string]struct{}{}
 	for _, d := range strings.Split(g.Packages, ",") {
 		generateAllTypes, outputPackage := true, true
 		switch {
@@ -163,8 +160,6 @@ func Run(g *Generator) {
 		protobufNames.Add(p)
 		if outputPackage {
 			outputPackages = append(outputPackages, p)
-		} else {
-			nonOutputPackages[name] = struct{}{}
 		}
 	}
 
@@ -203,10 +198,6 @@ func Run(g *Generator) {
 
 	var vendoredOutputPackages, localOutputPackages generator.Packages
 	for _, p := range protobufNames.packages {
-		if _, ok := nonOutputPackages[p.Name()]; ok {
-			// if we're not outputting the package, don't include it in either package list
-			continue
-		}
 		p.Vendored = strings.Contains(c.Universe[p.PackagePath].SourcePath, "/vendor/")
 		if p.Vendored {
 			vendoredOutputPackages = append(vendoredOutputPackages, p)

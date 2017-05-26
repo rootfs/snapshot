@@ -28,6 +28,7 @@ import (
 	"golang.org/x/net/context"
 
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/conversion"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -160,12 +161,12 @@ func checkPreconditions(key string, preconditions *storage.Preconditions, out ru
 	if preconditions == nil {
 		return nil
 	}
-	objMeta, err := meta.Accessor(out)
+	objMeta, err := metav1.ObjectMetaFor(out)
 	if err != nil {
 		return storage.NewInternalErrorf("can't enforce preconditions %v on un-introspectable object %v, got error: %v", *preconditions, out, err)
 	}
-	if preconditions.UID != nil && *preconditions.UID != objMeta.GetUID() {
-		errMsg := fmt.Sprintf("Precondition failed: UID in precondition: %v, UID in object meta: %v", preconditions.UID, objMeta.GetUID())
+	if preconditions.UID != nil && *preconditions.UID != objMeta.UID {
+		errMsg := fmt.Sprintf("Precondition failed: UID in precondition: %v, UID in object meta: %v", preconditions.UID, objMeta.UID)
 		return storage.NewInvalidObjError(key, errMsg)
 	}
 	return nil

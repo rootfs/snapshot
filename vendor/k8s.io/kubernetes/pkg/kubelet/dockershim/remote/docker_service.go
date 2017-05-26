@@ -17,13 +17,12 @@ limitations under the License.
 package remote
 
 import (
-	"fmt"
 	"time"
 
 	"golang.org/x/net/context"
 
-	internalapi "k8s.io/kubernetes/pkg/kubelet/apis/cri"
-	runtimeapi "k8s.io/kubernetes/pkg/kubelet/apis/cri/v1alpha1"
+	internalapi "k8s.io/kubernetes/pkg/kubelet/api"
+	runtimeapi "k8s.io/kubernetes/pkg/kubelet/api/v1alpha1/runtime"
 	"k8s.io/kubernetes/pkg/kubelet/dockershim"
 	utilexec "k8s.io/kubernetes/pkg/util/exec"
 )
@@ -214,9 +213,4 @@ func (d *dockerService) RemoveImage(ctx context.Context, r *runtimeapi.RemoveIma
 		return nil, err
 	}
 	return &runtimeapi.RemoveImageResponse{}, nil
-}
-
-// ImageFsInfo returns information of the filesystem that is used to store images.
-func (d *dockerService) ImageFsInfo(ctx context.Context, r *runtimeapi.ImageFsInfoRequest) (*runtimeapi.ImageFsInfoResponse, error) {
-	return nil, fmt.Errorf("not implemented")
 }

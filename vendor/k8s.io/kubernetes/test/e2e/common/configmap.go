@@ -22,13 +22,13 @@ import (
 	"path"
 	"time"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/test/e2e/framework"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
 var _ = framework.KubeDescribe("ConfigMap", func() {
@@ -523,9 +523,6 @@ func newEnvFromConfigMap(f *framework.Framework, name string) *v1.ConfigMap {
 }
 
 func doConfigMapE2EWithoutMappings(f *framework.Framework, uid, fsGroup int64, defaultMode *int32) {
-	userID := types.UnixUserID(uid)
-	groupID := types.UnixGroupID(fsGroup)
-
 	var (
 		name            = "configmap-test-volume-" + string(uuid.NewUUID())
 		volumeName      = "configmap-volume"
@@ -539,7 +536,6 @@ func doConfigMapE2EWithoutMappings(f *framework.Framework, uid, fsGroup int64, d
 		framework.Failf("unable to create test configMap %s: %v", configMap.Name, err)
 	}
 
-	one := int64(1)
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "pod-configmaps-" + string(uuid.NewUUID()),
@@ -573,19 +569,17 @@ func doConfigMapE2EWithoutMappings(f *framework.Framework, uid, fsGroup int64, d
 					},
 				},
 			},
-			RestartPolicy:                 v1.RestartPolicyNever,
-			TerminationGracePeriodSeconds: &one,
+			RestartPolicy: v1.RestartPolicyNever,
 		},
 	}
 
-	if userID != 0 {
-		pod.Spec.SecurityContext.RunAsUser = &userID
+	if uid != 0 {
+		pod.Spec.SecurityContext.RunAsUser = &uid
 	}
 
-	if groupID != 0 {
-		pod.Spec.SecurityContext.FSGroup = &groupID
+	if fsGroup != 0 {
+		pod.Spec.SecurityContext.FSGroup = &fsGroup
 	}
-
 	if defaultMode != nil {
 		pod.Spec.Volumes[0].VolumeSource.ConfigMap.DefaultMode = defaultMode
 	} else {
@@ -602,9 +596,6 @@ func doConfigMapE2EWithoutMappings(f *framework.Framework, uid, fsGroup int64, d
 }
 
 func doConfigMapE2EWithMappings(f *framework.Framework, uid, fsGroup int64, itemMode *int32) {
-	userID := types.UnixUserID(uid)
-	groupID := types.UnixGroupID(fsGroup)
-
 	var (
 		name            = "configmap-test-volume-map-" + string(uuid.NewUUID())
 		volumeName      = "configmap-volume"
@@ -619,7 +610,6 @@ func doConfigMapE2EWithMappings(f *framework.Framework, uid, fsGroup int64, item
 		framework.Failf("unable to create test configMap %s: %v", configMap.Name, err)
 	}
 
-	one := int64(1)
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "pod-configmaps-" + string(uuid.NewUUID()),
@@ -659,19 +649,17 @@ func doConfigMapE2EWithMappings(f *framework.Framework, uid, fsGroup int64, item
 					},
 				},
 			},
-			RestartPolicy:                 v1.RestartPolicyNever,
-			TerminationGracePeriodSeconds: &one,
+			RestartPolicy: v1.RestartPolicyNever,
 		},
 	}
 
-	if userID != 0 {
-		pod.Spec.SecurityContext.RunAsUser = &userID
+	if uid != 0 {
+		pod.Spec.SecurityContext.RunAsUser = &uid
 	}
 
-	if groupID != 0 {
-		pod.Spec.SecurityContext.FSGroup = &groupID
+	if fsGroup != 0 {
+		pod.Spec.SecurityContext.FSGroup = &fsGroup
 	}
-
 	if itemMode != nil {
 		pod.Spec.Volumes[0].VolumeSource.ConfigMap.Items[0].Mode = itemMode
 	} else {

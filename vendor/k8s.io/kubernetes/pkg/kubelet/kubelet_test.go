@@ -79,7 +79,9 @@ func init() {
 
 const (
 	testKubeletHostname = "127.0.0.1"
-	testKubeletHostIP   = "127.0.0.1"
+
+	testReservationCPU    = "200m"
+	testReservationMemory = "100M"
 
 	// TODO(harry) any global place for these two?
 	// Reasonable size range of all container images. 90%ile of images on dockerhub drops into this range.
@@ -140,14 +142,6 @@ func newTestKubeletWithImageList(
 	fakeRuntime.RuntimeType = "test"
 	fakeRuntime.VersionInfo = "1.5.0"
 	fakeRuntime.ImageList = imageList
-	// Set ready conditions by default.
-	fakeRuntime.RuntimeStatus = &kubecontainer.RuntimeStatus{
-		Conditions: []kubecontainer.RuntimeCondition{
-			{Type: "RuntimeReady", Status: true},
-			{Type: "NetworkReady", Status: true},
-		},
-	}
-
 	fakeRecorder := &record.FakeRecorder{}
 	fakeKubeClient := &fake.Clientset{}
 	kubelet := &Kubelet{}
@@ -159,7 +153,7 @@ func newTestKubeletWithImageList(
 	kubelet.nodeName = types.NodeName(testKubeletHostname)
 	kubelet.runtimeState = newRuntimeState(maxWaitForContainerRuntime)
 	kubelet.runtimeState.setNetworkState(nil)
-	kubelet.networkPlugin, _ = network.InitNetworkPlugin([]network.NetworkPlugin{}, "", nettest.NewFakeHost(nil), componentconfig.HairpinNone, "", 1440)
+	kubelet.networkPlugin, _ = network.InitNetworkPlugin([]network.NetworkPlugin{}, "", nettest.NewFakeHost(nil), componentconfig.HairpinNone, kubelet.nonMasqueradeCIDR, 1440)
 	if tempDir, err := ioutil.TempDir("/tmp", "kubelet_test."); err != nil {
 		t.Fatalf("can't make a temp rootdir: %v", err)
 	} else {
@@ -171,31 +165,8 @@ func newTestKubeletWithImageList(
 	kubelet.sourcesReady = config.NewSourcesReady(func(_ sets.String) bool { return true })
 	kubelet.masterServiceNamespace = metav1.NamespaceDefault
 	kubelet.serviceLister = testServiceLister{}
-	kubelet.nodeInfo = testNodeInfo{
-		nodes: []*v1.Node{
-			{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: string(kubelet.nodeName),
-				},
-				Status: v1.NodeStatus{
-					Conditions: []v1.NodeCondition{
-						{
-							Type:    v1.NodeReady,
-							Status:  v1.ConditionTrue,
-							Reason:  "Ready",
-							Message: "Node ready",
-						},
-					},
-					Addresses: []v1.NodeAddress{
-						{
-							Type:    v1.NodeInternalIP,
-							Address: testKubeletHostIP,
-						},
-					},
-				},
-			},
-		},
-	}
+	kubelet.nodeLister = testNodeLister{}
+	kubelet.nodeInfo = testNodeInfo{}
 	kubelet.recorder = fakeRecorder
 	if err := kubelet.setupDataDirs(); err != nil {
 		t.Fatalf("can't initialize kubelet data dirs: %v", err)
@@ -210,6 +181,7 @@ func newTestKubeletWithImageList(
 	kubelet.secretManager = secretManager
 	kubelet.podManager = kubepod.NewBasicPodManager(fakeMirrorClient, kubelet.secretManager)
 	kubelet.statusManager = status.NewManager(fakeKubeClient, kubelet.podManager, &statustest.FakePodDeletionSafetyProvider{})
+	kubelet.containerRefManager = kubecontainer.NewRefManager()
 	diskSpaceManager, err := newDiskSpaceManager(mockCadvisor, DiskSpacePolicy{})
 	if err != nil {
 		t.Fatalf("can't initialize disk space manager: %v", err)
@@ -454,6 +426,16 @@ func TestHandlePortConflicts(t *testing.T) {
 	testKubelet.fakeCadvisor.On("ImagesFsInfo").Return(cadvisorapiv2.FsInfo{}, nil)
 	testKubelet.fakeCadvisor.On("RootFsInfo").Return(cadvisorapiv2.FsInfo{}, nil)
 
+	kl.nodeLister = testNodeLister{nodes: []*v1.Node{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: string(kl.nodeName)},
+			Status: v1.NodeStatus{
+				Allocatable: v1.ResourceList{
+					v1.ResourcePods: *resource.NewQuantity(110, resource.DecimalSI),
+				},
+			},
+		},
+	}}
 	kl.nodeInfo = testNodeInfo{nodes: []*v1.Node{
 		{
 			ObjectMeta: metav1.ObjectMeta{Name: string(kl.nodeName)},
@@ -499,6 +481,16 @@ func TestHandleHostNameConflicts(t *testing.T) {
 	testKubelet.fakeCadvisor.On("ImagesFsInfo").Return(cadvisorapiv2.FsInfo{}, nil)
 	testKubelet.fakeCadvisor.On("RootFsInfo").Return(cadvisorapiv2.FsInfo{}, nil)
 
+	kl.nodeLister = testNodeLister{nodes: []*v1.Node{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: "127.0.0.1"},
+			Status: v1.NodeStatus{
+				Allocatable: v1.ResourceList{
+					v1.ResourcePods: *resource.NewQuantity(110, resource.DecimalSI),
+				},
+			},
+		},
+	}}
 	kl.nodeInfo = testNodeInfo{nodes: []*v1.Node{
 		{
 			ObjectMeta: metav1.ObjectMeta{Name: "127.0.0.1"},
@@ -547,6 +539,7 @@ func TestHandleNodeSelector(t *testing.T) {
 			},
 		},
 	}
+	kl.nodeLister = testNodeLister{nodes: nodes}
 	kl.nodeInfo = testNodeInfo{nodes: nodes}
 	testKubelet.fakeCadvisor.On("MachineInfo").Return(&cadvisorapi.MachineInfo{}, nil)
 	testKubelet.fakeCadvisor.On("ImagesFsInfo").Return(cadvisorapiv2.FsInfo{}, nil)
@@ -585,6 +578,7 @@ func TestHandleMemExceeded(t *testing.T) {
 				v1.ResourcePods:   *resource.NewQuantity(40, resource.DecimalSI),
 			}}},
 	}
+	kl.nodeLister = testNodeLister{nodes: nodes}
 	kl.nodeInfo = testNodeInfo{nodes: nodes}
 	testKubelet.fakeCadvisor.On("MachineInfo").Return(&cadvisorapi.MachineInfo{}, nil)
 	testKubelet.fakeCadvisor.On("ImagesFsInfo").Return(cadvisorapiv2.FsInfo{}, nil)
@@ -1823,6 +1817,16 @@ func TestHandlePodAdditionsInvokesPodAdmitHandlers(t *testing.T) {
 	testKubelet := newTestKubelet(t, false /* controllerAttachDetachEnabled */)
 	defer testKubelet.Cleanup()
 	kl := testKubelet.kubelet
+	kl.nodeLister = testNodeLister{nodes: []*v1.Node{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: string(kl.nodeName)},
+			Status: v1.NodeStatus{
+				Allocatable: v1.ResourceList{
+					v1.ResourcePods: *resource.NewQuantity(110, resource.DecimalSI),
+				},
+			},
+		},
+	}}
 	kl.nodeInfo = testNodeInfo{nodes: []*v1.Node{
 		{
 			ObjectMeta: metav1.ObjectMeta{Name: string(kl.nodeName)},

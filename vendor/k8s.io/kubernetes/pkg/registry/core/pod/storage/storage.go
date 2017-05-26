@@ -31,7 +31,6 @@ import (
 	"k8s.io/apiserver/pkg/storage"
 	storeerr "k8s.io/apiserver/pkg/storage/errors"
 	"k8s.io/kubernetes/pkg/api"
-	podutil "k8s.io/kubernetes/pkg/api/pod"
 	"k8s.io/kubernetes/pkg/api/validation"
 	policyclient "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/policy/internalversion"
 	"k8s.io/kubernetes/pkg/kubelet/client"
@@ -62,9 +61,12 @@ type REST struct {
 // NewStorage returns a RESTStorage object that will work against pods.
 func NewStorage(optsGetter generic.RESTOptionsGetter, k client.ConnectionInfoGetter, proxyTransport http.RoundTripper, podDisruptionBudgetClient policyclient.PodDisruptionBudgetsGetter) PodStorage {
 	store := &genericregistry.Store{
-		Copier:            api.Scheme,
-		NewFunc:           func() runtime.Object { return &api.Pod{} },
-		NewListFunc:       func() runtime.Object { return &api.PodList{} },
+		Copier:      api.Scheme,
+		NewFunc:     func() runtime.Object { return &api.Pod{} },
+		NewListFunc: func() runtime.Object { return &api.PodList{} },
+		ObjectNameFunc: func(obj runtime.Object) (string, error) {
+			return obj.(*api.Pod).Name, nil
+		},
 		PredicateFunc:     pod.MatchPod,
 		QualifiedResource: api.Resource("pods"),
 		WatchCacheSize:    cachesize.GetWatchCacheSizeByResource("pods"),
@@ -163,7 +165,7 @@ func (r *BindingREST) setPodHostAndAnnotations(ctx genericapirequest.Context, po
 		for k, v := range annotations {
 			pod.Annotations[k] = v
 		}
-		podutil.UpdatePodCondition(&pod.Status, &api.PodCondition{
+		api.UpdatePodCondition(&pod.Status, &api.PodCondition{
 			Type:   api.PodScheduled,
 			Status: api.ConditionTrue,
 		})

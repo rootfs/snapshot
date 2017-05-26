@@ -1,5 +1,5 @@
-hash: 3e4cdc4d072b86868ee6b99b5a080f4d3796cb4921b84b2b18b3a1d48e4cf07f
-updated: 2017-05-25T19:24:33.145913255Z
+hash: cddf02bf8e713590c03247978e51e091fdc388b21fcdbaa84397111edca0fdc3
+updated: 2017-05-26T19:44:56.587975193Z
 imports:
 - name: github.com/davecgh/go-spew
   version: 5215b55f46b2b919f50a1df0eaa5886afe4e3b3d
@@ -32,6 +32,10 @@ imports:
   - sortkeys
 - name: github.com/golang/glog
   version: 44145f04b68cf362d9c4df2182967c2275eaefed
+- name: github.com/golang/groupcache
+  version: 02826c3e79038b59d737d3b1c0a1d937f71a4433
+  subpackages:
+  - lru
 - name: github.com/golang/protobuf
   version: 8616e8ee5e20a1704615e6c8d7afcdac06087a67
   subpackages:
@@ -50,6 +54,8 @@ imports:
   - buffer
   - jlexer
   - jwriter
+- name: github.com/pborman/uuid
+  version: ca53cad383cad2479bbba7f7a1a05797ec1386e4
 - name: github.com/PuerkitoBio/purell
   version: 8a290539e2e8629dbc4e6bad948158f790ec31f4
 - name: github.com/PuerkitoBio/urlesc
@@ -93,7 +99,7 @@ imports:
 - name: gopkg.in/yaml.v2
   version: 53feefa2559fb8dfa8d81baad31be332c97d6c77
 - name: k8s.io/apimachinery
-  version: 75b8dd260ef0469d96d578705a87cffd0e09dab8
+  version: 28d5d926c7c976d5885f31ace03d4a9b3ad8abd2
   subpackages:
   - pkg/api/equality
   - pkg/api/errors
@@ -125,19 +131,23 @@ imports:
   - pkg/util/framer
   - pkg/util/intstr
   - pkg/util/json
+  - pkg/util/mergepatch
   - pkg/util/net
   - pkg/util/rand
   - pkg/util/runtime
   - pkg/util/sets
+  - pkg/util/strategicpatch
+  - pkg/util/uuid
   - pkg/util/validation
   - pkg/util/validation/field
   - pkg/util/wait
   - pkg/util/yaml
   - pkg/version
   - pkg/watch
+  - third_party/forked/golang/json
   - third_party/forked/golang/reflect
 - name: k8s.io/client-go
-  version: 3627aeb7d4f6ade38f995d2c923e459146493c7e
+  version: 0ec10d4351f32832ab60d381d15e6d9e1f858bd3
   subpackages:
   - discovery
   - kubernetes
@@ -214,6 +224,7 @@ imports:
   - tools/clientcmd/api/latest
   - tools/clientcmd/api/v1
   - tools/metrics
+  - tools/record
   - transport
   - util/cert
   - util/clock
@@ -221,5 +232,8 @@ imports:
   - util/homedir
   - util/integer
 - name: k8s.io/kubernetes
-  version: 249551461e038df9dae5e1a932334aa66a8dc701
+  version: d6f433224538d4f9ca2f7ae19b252e6fcb66a3ae
+  subpackages:
+  - pkg/util/goroutinemap
+  - pkg/util/goroutinemap/exponentialbackoff
 testImports: []

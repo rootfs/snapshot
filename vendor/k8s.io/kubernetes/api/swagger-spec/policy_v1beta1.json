@@ -1339,10 +1339,6 @@
       "type": "string",
       "description": "The kind attribute of the resource associated with the status StatusReason. On some operations may differ from the requested resource Kind. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds"
      },
-     "uid": {
-      "type": "string",
-      "description": "UID of the resource. (when there is a single resource which can be described). More info: http://kubernetes.io/docs/user-guide/identifiers#uids"
-     },
      "causes": {
       "type": "array",
       "items": {
@@ -1478,7 +1474,6 @@
     "description": "APIResource specifies the name of a resource and whether it is namespaced.",
     "required": [
      "name",
-     "singularName",
      "namespaced",
      "kind",
      "verbs"
@@ -1486,11 +1481,7 @@
     "properties": {
      "name": {
       "type": "string",
-      "description": "name is the plural name of the resource."
-     },
-     "singularName": {
-      "type": "string",
-      "description": "singularName is the singular name of the resource.  This allows clients to handle plural and singular opaquely. The singularName is more correct for reporting status on a single item and both singular and plural are allowed from the kubectl CLI interface."
+      "description": "name is the name of the resource."
      },
      "namespaced": {
       "type": "boolean",

@@ -94,11 +94,6 @@
           volumePath: "[datastore1] volumes/myDisk"
           fsType: ext4
       ```
-      In the above example datastore1 is located in the root folder. If datastore is member of Datastore Cluster or located in sub folder, the folder path needs to be provided in the VolumePath as below. 
-      ```yaml
-      vsphereVolume:
-          VolumePath:	"[DatastoreCluster/datastore1] volumes/myDisk" 
-      ```
 
       [Download example](vsphere-volume-pv.yaml?raw=true)
 
@@ -201,7 +196,7 @@
       ``` bash
       $ kubectl get pod pvpod
       NAME      READY     STATUS    RESTARTS   AGE
-      pvpod       1/1     Running   0          48m
+      pvpod       1/1     Running   0          48m        
       ```
 
 ### Storage Class
@@ -228,7 +223,7 @@
       This field is optional. If not specified as shown in example 1, the volume will be created on the datastore specified in the vsphere config file used to initialize the vSphere Cloud Provider.
 
       Example 2:
-
+ 
       ```yaml
       kind: StorageClass
       apiVersion: storage.k8s.io/v1beta1
@@ -238,13 +233,7 @@
       parameters:
           diskformat: zeroedthick
           datastore: VSANDatastore
-      ```     
-      If datastore is member of DataStore Cluster or within some sub folder, the datastore folder path needs to be provided in the datastore parameter as below.
-
-       ```yaml
-       parameters:
-          datastore:	DatastoreCluster/VSANDatastore
-       ```
+      ```
 
       [Download example](vsphere-volume-sc-with-datastore.yaml?raw=true)
       Creating the storageclass:
@@ -371,7 +360,7 @@
       ``` bash
       $ kubectl get pod pvpod
       NAME      READY     STATUS    RESTARTS   AGE
-      pvpod       1/1     Running   0          48m
+      pvpod       1/1     Running   0          48m        
       ```
 
 ### Virtual SAN policy support inside Kubernetes
@@ -625,7 +614,6 @@ vSphere volumes can be consumed by Stateful Sets.
      ```
      This will create Persistent Volume Claims for each replica and provision a volume for each claim if an existing volume could be bound to the claim.
 
-     [Download example](simple-statefulset.yaml)
 
 <!-- BEGIN MUNGE: GENERATED_ANALYTICS -->
 [![Analytics](https://kubernetes-site.appspot.com/UA-36037335-10/GitHub/examples/volumes/vsphere/README.md?pixel)]()

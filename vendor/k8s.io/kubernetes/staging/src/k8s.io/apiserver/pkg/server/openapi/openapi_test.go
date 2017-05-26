@@ -17,7 +17,6 @@ limitations under the License.
 package openapi
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -98,7 +97,6 @@ func (_ TestInput) OpenAPIDefinition() *openapi.OpenAPIDefinition {
 			},
 		},
 	}
-	schema.Extensions = spec.Extensions{"x-test": "test"}
 	return &openapi.OpenAPIDefinition{
 		Schema:       schema,
 		Dependencies: []string{},
@@ -204,7 +202,7 @@ func getConfig(fullMethods bool) (*openapi.Config, *restful.Container) {
 			if strings.HasPrefix(friendlyName, "go_default_test") {
 				friendlyName = "openapi" + friendlyName[len("go_default_test"):]
 			}
-			return friendlyName, spec.Extensions{"x-test2": "test2"}
+			return friendlyName, nil
 		},
 	}, container
 }
@@ -387,12 +385,6 @@ func getTestInputDefinition() spec.Schema {
 				},
 			},
 		},
-		VendorExtensible: spec.VendorExtensible{
-			Extensions: spec.Extensions{
-				"x-test":  "test",
-				"x-test2": "test2",
-			},
-		},
 	}
 }
 
@@ -414,11 +406,6 @@ func getTestOutputDefinition() spec.Schema {
 						Type:        spec.StringOrArray{"string"},
 					},
 				},
-			},
-		},
-		VendorExtensible: spec.VendorExtensible{
-			Extensions: spec.Extensions{
-				"x-test2": "test2",
 			},
 		},
 	}
@@ -448,16 +435,7 @@ func TestBuildSwaggerSpec(t *testing.T) {
 		},
 	}
 	err := o.init(container.RegisteredWebServices())
-	if !assert.NoError(err) {
-		return
+	if assert.NoError(err) {
+		assert.Equal(expected, o.swagger)
 	}
-	expected_json, err := json.Marshal(expected)
-	if !assert.NoError(err) {
-		return
-	}
-	actual_json, err := json.Marshal(o.swagger)
-	if !assert.NoError(err) {
-		return
-	}
-	assert.Equal(string(expected_json), string(actual_json))
 }

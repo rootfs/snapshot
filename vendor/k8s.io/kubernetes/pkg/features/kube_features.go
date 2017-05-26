@@ -98,7 +98,7 @@ func init() {
 // To add a new feature, define a key for it above and add it here. The features will be
 // available throughout Kubernetes binaries.
 var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureSpec{
-	ExternalTrafficLocalOnly:                    {Default: true, PreRelease: utilfeature.GA},
+	ExternalTrafficLocalOnly:                    {Default: true, PreRelease: utilfeature.Beta},
 	AppArmor:                                    {Default: true, PreRelease: utilfeature.Beta},
 	DynamicKubeletConfig:                        {Default: false, PreRelease: utilfeature.Alpha},
 	DynamicVolumeProvisioning:                   {Default: true, PreRelease: utilfeature.Alpha},

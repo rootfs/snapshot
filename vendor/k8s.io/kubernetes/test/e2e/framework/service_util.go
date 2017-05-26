@@ -34,6 +34,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/kubernetes/pkg/api/v1"
+	"k8s.io/kubernetes/pkg/api/v1/service"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/client/retry"
@@ -188,15 +189,15 @@ func (j *ServiceTestJig) ChangeServiceType(namespace, name string, newType v1.Se
 	}
 }
 
-// CreateOnlyLocalNodePortService creates a NodePort service with
-// ExternalTrafficPolicy set to Local and sanity checks its nodePort.
-// If createPod is true, it also creates an RC with 1 replica of
+// CreateOnlyLocalNodePortService creates a loadbalancer service and sanity checks its
+// nodePort. If createPod is true, it also creates an RC with 1 replica of
 // the standard netexec container used everywhere in this test.
 func (j *ServiceTestJig) CreateOnlyLocalNodePortService(namespace, serviceName string, createPod bool) *v1.Service {
-	By("creating a service " + namespace + "/" + serviceName + " with type=NodePort and ExternalTrafficPolicy=Local")
+	By("creating a service " + namespace + "/" + serviceName + " with type=NodePort and annotation for local-traffic-only")
 	svc := j.CreateTCPServiceOrFail(namespace, func(svc *v1.Service) {
 		svc.Spec.Type = v1.ServiceTypeNodePort
-		svc.Spec.ExternalTrafficPolicy = v1.ServiceExternalTrafficPolicyTypeLocal
+		svc.ObjectMeta.Annotations = map[string]string{
+			service.BetaAnnotationExternalTraffic: service.AnnotationValueExternalTrafficLocal}
 		svc.Spec.Ports = []v1.ServicePort{{Protocol: "TCP", Port: 80}}
 	})
 
@@ -208,18 +209,18 @@ func (j *ServiceTestJig) CreateOnlyLocalNodePortService(namespace, serviceName s
 	return svc
 }
 
-// CreateOnlyLocalLoadBalancerService creates a loadbalancer service with
-// ExternalTrafficPolicy set to Local and waits for it to acquire an ingress IP.
-// If createPod is true, it also creates an RC with 1 replica of
-// the standard netexec container used everywhere in this test.
+// CreateOnlyLocalLoadBalancerService creates a loadbalancer service and waits for it to
+// acquire an ingress IP. If createPod is true, it also creates an RC with 1
+// replica of the standard netexec container used everywhere in this test.
 func (j *ServiceTestJig) CreateOnlyLocalLoadBalancerService(namespace, serviceName string, timeout time.Duration, createPod bool,
 	tweak func(svc *v1.Service)) *v1.Service {
-	By("creating a service " + namespace + "/" + serviceName + " with type=LoadBalancer and ExternalTrafficPolicy=Local")
+	By("creating a service " + namespace + "/" + serviceName + " with type=LoadBalancer and annotation for local-traffic-only")
 	svc := j.CreateTCPServiceOrFail(namespace, func(svc *v1.Service) {
 		svc.Spec.Type = v1.ServiceTypeLoadBalancer
 		// We need to turn affinity off for our LB distribution tests
 		svc.Spec.SessionAffinity = v1.ServiceAffinityNone
-		svc.Spec.ExternalTrafficPolicy = v1.ServiceExternalTrafficPolicyTypeLocal
+		svc.ObjectMeta.Annotations = map[string]string{
+			service.BetaAnnotationExternalTraffic: service.AnnotationValueExternalTrafficLocal}
 		if tweak != nil {
 			tweak(svc)
 		}
@@ -257,6 +258,9 @@ func GetNodePublicIps(c clientset.Interface) ([]string, error) {
 	nodes := GetReadySchedulableNodesOrDie(c)
 
 	ips := CollectAddresses(nodes, v1.NodeExternalIP)
+	if len(ips) == 0 {
+		ips = CollectAddresses(nodes, v1.NodeLegacyHostIP)
+	}
 	return ips, nil
 }
 
@@ -323,10 +327,6 @@ func (j *ServiceTestJig) WaitForEndpointOnNode(namespace, serviceName, nodeName 
 		endpoints, err := j.Client.Core().Endpoints(namespace).Get(serviceName, metav1.GetOptions{})
 		if err != nil {
 			Logf("Get endpoints for service %s/%s failed (%s)", namespace, serviceName, err)
-			return false, nil
-		}
-		if len(endpoints.Subsets) == 0 {
-			Logf("Expect endpoints with subsets, got none.")
 			return false, nil
 		}
 		// TODO: Handle multiple endpoints
@@ -1057,7 +1057,7 @@ func StartServeHostnameService(c clientset.Interface, internalClient internalcli
 	config := testutils.RCConfig{
 		Client:               c,
 		InternalClient:       internalClient,
-		Image:                ServeHostnameImage,
+		Image:                "gcr.io/google_containers/serve_hostname:v1.4",
 		Name:                 name,
 		Namespace:            ns,
 		PollInterval:         3 * time.Second,

@@ -33,7 +33,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/kubernetes/pkg/api/v1"
-	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/kubernetes/pkg/kubelet"
 	"k8s.io/kubernetes/test/e2e/framework"
 
@@ -104,7 +103,7 @@ func getRestartDelay(podClient *framework.PodClient, podName string, containerNa
 		time.Sleep(time.Second)
 		pod, err := podClient.Get(podName, metav1.GetOptions{})
 		framework.ExpectNoError(err, fmt.Sprintf("getting pod %s", podName))
-		status, ok := podutil.GetContainerStatus(pod.Status.ContainerStatuses, containerName)
+		status, ok := v1.GetContainerStatus(pod.Status.ContainerStatuses, containerName)
 		if !ok {
 			framework.Logf("getRestartDelay: status missing")
 			continue
@@ -368,7 +367,7 @@ var _ = framework.KubeDescribe("Pods", func() {
 				Containers: []v1.Container{
 					{
 						Name:  "srv",
-						Image: framework.ServeHostnameImage,
+						Image: "gcr.io/google_containers/serve_hostname:v1.4",
 						Ports: []v1.ContainerPort{{ContainerPort: 9376}},
 					},
 				},

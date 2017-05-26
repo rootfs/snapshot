@@ -76,11 +76,11 @@ type NetworkPlugin interface {
 	// TODO: rename podInfraContainerID to sandboxID
 	TearDownPod(namespace string, name string, podInfraContainerID kubecontainer.ContainerID) error
 
-	// GetPodNetworkStatus is the method called to obtain the ipv4 or ipv6 addresses of the container
+	// Status is the method called to obtain the ipv4 or ipv6 addresses of the container
 	// TODO: rename podInfraContainerID to sandboxID
 	GetPodNetworkStatus(namespace string, name string, podInfraContainerID kubecontainer.ContainerID) (*PodNetworkStatus, error)
 
-	// Status returns error if the network plugin is in error state
+	// NetworkStatus returns error if the network plugin is in error state
 	Status() error
 }
 

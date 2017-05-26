@@ -20,9 +20,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
 	cadvisorapi "github.com/google/cadvisor/info/v1"
 	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
 	"k8s.io/apimachinery/pkg/types"
@@ -197,10 +194,11 @@ func TestGetContainerInfo(t *testing.T) {
 		fakeRuntime.PodList = tc.podList
 
 		stats, err := kubelet.GetContainerInfo(tc.requestedPodFullName, tc.requestedPodUid, tc.requestedContainerName, cadvisorReq)
-		assert.Equal(t, tc.expectedError, err)
-
-		if tc.expectStats {
-			require.NotNil(t, stats)
+		if err != tc.expectedError {
+			t.Errorf("test '%s' failed: expected error %#v, got %#v", tc.name, tc.expectedError, err)
+		}
+		if tc.expectStats && stats == nil {
+			t.Fatalf("test '%s' failed: stats should not be nil", tc.name)
 		}
 		mockCadvisor.AssertExpectations(t)
 	}
@@ -221,7 +219,9 @@ func TestGetRawContainerInfoRoot(t *testing.T) {
 	mockCadvisor.On("ContainerInfo", containerPath, cadvisorReq).Return(containerInfo, nil)
 
 	_, err := kubelet.GetRawContainerInfo(containerPath, cadvisorReq, false)
-	assert.NoError(t, err)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
 	mockCadvisor.AssertExpectations(t)
 }
 
@@ -247,8 +247,12 @@ func TestGetRawContainerInfoSubcontainers(t *testing.T) {
 	mockCadvisor.On("SubcontainerInfo", containerPath, cadvisorReq).Return(containerInfo, nil)
 
 	result, err := kubelet.GetRawContainerInfo(containerPath, cadvisorReq, true)
-	assert.NoError(t, err)
-	assert.Len(t, result, 2)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if len(result) != 2 {
+		t.Errorf("Expected 2 elements, received: %#v", result)
+	}
 	mockCadvisor.AssertExpectations(t)
 }
 
@@ -278,7 +282,11 @@ func TestHasDedicatedImageFs(t *testing.T) {
 		mockCadvisor.On("ImagesFsInfo").Return(testCase.imageFsInfo, nil)
 		mockCadvisor.On("RootFsInfo").Return(testCase.rootFsInfo, nil)
 		actual, err := kubelet.HasDedicatedImageFs()
-		assert.NoError(t, err, "test [%s]", testName)
-		assert.Equal(t, testCase.expected, actual, "test [%s]", testName)
+		if err != nil {
+			t.Errorf("case: %s, unexpected error: %v", testName, err)
+		}
+		if actual != testCase.expected {
+			t.Errorf("case: %s, expected: %v, actual: %v", testName, testCase.expected, actual)
+		}
 	}
 }

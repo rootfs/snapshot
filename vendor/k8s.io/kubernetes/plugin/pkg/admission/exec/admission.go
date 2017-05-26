@@ -30,13 +30,13 @@ import (
 )
 
 func init() {
-	kubeapiserveradmission.Plugins.Register("DenyEscalatingExec", func(config io.Reader) (admission.Interface, error) {
+	admission.RegisterPlugin("DenyEscalatingExec", func(config io.Reader) (admission.Interface, error) {
 		return NewDenyEscalatingExec(), nil
 	})
 
 	// This is for legacy support of the DenyExecOnPrivileged admission controller.  Most
 	// of the time DenyEscalatingExec should be preferred.
-	kubeapiserveradmission.Plugins.Register("DenyExecOnPrivileged", func(config io.Reader) (admission.Interface, error) {
+	admission.RegisterPlugin("DenyExecOnPrivileged", func(config io.Reader) (admission.Interface, error) {
 		return NewDenyExecOnPrivileged(), nil
 	})
 }

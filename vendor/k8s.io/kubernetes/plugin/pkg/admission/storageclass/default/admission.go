@@ -26,7 +26,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	admission "k8s.io/apiserver/pkg/admission"
 	api "k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/helper"
 	"k8s.io/kubernetes/pkg/apis/storage"
 	storageutil "k8s.io/kubernetes/pkg/apis/storage/util"
 	informers "k8s.io/kubernetes/pkg/client/informers/informers_generated/internalversion"
@@ -39,7 +38,7 @@ const (
 )
 
 func init() {
-	kubeapiserveradmission.Plugins.Register(PluginName, func(config io.Reader) (admission.Interface, error) {
+	admission.RegisterPlugin(PluginName, func(config io.Reader) (admission.Interface, error) {
 		plugin := newPlugin()
 		return plugin, nil
 	})
@@ -68,7 +67,7 @@ func (a *claimDefaulterPlugin) SetInternalKubeInformerFactory(f informers.Shared
 	a.SetReadyFunc(informer.Informer().HasSynced)
 }
 
-// Validate ensures lister is set.
+// Validate ensures an authorizer is set.
 func (a *claimDefaulterPlugin) Validate() error {
 	if a.lister == nil {
 		return fmt.Errorf("missing lister")
@@ -97,7 +96,7 @@ func (c *claimDefaulterPlugin) Admit(a admission.Attributes) error {
 		return nil
 	}
 
-	if helper.PersistentVolumeClaimHasClass(pvc) {
+	if api.PersistentVolumeClaimHasClass(pvc) {
 		// The user asked for a class.
 		return nil
 	}

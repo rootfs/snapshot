@@ -1,3 +1,5 @@
+// +build integration,!no-etcd
+
 /*
 Copyright 2015 The Kubernetes Authors.
 
@@ -42,8 +44,8 @@ func TestThirdPartyDiscovery(t *testing.T) {
 	group := "company.com"
 	version := "v1"
 
-	_, s, closeFn := framework.RunAMaster(framework.NewIntegrationTestMasterConfig())
-	defer closeFn()
+	_, s := framework.RunAMaster(framework.NewIntegrationTestMasterConfig())
+	defer s.Close()
 	clientConfig := &restclient.Config{Host: s.URL, ContentConfig: restclient.ContentConfig{NegotiatedSerializer: api.Codecs}}
 	client := clientset.NewForConfigOrDie(clientConfig)
 
@@ -91,8 +93,8 @@ func TestThirdPartyDiscovery(t *testing.T) {
 
 // TODO these tests will eventually be runnable in a single test
 func TestThirdPartyDelete(t *testing.T) {
-	_, s, closeFn := framework.RunAMaster(framework.NewIntegrationTestMasterConfig())
-	defer closeFn()
+	_, s := framework.RunAMaster(framework.NewIntegrationTestMasterConfig())
+	defer s.Close()
 
 	clientConfig := &restclient.Config{Host: s.URL, ContentConfig: restclient.ContentConfig{NegotiatedSerializer: api.Codecs}}
 	client := clientset.NewForConfigOrDie(clientConfig)
@@ -101,8 +103,8 @@ func TestThirdPartyDelete(t *testing.T) {
 }
 
 func TestThirdPartyMultiple(t *testing.T) {
-	_, s, closeFn := framework.RunAMaster(framework.NewIntegrationTestMasterConfig())
-	defer closeFn()
+	_, s := framework.RunAMaster(framework.NewIntegrationTestMasterConfig())
+	defer s.Close()
 
 	clientConfig := &restclient.Config{Host: s.URL, ContentConfig: restclient.ContentConfig{NegotiatedSerializer: api.Codecs}}
 	client := clientset.NewForConfigOrDie(clientConfig)

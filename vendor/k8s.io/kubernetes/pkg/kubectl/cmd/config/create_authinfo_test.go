@@ -160,7 +160,7 @@ func TestCreateAuthInfoOptions(t *testing.T) {
 			continue
 		}
 
-		if err := opts.complete(cmd, buff); err != nil {
+		if !opts.complete(cmd, buff) {
 			if !test.wantCompleteErr {
 				t.Errorf("case %d: complete() error for flags %q: %s", i, test.flags, buff)
 			}

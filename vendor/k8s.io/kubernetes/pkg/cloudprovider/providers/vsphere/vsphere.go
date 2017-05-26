@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net"
 	"net/url"
 	"path"
 	"path/filepath"
@@ -48,7 +47,6 @@ import (
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	k8runtime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/kubernetes/pkg/api/v1"
-	v1helper "k8s.io/kubernetes/pkg/api/v1/helper"
 	"k8s.io/kubernetes/pkg/cloudprovider"
 )
 
@@ -80,8 +78,6 @@ const (
 	NonSupportedControllerTypeErrMsg = "Disk is attached to non-supported controller type"
 	FileAlreadyExistErrMsg           = "File requested already exist"
 	CleanUpDummyVMRoutine_Interval   = 5
-	UUIDPath                         = "/sys/class/dmi/id/product_serial"
-	UUIDPrefix                       = "VMware-"
 )
 
 // Controller types that are currently supported for hot attach of disks
@@ -145,10 +141,6 @@ type VSphereConfig struct {
 		// property in VmConfigInfo, or also set as vc.uuid in VMX file.
 		// If not set, will be fetched from the machine via sysfs (requires root)
 		VMUUID string `gcfg:"vm-uuid"`
-		// VMName is the VM name of virtual machine
-		// Combining the WorkingDir and VMName can form a unique InstanceID.
-		// When vm-name is set, no username/password is required on worker nodes.
-		VMName string `gcfg:"vm-name"`
 	}
 
 	Network struct {
@@ -229,46 +221,24 @@ func init() {
 	})
 }
 
-// UUID gets the BIOS UUID via the sys interface.  This UUID is known by vsphere
-func getvmUUID() (string, error) {
-	id, err := ioutil.ReadFile(UUIDPath)
-	if err != nil {
-		return "", fmt.Errorf("error retrieving vm uuid: %s", err)
-	}
-	uuidFromFile := string(id[:])
-	//strip leading and trailing white space and new line char
-	uuid := strings.TrimSpace(uuidFromFile)
-	// check the uuid starts with "VMware-"
-	if !strings.HasPrefix(uuid, UUIDPrefix) {
-		return "", fmt.Errorf("Failed to match Prefix, UUID read from the file is %v", uuidFromFile)
-	}
-	// Strip the prefix and while spaces and -
-	uuid = strings.Replace(uuid[len(UUIDPrefix):(len(uuid))], " ", "", -1)
-	uuid = strings.Replace(uuid, "-", "", -1)
-	if len(uuid) != 32 {
-		return "", fmt.Errorf("Length check failed, UUID read from the file is %v", uuidFromFile)
-	}
-	// need to add dashes, e.g. "564d395e-d807-e18a-cb25-b79f65eb2b9f"
-	uuid = fmt.Sprintf("%s-%s-%s-%s-%s", uuid[0:8], uuid[8:12], uuid[12:16], uuid[16:20], uuid[20:32])
-	return uuid, nil
-}
-
 // Returns the name of the VM on which this code is running.
+// Prerequisite: this code assumes VMWare vmtools or open-vm-tools to be installed in the VM.
 // Will attempt to determine the machine's name via it's UUID in this precedence order, failing if neither have a UUID:
 // * cloud config value VMUUID
 // * sysfs entry
 func getVMName(client *govmomi.Client, cfg *VSphereConfig) (string, error) {
 	var vmUUID string
-	var err error
 
 	if cfg.Global.VMUUID != "" {
 		vmUUID = cfg.Global.VMUUID
 	} else {
 		// This needs root privileges on the host, and will fail otherwise.
-		vmUUID, err = getvmUUID()
+		vmUUIDbytes, err := ioutil.ReadFile("/sys/devices/virtual/dmi/id/product_uuid")
 		if err != nil {
 			return "", err
 		}
+
+		vmUUID = string(vmUUIDbytes)
 		cfg.Global.VMUUID = vmUUID
 	}
 
@@ -297,10 +267,6 @@ func getVMName(client *govmomi.Client, cfg *VSphereConfig) (string, error) {
 		return "", err
 	}
 
-	if svm == nil {
-		return "", fmt.Errorf("unable to find machine reference by UUID")
-	}
-
 	var vm mo.VirtualMachine
 	err = s.Properties(ctx, svm.Reference(), []string{"name"}, &vm)
 	if err != nil {
@@ -327,22 +293,14 @@ func newVSphere(cfg VSphereConfig) (*VSphere, error) {
 		glog.Warningf("port is a deprecated field in vsphere.conf and will be removed in future release.")
 	}
 
-	var c *govmomi.Client
-	var id string
-	if cfg.Global.VMName == "" {
-		// if VMName is not set in the cloud config file, each nodes (including worker nodes) need credentials to obtain VMName from vCenter
-		glog.V(4).Infof("Cannot find VMName from cloud config file, start obtaining it from vCenter")
-		c, err := newClient(context.TODO(), &cfg)
-		if err != nil {
-			return nil, err
-		}
+	c, err := newClient(context.TODO(), &cfg)
+	if err != nil {
+		return nil, err
+	}
 
-		id, err = getVMName(c, &cfg)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		id = cfg.Global.VMName
+	id, err := getVMName(c, &cfg)
+	if err != nil {
+		return nil, err
 	}
 
 	vs := VSphere{
@@ -366,9 +324,7 @@ func checkControllerSupported(ctrlType string) bool {
 }
 
 func logout(vs *VSphere) {
-	if vs.client != nil {
-		vs.client.Logout(context.TODO())
-	}
+	vs.client.Logout(context.TODO())
 }
 
 func newClient(ctx context.Context, cfg *VSphereConfig) (*govmomi.Client, error) {
@@ -453,133 +409,141 @@ func getVirtualMachineByName(ctx context.Context, cfg *VSphereConfig, c *govmomi
 	return vm, nil
 }
 
-// Instances returns an implementation of Instances for vSphere.
-func (vs *VSphere) Instances() (cloudprovider.Instances, bool) {
-	return vs, true
+func getVirtualMachineManagedObjectReference(ctx context.Context, c *govmomi.Client, vm *object.VirtualMachine, field string, dst interface{}) error {
+	collector := property.DefaultCollector(c.Client)
+
+	// Retrieve required field from VM object
+	err := collector.RetrieveOne(ctx, vm.Reference(), []string{field}, dst)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func getLocalIP() ([]v1.NodeAddress, error) {
-	addrs := []v1.NodeAddress{}
-
-	ifaces, err := net.Interfaces()
+// Returns names of running VMs inside VM folder.
+func getInstances(ctx context.Context, cfg *VSphereConfig, c *govmomi.Client, filter string) ([]string, error) {
+	f := find.NewFinder(c.Client, true)
+	dc, err := f.Datacenter(ctx, cfg.Global.Datacenter)
 	if err != nil {
-		glog.Errorf("net.Interfaces() failed for NodeAddresses - %v", err)
 		return nil, err
 	}
 
-	for _, i := range ifaces {
-		localAddrs, err := i.Addrs()
-		if err != nil {
-			glog.Warningf("Failed to extract addresses for NodeAddresses - %v", err)
-		} else {
-			for _, addr := range localAddrs {
-				if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
-					if ipnet.IP.To4() != nil {
-						// Filter external IP by MAC address OUIs from vCenter and from ESX
-						var addressType v1.NodeAddressType
-						if strings.HasPrefix(i.HardwareAddr.String(), MAC_OUI_VC) ||
-							strings.HasPrefix(i.HardwareAddr.String(), MAC_OUI_ESX) {
-							addressType = v1.NodeExternalIP
-						} else {
-							addressType = v1.NodeInternalIP
-						}
-						v1helper.AddToNodeAddresses(&addrs,
-							v1.NodeAddress{
-								Type:    addressType,
-								Address: ipnet.IP.String(),
-							},
-						)
-						glog.V(4).Infof("Find local IP address %v and set type to %v", ipnet.IP.String(), addressType)
-					}
-				}
-			}
+	f.SetDatacenter(dc)
+
+	vmRegex := cfg.Global.WorkingDir + filter
+
+	//TODO: get all vms inside subfolders
+	vms, err := f.VirtualMachineList(ctx, vmRegex)
+	if err != nil {
+		return nil, err
+	}
+
+	var vmRef []types.ManagedObjectReference
+	for _, vm := range vms {
+		vmRef = append(vmRef, vm.Reference())
+	}
+
+	pc := property.DefaultCollector(c.Client)
+
+	var vmt []mo.VirtualMachine
+	err = pc.Retrieve(ctx, vmRef, []string{"name", "summary"}, &vmt)
+	if err != nil {
+		return nil, err
+	}
+
+	var vmList []string
+	for _, vm := range vmt {
+		if vm.Summary.Runtime.PowerState == ActivePowerState {
+			vmList = append(vmList, vm.Name)
+		} else if vm.Summary.Config.Template == false {
+			glog.Warningf("VM %s, is not in %s state", vm.Name, ActivePowerState)
 		}
 	}
-	return addrs, nil
+	return vmList, nil
 }
 
-// getVMandMO returns the VM object and required field from the VM object
-func (vs *VSphere) getVMandMO(ctx context.Context, nodeName k8stypes.NodeName, field string) (vm *object.VirtualMachine, mvm *mo.VirtualMachine, err error) {
+type Instances struct {
+	client          *govmomi.Client
+	cfg             *VSphereConfig
+	localInstanceID string
+}
+
+// Instances returns an implementation of Instances for vSphere.
+func (vs *VSphere) Instances() (cloudprovider.Instances, bool) {
 	// Ensure client is logged in and session is valid
-	err = vSphereLogin(ctx, vs)
+	err := vSphereLogin(context.TODO(), vs)
 	if err != nil {
 		glog.Errorf("Failed to login into vCenter - %v", err)
-		return nil, nil, err
+		return nil, false
 	}
+	return &Instances{vs.client, vs.cfg, vs.localInstanceID}, true
+}
 
-	vm, err = getVirtualMachineByName(ctx, vs.cfg, vs.client, nodeName)
+// List returns names of VMs (inside vm folder) by applying filter and which are currently running.
+func (vs *VSphere) list(filter string) ([]k8stypes.NodeName, error) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	vmList, err := getInstances(ctx, vs.cfg, vs.client, filter)
 	if err != nil {
-		if _, ok := err.(*find.NotFoundError); ok {
-			return nil, nil, cloudprovider.InstanceNotFound
-		}
-		return nil, nil, err
+		return nil, err
 	}
 
-	// Retrieve required field from VM object
-	var movm mo.VirtualMachine
-	collector := property.DefaultCollector(vs.client.Client)
-	err = collector.RetrieveOne(ctx, vm.Reference(), []string{field}, &movm)
-	if err != nil {
-		return nil, nil, err
-	}
+	glog.V(3).Infof("Found %d instances matching %s: %s",
+		len(vmList), filter, vmList)
 
-	return vm, &movm, nil
+	var nodeNames []k8stypes.NodeName
+	for _, n := range vmList {
+		nodeNames = append(nodeNames, k8stypes.NodeName(n))
+	}
+	return nodeNames, nil
 }
 
 // NodeAddresses is an implementation of Instances.NodeAddresses.
-func (vs *VSphere) NodeAddresses(nodeName k8stypes.NodeName) ([]v1.NodeAddress, error) {
-	if vs.localInstanceID == nodeNameToVMName(nodeName) {
-		/* Get local IP addresses if node is local node */
-		return getLocalIP()
-	}
-
+func (i *Instances) NodeAddresses(nodeName k8stypes.NodeName) ([]v1.NodeAddress, error) {
 	addrs := []v1.NodeAddress{}
 
 	// Create context
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	_, mvm, err := vs.getVMandMO(ctx, nodeName, "guest.net")
+	vm, err := getVirtualMachineByName(ctx, i.cfg, i.client, nodeName)
 	if err != nil {
-		glog.Errorf("Failed to getVMandMO for NodeAddresses: err %v", err)
-		return addrs, err
+		return nil, err
+	}
+
+	var mvm mo.VirtualMachine
+	err = getVirtualMachineManagedObjectReference(ctx, i.client, vm, "guest.net", &mvm)
+	if err != nil {
+		return nil, err
 	}
 
 	// retrieve VM's ip(s)
 	for _, v := range mvm.Guest.Net {
 		var addressType v1.NodeAddressType
-		if vs.cfg.Network.PublicNetwork == v.Network {
+		if i.cfg.Network.PublicNetwork == v.Network {
 			addressType = v1.NodeExternalIP
 		} else {
 			addressType = v1.NodeInternalIP
 		}
 		for _, ip := range v.IpAddress {
-			if net.ParseIP(ip).To4() != nil {
-				v1helper.AddToNodeAddresses(&addrs,
-					v1.NodeAddress{
-						Type:    addressType,
-						Address: ip,
-					},
-				)
-			}
+			v1.AddToNodeAddresses(&addrs,
+				v1.NodeAddress{
+					Type:    addressType,
+					Address: ip,
+				},
+			)
 		}
 	}
 	return addrs, nil
 }
 
-// NodeAddressesByProviderID returns the node addresses of an instances with the specified unique providerID
-// This method will not be called from the node that is requesting this ID. i.e. metadata service
-// and other local methods cannot be used here
-func (vs *VSphere) NodeAddressesByProviderID(providerID string) ([]v1.NodeAddress, error) {
-	return []v1.NodeAddress{}, errors.New("unimplemented")
-}
-
-func (vs *VSphere) AddSSHKeyToAllInstances(user string, keyData []byte) error {
+func (i *Instances) AddSSHKeyToAllInstances(user string, keyData []byte) error {
 	return errors.New("unimplemented")
 }
 
-func (vs *VSphere) CurrentNodeName(hostname string) (k8stypes.NodeName, error) {
-	return vmNameToNodeName(vs.localInstanceID), nil
+func (i *Instances) CurrentNodeName(hostname string) (k8stypes.NodeName, error) {
+	return k8stypes.NodeName(i.localInstanceID), nil
 }
 
 // nodeNameToVMName maps a NodeName to the vmware infrastructure name
@@ -593,18 +557,22 @@ func vmNameToNodeName(vmName string) k8stypes.NodeName {
 }
 
 // ExternalID returns the cloud provider ID of the node with the specified Name (deprecated).
-func (vs *VSphere) ExternalID(nodeName k8stypes.NodeName) (string, error) {
-	if vs.localInstanceID == nodeNameToVMName(nodeName) {
-		return vs.cfg.Global.WorkingDir + vs.localInstanceID, nil
-	}
-
+func (i *Instances) ExternalID(nodeName k8stypes.NodeName) (string, error) {
 	// Create context
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	vm, mvm, err := vs.getVMandMO(ctx, nodeName, "summary")
+	vm, err := getVirtualMachineByName(ctx, i.cfg, i.client, nodeName)
 	if err != nil {
-		glog.Errorf("Failed to getVMandMO for ExternalID: err %v", err)
+		if _, ok := err.(*find.NotFoundError); ok {
+			return "", cloudprovider.InstanceNotFound
+		}
+		return "", err
+	}
+
+	var mvm mo.VirtualMachine
+	err = getVirtualMachineManagedObjectReference(ctx, i.client, vm, "summary", &mvm)
+	if err != nil {
 		return "", err
 	}
 
@@ -622,18 +590,22 @@ func (vs *VSphere) ExternalID(nodeName k8stypes.NodeName) (string, error) {
 }
 
 // InstanceID returns the cloud provider ID of the node with the specified Name.
-func (vs *VSphere) InstanceID(nodeName k8stypes.NodeName) (string, error) {
-	if vs.localInstanceID == nodeNameToVMName(nodeName) {
-		return vs.cfg.Global.WorkingDir + vs.localInstanceID, nil
-	}
-
+func (i *Instances) InstanceID(nodeName k8stypes.NodeName) (string, error) {
 	// Create context
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	vm, mvm, err := vs.getVMandMO(ctx, nodeName, "summary")
+	vm, err := getVirtualMachineByName(ctx, i.cfg, i.client, nodeName)
 	if err != nil {
-		glog.Errorf("Failed to getVMandMO for InstanceID: err %v", err)
+		if _, ok := err.(*find.NotFoundError); ok {
+			return "", cloudprovider.InstanceNotFound
+		}
+		return "", err
+	}
+
+	var mvm mo.VirtualMachine
+	err = getVirtualMachineManagedObjectReference(ctx, i.client, vm, "summary", &mvm)
+	if err != nil {
 		return "", err
 	}
 
@@ -650,14 +622,7 @@ func (vs *VSphere) InstanceID(nodeName k8stypes.NodeName) (string, error) {
 	return "", cloudprovider.InstanceNotFound
 }
 
-// InstanceTypeByProviderID returns the cloudprovider instance type of the node with the specified unique providerID
-// This method will not be called from the node that is requesting this ID. i.e. metadata service
-// and other local methods cannot be used here
-func (vs *VSphere) InstanceTypeByProviderID(providerID string) (string, error) {
-	return "", errors.New("unimplemented")
-}
-
-func (vs *VSphere) InstanceType(name k8stypes.NodeName) (string, error) {
+func (i *Instances) InstanceType(name k8stypes.NodeName) (string, error) {
 	return "", nil
 }
 
@@ -766,10 +731,7 @@ func (vs *VSphere) AttachDisk(vmDiskPath string, nodeName k8stypes.NodeName) (di
 		return "", "", err
 	}
 
-	attached, err := checkDiskAttached(vmDiskPath, vmDevices, dc, vs.client)
-	if err != nil {
-		return "", "", err
-	}
+	attached, _ := checkDiskAttached(vmDiskPath, vmDevices, dc, vs.client)
 	if attached {
 		diskID, _ = getVirtualDiskID(vmDiskPath, vmDevices, dc, vs.client)
 		diskUUID, _ = getVirtualDiskUUIDByPath(vmDiskPath, dc, vs.client)
@@ -977,7 +939,7 @@ func (vs *VSphere) DiskIsAttached(volPath string, nodeName k8stypes.NodeName) (b
 		vSphereInstance = nodeNameToVMName(nodeName)
 	}
 
-	nodeExist, err := vs.NodeExists(nodeName)
+	nodeExist, err := vs.NodeExists(vs.client, nodeName)
 	if err != nil {
 		glog.Errorf("Failed to check whether node exist. err: %s.", err)
 		return false, err
@@ -1009,10 +971,14 @@ func (vs *VSphere) DisksAreAttached(volPaths []string, nodeName k8stypes.NodeNam
 	defer cancel()
 
 	// Create vSphere client
+	attached := make(map[string]bool)
+	for _, volPath := range volPaths {
+		attached[volPath] = false
+	}
 	err := vSphereLogin(ctx, vs)
 	if err != nil {
 		glog.Errorf("Failed to login into vCenter, err: %v", err)
-		return nil, err
+		return attached, err
 	}
 
 	// Find VM to detach disk from
@@ -1024,18 +990,18 @@ func (vs *VSphere) DisksAreAttached(volPaths []string, nodeName k8stypes.NodeNam
 		vSphereInstance = nodeNameToVMName(nodeName)
 	}
 
-	nodeExist, err := vs.NodeExists(nodeName)
+	nodeExist, err := vs.NodeExists(vs.client, nodeName)
 
 	if err != nil {
 		glog.Errorf("Failed to check whether node exist. err: %s.", err)
-		return nil, err
+		return attached, err
 	}
 
 	if !nodeExist {
 		glog.Errorf("DisksAreAttached failed to determine whether disks %v are still attached: node %q does not exist",
 			volPaths,
 			vSphereInstance)
-		return nil, fmt.Errorf("DisksAreAttached failed to determine whether disks %v are still attached: node %q does not exist",
+		return attached, fmt.Errorf("DisksAreAttached failed to determine whether disks %v are still attached: node %q does not exist",
 			volPaths,
 			vSphereInstance)
 	}
@@ -1044,23 +1010,17 @@ func (vs *VSphere) DisksAreAttached(volPaths []string, nodeName k8stypes.NodeNam
 	_, vmDevices, dc, err := getVirtualMachineDevices(ctx, vs.cfg, vs.client, vSphereInstance)
 	if err != nil {
 		glog.Errorf("Failed to get VM devices for VM %#q. err: %s", vSphereInstance, err)
-		return nil, err
+		return attached, err
 	}
 
-	attached := make(map[string]bool)
 	for _, volPath := range volPaths {
-		result, err := checkDiskAttached(volPath, vmDevices, dc, vs.client)
-		if err == nil {
-			if result {
-				attached[volPath] = true
-			} else {
-				attached[volPath] = false
-			}
-		} else {
-			return nil, err
+		result, _ := checkDiskAttached(volPath, vmDevices, dc, vs.client)
+		if result {
+			attached[volPath] = true
 		}
 	}
-	return attached, nil
+
+	return attached, err
 }
 
 func checkDiskAttached(volPath string, vmdevices object.VirtualDeviceList, dc *object.Datacenter, client *govmomi.Client) (bool, error) {
@@ -1429,7 +1389,7 @@ func (vs *VSphere) DeleteVolume(vmDiskPath string) error {
 
 // NodeExists checks if the node with given nodeName exist.
 // Returns false if VM doesn't exist or VM is in powerOff state.
-func (vs *VSphere) NodeExists(nodeName k8stypes.NodeName) (bool, error) {
+func (vs *VSphere) NodeExists(c *govmomi.Client, nodeName k8stypes.NodeName) (bool, error) {
 	if nodeName == "" {
 		return false, nil
 	}
@@ -1437,9 +1397,19 @@ func (vs *VSphere) NodeExists(nodeName k8stypes.NodeName) (bool, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	_, mvm, err := vs.getVMandMO(ctx, nodeName, "summary")
+	vm, err := getVirtualMachineByName(ctx, vs.cfg, c, nodeName)
 	if err != nil {
-		glog.Errorf("Failed to getVMandMO for NodeExists: err %v", err)
+		if _, ok := err.(*find.NotFoundError); ok {
+			return false, nil
+		}
+		glog.Errorf("Failed to get virtual machine object for node %+q. err %s", nodeName, err)
+		return false, err
+	}
+
+	var mvm mo.VirtualMachine
+	err = getVirtualMachineManagedObjectReference(ctx, c, vm, "summary", &mvm)
+	if err != nil {
+		glog.Errorf("Failed to get virtual machine object reference for node %+q. err %s", nodeName, err)
 		return false, err
 	}
 

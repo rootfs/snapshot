@@ -26,6 +26,7 @@ import (
 	goruntime "runtime"
 	"strconv"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apiserver/pkg/server/healthz"
 
 	informers "k8s.io/kubernetes/pkg/client/informers/informers_generated/externalversions"
@@ -72,7 +73,7 @@ func Run(s *options.SchedulerServer) error {
 
 	informerFactory := informers.NewSharedInformerFactory(kubecli, 0)
 
-	sched, err := CreateScheduler(
+	sched, err := createScheduler(
 		s,
 		kubecli,
 		informerFactory.Core().V1().Nodes(),
@@ -93,8 +94,6 @@ func Run(s *options.SchedulerServer) error {
 	stop := make(chan struct{})
 	defer close(stop)
 	informerFactory.Start(stop)
-	// Waiting for all cache to sync before scheduling.
-	informerFactory.WaitForCacheSync(stop)
 
 	run := func(_ <-chan struct{}) {
 		sched.Run()
@@ -111,16 +110,17 @@ func Run(s *options.SchedulerServer) error {
 		return fmt.Errorf("unable to get hostname: %v", err)
 	}
 
-	rl, err := resourcelock.New(s.LeaderElection.ResourceLock,
-		s.LockObjectNamespace,
-		s.LockObjectName,
-		kubecli,
-		resourcelock.ResourceLockConfig{
+	// TODO: enable other lock types
+	rl := &resourcelock.EndpointsLock{
+		EndpointsMeta: metav1.ObjectMeta{
+			Namespace: "kube-system",
+			Name:      "kube-scheduler",
+		},
+		Client: kubecli,
+		LockConfig: resourcelock.ResourceLockConfig{
 			Identity:      id,
 			EventRecorder: recorder,
-		})
-	if err != nil {
-		glog.Fatalf("error creating lock: %v", err)
+		},
 	}
 
 	leaderelection.RunOrDie(leaderelection.LeaderElectionConfig{

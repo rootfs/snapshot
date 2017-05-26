@@ -31,16 +31,16 @@ import (
 )
 
 var (
-	scaleLong = templates.LongDesc(i18n.T(`
+	scale_long = templates.LongDesc(`
 		Set a new size for a Deployment, ReplicaSet, Replication Controller, or Job.
 
 		Scale also allows users to specify one or more preconditions for the scale action.
 
 		If --current-replicas or --resource-version is specified, it is validated before the
 		scale is attempted, and it is guaranteed that the precondition holds true when the
-		scale is sent to the server.`))
+		scale is sent to the server.`)
 
-	scaleExample = templates.Examples(i18n.T(`
+	scale_example = templates.Examples(`
 		# Scale a replicaset named 'foo' to 3.
 		kubectl scale --replicas=3 rs/foo
 
@@ -54,7 +54,7 @@ var (
 		kubectl scale --replicas=5 rc/foo rc/bar rc/baz
 
 		# Scale job named 'cron' to 3.
-		kubectl scale --replicas=3 job/cron`))
+		kubectl scale --replicas=3 job/cron`)
 )
 
 // NewCmdScale returns a cobra command with the appropriate configuration and flags to run scale
@@ -69,8 +69,8 @@ func NewCmdScale(f cmdutil.Factory, out io.Writer) *cobra.Command {
 		// resize is deprecated
 		Aliases: []string{"resize"},
 		Short:   i18n.T("Set a new size for a Deployment, ReplicaSet, Replication Controller, or Job"),
-		Long:    scaleLong,
-		Example: scaleExample,
+		Long:    scale_long,
+		Example: scale_example,
 		Run: func(cmd *cobra.Command, args []string) {
 			cmdutil.CheckErr(cmdutil.ValidateOutputArgs(cmd))
 			shortOutput := cmdutil.GetFlagString(cmd, "output") == "name"
@@ -106,7 +106,7 @@ func RunScale(f cmdutil.Factory, out io.Writer, cmd *cobra.Command, args []strin
 	}
 
 	mapper, typer := f.Object()
-	r := resource.NewBuilder(mapper, f.CategoryExpander(), typer, resource.ClientMapperFunc(f.ClientForMapping), f.Decoder(true)).
+	r := resource.NewBuilder(mapper, typer, resource.ClientMapperFunc(f.ClientForMapping), f.Decoder(true)).
 		ContinueOnError().
 		NamespaceParam(cmdNamespace).DefaultNamespace().
 		FilenameParam(enforceNamespace, options).

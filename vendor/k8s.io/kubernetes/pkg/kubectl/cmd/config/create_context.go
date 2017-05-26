@@ -59,7 +59,10 @@ func NewCmdConfigSetContext(out io.Writer, configAccess clientcmd.ConfigAccess) 
 		Long:    create_context_long,
 		Example: create_context_example,
 		Run: func(cmd *cobra.Command, args []string) {
-			cmdutil.CheckErr(options.complete(cmd))
+			if !options.complete(cmd) {
+				return
+			}
+
 			cmdutil.CheckErr(options.run())
 			fmt.Fprintf(out, "Context %q set.\n", options.name)
 		},
@@ -113,15 +116,15 @@ func (o *createContextOptions) modifyContext(existingContext clientcmdapi.Contex
 	return modifiedContext
 }
 
-func (o *createContextOptions) complete(cmd *cobra.Command) error {
+func (o *createContextOptions) complete(cmd *cobra.Command) bool {
 	args := cmd.Flags().Args()
 	if len(args) != 1 {
 		cmd.Help()
-		return fmt.Errorf("Unexpected args: %v", args)
+		return false
 	}
 
 	o.name = args[0]
-	return nil
+	return true
 }
 
 func (o createContextOptions) validate() error {

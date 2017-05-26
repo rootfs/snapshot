@@ -56,19 +56,16 @@ type ActualStateOfWorld interface {
 	// added.
 	// If no node with the name nodeName exists in list of attached nodes for
 	// the specified volume, the node is added.
-	AddVolumeNode(uniqueName v1.UniqueVolumeName, volumeSpec *volume.Spec, nodeName types.NodeName, devicePath string) (v1.UniqueVolumeName, error)
+	AddVolumeNode(volumeSpec *volume.Spec, nodeName types.NodeName, devicePath string) (v1.UniqueVolumeName, error)
 
 	// SetVolumeMountedByNode sets the MountedByNode value for the given volume
-	// and node. When set to true the mounted parameter indicates the volume
-	// is mounted by the given node, indicating it may not be safe to detach.
-	// If the forceUnmount is set to true the MountedByNode value would be reset
-	// to false even it was not set yet (this is required during a controller
-	// crash recovery).
+	// and node. When set to true this value indicates the volume is mounted by
+	// the given node, indicating it may not be safe to detach.
 	// If no volume with the name volumeName exists in the store, an error is
 	// returned.
 	// If no node with the name nodeName exists in list of attached nodes for
 	// the specified volume, an error is returned.
-	SetVolumeMountedByNode(volumeName v1.UniqueVolumeName, nodeName types.NodeName, mounted bool, forceUnmount bool) error
+	SetVolumeMountedByNode(volumeName v1.UniqueVolumeName, nodeName types.NodeName, mounted bool) error
 
 	// SetNodeStatusUpdateNeeded sets statusUpdateNeeded for the specified
 	// node to true indicating the AttachedVolume field in the Node's Status
@@ -233,8 +230,8 @@ type nodeToUpdateStatusFor struct {
 }
 
 func (asw *actualStateOfWorld) MarkVolumeAsAttached(
-	uniqueName v1.UniqueVolumeName, volumeSpec *volume.Spec, nodeName types.NodeName, devicePath string) error {
-	_, err := asw.AddVolumeNode(uniqueName, volumeSpec, nodeName, devicePath)
+	_ v1.UniqueVolumeName, volumeSpec *volume.Spec, nodeName types.NodeName, devicePath string) error {
+	_, err := asw.AddVolumeNode(volumeSpec, nodeName, devicePath)
 	return err
 }
 
@@ -258,34 +255,25 @@ func (asw *actualStateOfWorld) AddVolumeToReportAsAttached(
 }
 
 func (asw *actualStateOfWorld) AddVolumeNode(
-	uniqueName v1.UniqueVolumeName, volumeSpec *volume.Spec, nodeName types.NodeName, devicePath string) (v1.UniqueVolumeName, error) {
+	volumeSpec *volume.Spec, nodeName types.NodeName, devicePath string) (v1.UniqueVolumeName, error) {
 	asw.Lock()
 	defer asw.Unlock()
 
-	var volumeName v1.UniqueVolumeName
-	if volumeSpec != nil {
-		attachableVolumePlugin, err := asw.volumePluginMgr.FindAttachablePluginBySpec(volumeSpec)
-		if err != nil || attachableVolumePlugin == nil {
-			return "", fmt.Errorf(
-				"failed to get AttachablePlugin from volumeSpec for volume %q err=%v",
-				volumeSpec.Name(),
-				err)
-		}
+	attachableVolumePlugin, err := asw.volumePluginMgr.FindAttachablePluginBySpec(volumeSpec)
+	if err != nil || attachableVolumePlugin == nil {
+		return "", fmt.Errorf(
+			"failed to get AttachablePlugin from volumeSpec for volume %q err=%v",
+			volumeSpec.Name(),
+			err)
+	}
 
-		volumeName, err = volumehelper.GetUniqueVolumeNameFromSpec(
-			attachableVolumePlugin, volumeSpec)
-		if err != nil {
-			return "", fmt.Errorf(
-				"failed to GetUniqueVolumeNameFromSpec for volumeSpec %q err=%v",
-				volumeSpec.Name(),
-				err)
-		}
-	} else {
-		// volumeSpec is nil
-		// This happens only on controller startup when reading the volumes from node
-		// status; if the pods using the volume have been removed and are unreachable
-		// the volumes should be detached immediately and the spec is not needed
-		volumeName = uniqueName
+	volumeName, err := volumehelper.GetUniqueVolumeNameFromSpec(
+		attachableVolumePlugin, volumeSpec)
+	if err != nil {
+		return "", fmt.Errorf(
+			"failed to GetUniqueVolumeNameFromSpec for volumeSpec %q err=%v",
+			volumeSpec.Name(),
+			err)
 	}
 
 	volumeObj, volumeExists := asw.attachedVolumes[volumeName]
@@ -328,7 +316,7 @@ func (asw *actualStateOfWorld) AddVolumeNode(
 }
 
 func (asw *actualStateOfWorld) SetVolumeMountedByNode(
-	volumeName v1.UniqueVolumeName, nodeName types.NodeName, mounted bool, forceUnmount bool) error {
+	volumeName v1.UniqueVolumeName, nodeName types.NodeName, mounted bool) error {
 	asw.Lock()
 	defer asw.Unlock()
 
@@ -342,7 +330,7 @@ func (asw *actualStateOfWorld) SetVolumeMountedByNode(
 		nodeObj.mountedByNodeSetCount = nodeObj.mountedByNodeSetCount + 1
 	} else {
 		// Do not allow value to be reset unless it has been set at least once
-		if nodeObj.mountedByNodeSetCount == 0 && !forceUnmount {
+		if nodeObj.mountedByNodeSetCount == 0 {
 			return nil
 		}
 	}
@@ -424,7 +412,7 @@ func (asw *actualStateOfWorld) removeVolumeFromReportAsAttached(
 			return nil
 		}
 	}
-	return fmt.Errorf("volume %q does not exist in volumesToReportAsAttached list or node %q does not exist in nodesToUpdateStatusFor list",
+	return fmt.Errorf("volume %q or node %q does not exist in volumesToReportAsAttached list",
 		volumeName,
 		nodeName)
 

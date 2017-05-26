@@ -27,11 +27,71 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/diff"
+	v1listers "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/pkg/api"
+	corev1 "k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/tools/cache"
 
 	"k8s.io/kube-aggregator/pkg/apis/apiregistration"
 	listers "k8s.io/kube-aggregator/pkg/client/listers/apiregistration/internalversion"
 )
+
+type delegationHTTPHandler struct {
+	called bool
+}
+
+func (d *delegationHTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	d.called = true
+	w.WriteHeader(http.StatusOK)
+}
+
+func TestAPIsDelegation(t *testing.T) {
+	indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+	delegate := &delegationHTTPHandler{}
+	handler := &apisHandler{
+		lister:   listers.NewAPIServiceLister(indexer),
+		delegate: delegate,
+	}
+
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	pathToDelegation := map[string]bool{
+		"/":      true,
+		"/apis":  false,
+		"/apis/": false,
+		"/apis/" + apiregistration.GroupName:                     true,
+		"/apis/" + apiregistration.GroupName + "/":               true,
+		"/apis/" + apiregistration.GroupName + "/anything":       true,
+		"/apis/" + apiregistration.GroupName + "/anything/again": true,
+		"/apis/something":                                        true,
+		"/apis/something/nested":                                 true,
+		"/apis/something/nested/deeper":                          true,
+		"/api":     true,
+		"/api/v1":  true,
+		"/version": true,
+	}
+
+	for path, expectedDelegation := range pathToDelegation {
+		delegate.called = false
+
+		resp, err := http.Get(server.URL + path)
+		if err != nil {
+			t.Errorf("%s: %v", path, err)
+			continue
+		}
+		if resp.StatusCode != http.StatusOK {
+			bytes, _ := httputil.DumpResponse(resp, true)
+			t.Log(string(bytes))
+			t.Errorf("%s: %v", path, err)
+			continue
+		}
+		if e, a := expectedDelegation, delegate.called; e != a {
+			t.Errorf("%s: expected %v, got %v", path, e, a)
+			continue
+		}
+	}
+}
 
 func TestAPIs(t *testing.T) {
 	tests := []struct {
@@ -55,7 +115,7 @@ func TestAPIs(t *testing.T) {
 				{
 					ObjectMeta: metav1.ObjectMeta{Name: "v1.foo"},
 					Spec: apiregistration.APIServiceSpec{
-						Service: &apiregistration.ServiceReference{
+						Service: apiregistration.ServiceReference{
 							Namespace: "ns",
 							Name:      "api",
 						},
@@ -63,27 +123,17 @@ func TestAPIs(t *testing.T) {
 						Version:  "v1",
 						Priority: 10,
 					},
-					Status: apiregistration.APIServiceStatus{
-						Conditions: []apiregistration.APIServiceCondition{
-							{Type: apiregistration.Available, Status: apiregistration.ConditionTrue},
-						},
-					},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{Name: "v1.bar"},
 					Spec: apiregistration.APIServiceSpec{
-						Service: &apiregistration.ServiceReference{
+						Service: apiregistration.ServiceReference{
 							Namespace: "ns",
 							Name:      "api",
 						},
 						Group:    "bar",
 						Version:  "v1",
 						Priority: 11,
-					},
-					Status: apiregistration.APIServiceStatus{
-						Conditions: []apiregistration.APIServiceCondition{
-							{Type: apiregistration.Available, Status: apiregistration.ConditionTrue},
-						},
 					},
 				},
 			},
@@ -126,7 +176,7 @@ func TestAPIs(t *testing.T) {
 				{
 					ObjectMeta: metav1.ObjectMeta{Name: "v1.foo"},
 					Spec: apiregistration.APIServiceSpec{
-						Service: &apiregistration.ServiceReference{
+						Service: apiregistration.ServiceReference{
 							Namespace: "ns",
 							Name:      "api",
 						},
@@ -134,16 +184,11 @@ func TestAPIs(t *testing.T) {
 						Version:  "v1",
 						Priority: 20,
 					},
-					Status: apiregistration.APIServiceStatus{
-						Conditions: []apiregistration.APIServiceCondition{
-							{Type: apiregistration.Available, Status: apiregistration.ConditionTrue},
-						},
-					},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{Name: "v2.bar"},
 					Spec: apiregistration.APIServiceSpec{
-						Service: &apiregistration.ServiceReference{
+						Service: apiregistration.ServiceReference{
 							Namespace: "ns",
 							Name:      "api",
 						},
@@ -151,16 +196,11 @@ func TestAPIs(t *testing.T) {
 						Version:  "v2",
 						Priority: 11,
 					},
-					Status: apiregistration.APIServiceStatus{
-						Conditions: []apiregistration.APIServiceCondition{
-							{Type: apiregistration.Available, Status: apiregistration.ConditionTrue},
-						},
-					},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{Name: "v2.foo"},
 					Spec: apiregistration.APIServiceSpec{
-						Service: &apiregistration.ServiceReference{
+						Service: apiregistration.ServiceReference{
 							Namespace: "ns",
 							Name:      "api",
 						},
@@ -168,27 +208,17 @@ func TestAPIs(t *testing.T) {
 						Version:  "v2",
 						Priority: 1,
 					},
-					Status: apiregistration.APIServiceStatus{
-						Conditions: []apiregistration.APIServiceCondition{
-							{Type: apiregistration.Available, Status: apiregistration.ConditionTrue},
-						},
-					},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{Name: "v1.bar"},
 					Spec: apiregistration.APIServiceSpec{
-						Service: &apiregistration.ServiceReference{
+						Service: apiregistration.ServiceReference{
 							Namespace: "ns",
 							Name:      "api",
 						},
 						Group:    "bar",
 						Version:  "v1",
 						Priority: 11,
-					},
-					Status: apiregistration.APIServiceStatus{
-						Conditions: []apiregistration.APIServiceCondition{
-							{Type: apiregistration.Available, Status: apiregistration.ConditionTrue},
-						},
 					},
 				},
 			},
@@ -237,13 +267,26 @@ func TestAPIs(t *testing.T) {
 
 	for _, tc := range tests {
 		indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+		serviceIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+		endpointsIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+		delegate := &delegationHTTPHandler{}
 		handler := &apisHandler{
-			codecs: Codecs,
-			lister: listers.NewAPIServiceLister(indexer),
+			serviceLister:   v1listers.NewServiceLister(serviceIndexer),
+			endpointsLister: v1listers.NewEndpointsLister(endpointsIndexer),
+			lister:          listers.NewAPIServiceLister(indexer),
+			delegate:        delegate,
 		}
 		for _, o := range tc.apiservices {
 			indexer.Add(o)
 		}
+		serviceIndexer.Add(&corev1.Service{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "api"}})
+		endpointsIndexer.Add(&corev1.Endpoints{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "api"},
+			Subsets: []corev1.EndpointSubset{
+				{Addresses: []corev1.EndpointAddress{{}}},
+			},
+		},
+		)
 
 		server := httptest.NewServer(handler)
 		defer server.Close()
@@ -260,7 +303,7 @@ func TestAPIs(t *testing.T) {
 		}
 
 		actual := &metav1.APIGroupList{}
-		if err := runtime.DecodeInto(Codecs.UniversalDecoder(), bytes, actual); err != nil {
+		if err := runtime.DecodeInto(api.Codecs.UniversalDecoder(), bytes, actual); err != nil {
 			t.Errorf("%s: %v", tc.name, err)
 			continue
 		}
@@ -274,42 +317,28 @@ func TestAPIs(t *testing.T) {
 func TestAPIGroupMissing(t *testing.T) {
 	indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
 	handler := &apiGroupHandler{
-		codecs:    Codecs,
 		lister:    listers.NewAPIServiceLister(indexer),
-		groupName: "groupName",
-		delegate: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusForbidden)
-		}),
+		groupName: "foo",
 	}
 
 	server := httptest.NewServer(handler)
 	defer server.Close()
 
-	// this call should delegate
 	resp, err := http.Get(server.URL + "/apis/groupName/foo")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resp.StatusCode != http.StatusForbidden {
-		t.Fatalf("expected %v, got %v", http.StatusForbidden, resp.StatusCode)
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("expected %v, got %v", resp.StatusCode, http.StatusNotFound)
 	}
 
-	// groupName still has no api services for it (like it was deleted), it should delegate
+	// foo still has no api services for it (like it was deleted), it should 404
 	resp, err = http.Get(server.URL + "/apis/groupName/")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resp.StatusCode != http.StatusForbidden {
-		t.Fatalf("expected %v, got %v", http.StatusForbidden, resp.StatusCode)
-	}
-
-	// missing group should delegate still has no api services for it (like it was deleted)
-	resp, err = http.Get(server.URL + "/apis/missing")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resp.StatusCode != http.StatusForbidden {
-		t.Fatalf("expected %v, got %v", http.StatusForbidden, resp.StatusCode)
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("expected %v, got %v", resp.StatusCode, http.StatusNotFound)
 	}
 }
 
@@ -327,7 +356,7 @@ func TestAPIGroup(t *testing.T) {
 				{
 					ObjectMeta: metav1.ObjectMeta{Name: "v1.foo"},
 					Spec: apiregistration.APIServiceSpec{
-						Service: &apiregistration.ServiceReference{
+						Service: apiregistration.ServiceReference{
 							Namespace: "ns",
 							Name:      "api",
 						},
@@ -335,16 +364,11 @@ func TestAPIGroup(t *testing.T) {
 						Version:  "v1",
 						Priority: 20,
 					},
-					Status: apiregistration.APIServiceStatus{
-						Conditions: []apiregistration.APIServiceCondition{
-							{Type: apiregistration.Available, Status: apiregistration.ConditionTrue},
-						},
-					},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{Name: "v2.bar"},
 					Spec: apiregistration.APIServiceSpec{
-						Service: &apiregistration.ServiceReference{
+						Service: apiregistration.ServiceReference{
 							Namespace: "ns",
 							Name:      "api",
 						},
@@ -352,16 +376,11 @@ func TestAPIGroup(t *testing.T) {
 						Version:  "v2",
 						Priority: 11,
 					},
-					Status: apiregistration.APIServiceStatus{
-						Conditions: []apiregistration.APIServiceCondition{
-							{Type: apiregistration.Available, Status: apiregistration.ConditionTrue},
-						},
-					},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{Name: "v2.foo"},
 					Spec: apiregistration.APIServiceSpec{
-						Service: &apiregistration.ServiceReference{
+						Service: apiregistration.ServiceReference{
 							Namespace: "ns",
 							Name:      "api",
 						},
@@ -369,27 +388,17 @@ func TestAPIGroup(t *testing.T) {
 						Version:  "v2",
 						Priority: 1,
 					},
-					Status: apiregistration.APIServiceStatus{
-						Conditions: []apiregistration.APIServiceCondition{
-							{Type: apiregistration.Available, Status: apiregistration.ConditionTrue},
-						},
-					},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{Name: "v1.bar"},
 					Spec: apiregistration.APIServiceSpec{
-						Service: &apiregistration.ServiceReference{
+						Service: apiregistration.ServiceReference{
 							Namespace: "ns",
 							Name:      "api",
 						},
 						Group:    "bar",
 						Version:  "v1",
 						Priority: 11,
-					},
-					Status: apiregistration.APIServiceStatus{
-						Conditions: []apiregistration.APIServiceCondition{
-							{Type: apiregistration.Available, Status: apiregistration.ConditionTrue},
-						},
 					},
 				},
 			},
@@ -416,14 +425,25 @@ func TestAPIGroup(t *testing.T) {
 
 	for _, tc := range tests {
 		indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+		serviceIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+		endpointsIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
 		handler := &apiGroupHandler{
-			codecs:    Codecs,
-			lister:    listers.NewAPIServiceLister(indexer),
-			groupName: "foo",
+			lister:          listers.NewAPIServiceLister(indexer),
+			serviceLister:   v1listers.NewServiceLister(serviceIndexer),
+			endpointsLister: v1listers.NewEndpointsLister(endpointsIndexer),
+			groupName:       "foo",
 		}
 		for _, o := range tc.apiservices {
 			indexer.Add(o)
 		}
+		serviceIndexer.Add(&corev1.Service{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "api"}})
+		endpointsIndexer.Add(&corev1.Endpoints{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "api"},
+			Subsets: []corev1.EndpointSubset{
+				{Addresses: []corev1.EndpointAddress{{}}},
+			},
+		},
+		)
 
 		server := httptest.NewServer(handler)
 		defer server.Close()
@@ -445,7 +465,7 @@ func TestAPIGroup(t *testing.T) {
 		}
 
 		actual := &metav1.APIGroup{}
-		if err := runtime.DecodeInto(Codecs.UniversalDecoder(), bytes, actual); err != nil {
+		if err := runtime.DecodeInto(api.Codecs.UniversalDecoder(), bytes, actual); err != nil {
 			t.Errorf("%s: %v", tc.name, err)
 			continue
 		}

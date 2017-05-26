@@ -26,7 +26,6 @@ import (
 	"k8s.io/apiserver/pkg/storage/storagebackend"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/validation"
-	kubeapiserveradmission "k8s.io/kubernetes/pkg/kubeapiserver/admission"
 	kubeoptions "k8s.io/kubernetes/pkg/kubeapiserver/options"
 	kubeletclient "k8s.io/kubernetes/pkg/kubelet/client"
 	"k8s.io/kubernetes/pkg/master/ports"
@@ -45,10 +44,9 @@ type ServerRunOptions struct {
 	GenericServerRunOptions *genericoptions.ServerRunOptions
 	Etcd                    *genericoptions.EtcdOptions
 	SecureServing           *genericoptions.SecureServingOptions
-	InsecureServing         *kubeoptions.InsecureServingOptions
+	InsecureServing         *genericoptions.ServingOptions
 	Audit                   *genericoptions.AuditLogOptions
 	Features                *genericoptions.FeatureOptions
-	Admission               *genericoptions.AdmissionOptions
 	Authentication          *kubeoptions.BuiltInAuthenticationOptions
 	Authorization           *kubeoptions.BuiltInAuthorizationOptions
 	CloudProvider           *kubeoptions.CloudProviderOptions
@@ -65,9 +63,6 @@ type ServerRunOptions struct {
 	ServiceNodePortRange      utilnet.PortRange
 	SSHKeyfile                string
 	SSHUser                   string
-
-	ProxyClientCertFile string
-	ProxyClientKeyFile  string
 }
 
 // NewServerRunOptions creates a new ServerRunOptions object with default parameters
@@ -76,10 +71,9 @@ func NewServerRunOptions() *ServerRunOptions {
 		GenericServerRunOptions: genericoptions.NewServerRunOptions(),
 		Etcd:                 genericoptions.NewEtcdOptions(storagebackend.NewDefaultConfig(kubeoptions.DefaultEtcdPathPrefix, api.Scheme, nil)),
 		SecureServing:        kubeoptions.NewSecureServingOptions(),
-		InsecureServing:      kubeoptions.NewInsecureServingOptions(),
+		InsecureServing:      genericoptions.NewInsecureServingOptions(),
 		Audit:                genericoptions.NewAuditLogOptions(),
 		Features:             genericoptions.NewFeatureOptions(),
-		Admission:            genericoptions.NewAdmissionOptions(&kubeapiserveradmission.Plugins),
 		Authentication:       kubeoptions.NewBuiltInAuthenticationOptions().WithAll(),
 		Authorization:        kubeoptions.NewBuiltInAuthorizationOptions(),
 		CloudProvider:        kubeoptions.NewCloudProviderOptions(),
@@ -102,6 +96,8 @@ func NewServerRunOptions() *ServerRunOptions {
 				// external, preferring DNS if reported
 				string(api.NodeExternalDNS),
 				string(api.NodeExternalIP),
+
+				string(api.NodeLegacyHostIP),
 			},
 			EnableHttps: true,
 			HTTPTimeout: time.Duration(5) * time.Second,
@@ -110,8 +106,6 @@ func NewServerRunOptions() *ServerRunOptions {
 	}
 	// Overwrite the default for storage data format.
 	s.Etcd.DefaultStorageMediaType = "application/vnd.kubernetes.protobuf"
-	// Set the default for admission plugins names
-	s.Admission.PluginNames = []string{"AlwaysAdmit"}
 	return &s
 }
 
@@ -131,13 +125,12 @@ func (s *ServerRunOptions) AddFlags(fs *pflag.FlagSet) {
 	s.CloudProvider.AddFlags(fs)
 	s.StorageSerialization.AddFlags(fs)
 	s.APIEnablement.AddFlags(fs)
-	s.Admission.AddFlags(fs)
 
 	// Note: the weird ""+ in below lines seems to be the only way to get gofmt to
 	// arrange these text blocks sensibly. Grrr.
 
 	fs.DurationVar(&s.EventTTL, "event-ttl", s.EventTTL,
-		"Amount of time to retain events.")
+		"Amount of time to retain events. Default is 1h.")
 
 	fs.BoolVar(&s.AllowPrivileged, "allow-privileged", s.AllowPrivileged,
 		"If true, allow privileged containers.")
@@ -207,10 +200,4 @@ func (s *ServerRunOptions) AddFlags(fs *pflag.FlagSet) {
 		"If true, server will do its best to fix the update request to pass the validation, "+
 		"e.g., setting empty UID in update request to its existing value. This flag can be turned off "+
 		"after we fix all the clients that send malformed updates.")
-
-	fs.StringVar(&s.ProxyClientCertFile, "proxy-client-cert-file", s.ProxyClientCertFile,
-		"client certificate used to prove the identity of the aggragator or kube-apiserver when it proxies requests to a user api-server")
-	fs.StringVar(&s.ProxyClientKeyFile, "proxy-client-key-file", s.ProxyClientKeyFile,
-		"client certificate key used to prove the identity of the aggragator or kube-apiserver when it proxies requests to a user api-server")
-
 }

@@ -1706,6 +1706,9 @@ func autoConvert_v1_ISCSIVolumeSource_To_api_ISCSIVolumeSource(in *ISCSIVolumeSo
 	out.FSType = in.FSType
 	out.ReadOnly = in.ReadOnly
 	out.Portals = *(*[]string)(unsafe.Pointer(&in.Portals))
+	out.DiscoveryCHAPAuth = in.DiscoveryCHAPAuth
+	out.SessionCHAPAuth = in.SessionCHAPAuth
+	out.SecretRef = (*api.LocalObjectReference)(unsafe.Pointer(in.SecretRef))
 	return nil
 }
 
@@ -1721,6 +1724,9 @@ func autoConvert_api_ISCSIVolumeSource_To_v1_ISCSIVolumeSource(in *api.ISCSIVolu
 	out.FSType = in.FSType
 	out.ReadOnly = in.ReadOnly
 	out.Portals = *(*[]string)(unsafe.Pointer(&in.Portals))
+	out.DiscoveryCHAPAuth = in.DiscoveryCHAPAuth
+	out.SessionCHAPAuth = in.SessionCHAPAuth
+	out.SecretRef = (*LocalObjectReference)(unsafe.Pointer(in.SecretRef))
 	return nil
 }
 
@@ -4453,6 +4459,7 @@ func Convert_api_Sysctl_To_v1_Sysctl(in *api.Sysctl, out *Sysctl, s conversion.S
 
 func autoConvert_v1_TCPSocketAction_To_api_TCPSocketAction(in *TCPSocketAction, out *api.TCPSocketAction, s conversion.Scope) error {
 	out.Port = in.Port
+	out.Host = in.Host
 	return nil
 }
 
@@ -4462,6 +4469,7 @@ func Convert_v1_TCPSocketAction_To_api_TCPSocketAction(in *TCPSocketAction, out 
 
 func autoConvert_api_TCPSocketAction_To_v1_TCPSocketAction(in *api.TCPSocketAction, out *TCPSocketAction, s conversion.Scope) error {
 	out.Port = in.Port
+	out.Host = in.Host
 	return nil
 }
 

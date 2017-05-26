@@ -31,7 +31,6 @@ import (
 	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm"
 	kubeadmconstants "k8s.io/kubernetes/cmd/kubeadm/app/constants"
 	"k8s.io/kubernetes/cmd/kubeadm/app/images"
-	"k8s.io/kubernetes/pkg/util/version"
 )
 
 var (
@@ -41,7 +40,7 @@ var (
 )
 
 func CreateSelfHostedControlPlane(cfg *kubeadmapi.MasterConfiguration, client *clientset.Clientset) error {
-	volumes := []v1.Volume{k8sVolume()}
+	volumes := []v1.Volume{k8sVolume(cfg)}
 	volumeMounts := []v1.VolumeMount{k8sVolumeMount()}
 	if isCertsVolumeMountNeeded() {
 		volumes = append(volumes, certsVolume(cfg))
@@ -49,7 +48,7 @@ func CreateSelfHostedControlPlane(cfg *kubeadmapi.MasterConfiguration, client *c
 	}
 
 	if isPkiVolumeMountNeeded() {
-		volumes = append(volumes, pkiVolume())
+		volumes = append(volumes, pkiVolume(cfg))
 		volumeMounts = append(volumeMounts, pkiVolumeMount())
 	}
 
@@ -75,11 +74,7 @@ func CreateSelfHostedControlPlane(cfg *kubeadmapi.MasterConfiguration, client *c
 func launchSelfHostedAPIServer(cfg *kubeadmapi.MasterConfiguration, client *clientset.Clientset, volumes []v1.Volume, volumeMounts []v1.VolumeMount) error {
 	start := time.Now()
 
-	kubeVersion, err := version.ParseSemantic(cfg.KubernetesVersion)
-	if err != nil {
-		return err
-	}
-	apiServer := getAPIServerDS(cfg, volumes, volumeMounts, kubeVersion)
+	apiServer := getAPIServerDS(cfg, volumes, volumeMounts)
 	if _, err := client.Extensions().DaemonSets(metav1.NamespaceSystem).Create(&apiServer); err != nil {
 		return fmt.Errorf("failed to create self-hosted %q daemon set [%v]", kubeAPIServer, err)
 	}
@@ -188,7 +183,7 @@ func waitForPodsWithLabel(client *clientset.Clientset, appLabel string, mustBeRu
 }
 
 // Sources from bootkube templates.go
-func getAPIServerDS(cfg *kubeadmapi.MasterConfiguration, volumes []v1.Volume, volumeMounts []v1.VolumeMount, kubeVersion *version.Version) ext.DaemonSet {
+func getAPIServerDS(cfg *kubeadmapi.MasterConfiguration, volumes []v1.Volume, volumeMounts []v1.VolumeMount) ext.DaemonSet {
 	ds := ext.DaemonSet{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "extensions/v1beta1",
@@ -216,7 +211,7 @@ func getAPIServerDS(cfg *kubeadmapi.MasterConfiguration, volumes []v1.Volume, vo
 						{
 							Name:          "self-hosted-" + kubeAPIServer,
 							Image:         images.GetCoreImage(images.KubeAPIServerImage, cfg, kubeadmapi.GlobalEnvParams.HyperkubeImage),
-							Command:       getAPIServerCommand(cfg, true, kubeVersion),
+							Command:       getAPIServerCommand(cfg, true),
 							Env:           getSelfHostedAPIServerEnv(),
 							VolumeMounts:  volumeMounts,
 							LivenessProbe: componentProbe(6443, "/healthz", v1.URISchemeHTTPS),

@@ -25,7 +25,6 @@ import (
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	intstrutil "k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/kubernetes/pkg/api/v1"
-	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	extensions "k8s.io/kubernetes/pkg/apis/extensions/v1beta1"
 	"k8s.io/kubernetes/pkg/controller/daemon/util"
 )
@@ -38,7 +37,7 @@ func (dsc *DaemonSetsController) rollingUpdate(ds *extensions.DaemonSet) error {
 		return fmt.Errorf("couldn't get node to daemon pod mapping for daemon set %q: %v", ds.Name, err)
 	}
 
-	_, oldPods := dsc.getAllDaemonSetPods(ds, nodeToDaemonPods)
+	_, oldPods, err := dsc.getAllDaemonSetPods(ds, nodeToDaemonPods)
 	maxUnavailable, numUnavailable, err := dsc.getUnavailableNumbers(ds, nodeToDaemonPods)
 	if err != nil {
 		return fmt.Errorf("Couldn't get unavailable numbers: %v", err)
@@ -71,7 +70,7 @@ func (dsc *DaemonSetsController) rollingUpdate(ds *extensions.DaemonSet) error {
 	return utilerrors.NewAggregate(errors)
 }
 
-func (dsc *DaemonSetsController) getAllDaemonSetPods(ds *extensions.DaemonSet, nodeToDaemonPods map[string][]*v1.Pod) ([]*v1.Pod, []*v1.Pod) {
+func (dsc *DaemonSetsController) getAllDaemonSetPods(ds *extensions.DaemonSet, nodeToDaemonPods map[string][]*v1.Pod) ([]*v1.Pod, []*v1.Pod, error) {
 	var newPods []*v1.Pod
 	var oldPods []*v1.Pod
 
@@ -84,7 +83,7 @@ func (dsc *DaemonSetsController) getAllDaemonSetPods(ds *extensions.DaemonSet, n
 			}
 		}
 	}
-	return newPods, oldPods
+	return newPods, oldPods, nil
 }
 
 func (dsc *DaemonSetsController) getUnavailableNumbers(ds *extensions.DaemonSet, nodeToDaemonPods map[string][]*v1.Pod) (int, int, error) {
@@ -113,7 +112,7 @@ func (dsc *DaemonSetsController) getUnavailableNumbers(ds *extensions.DaemonSet,
 		}
 		available := false
 		for _, pod := range daemonPods {
-			if podutil.IsPodAvailable(pod, ds.Spec.MinReadySeconds, metav1.Now()) {
+			if v1.IsPodAvailable(pod, ds.Spec.MinReadySeconds, metav1.Now()) {
 				available = true
 				break
 			}
@@ -126,6 +125,5 @@ func (dsc *DaemonSetsController) getUnavailableNumbers(ds *extensions.DaemonSet,
 	if err != nil {
 		return -1, -1, fmt.Errorf("Invalid value for MaxUnavailable: %v", err)
 	}
-	glog.V(4).Infof(" DaemonSet %s/%s, maxUnavailable: %d, numUnavailable: %d", ds.Namespace, ds.Name, maxUnavailable, numUnavailable)
 	return maxUnavailable, numUnavailable, nil
 }

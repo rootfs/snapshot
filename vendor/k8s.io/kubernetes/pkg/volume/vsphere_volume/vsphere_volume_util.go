@@ -36,9 +36,9 @@ const (
 	checkSleepDuration = time.Second
 	diskByIDPath       = "/dev/disk/by-id/"
 	diskSCSIPrefix     = "wwn-0x"
+	Fstype             = "fstype"
 	diskformat         = "diskformat"
 	datastore          = "datastore"
-	Fstype             = "fstype"
 
 	HostFailuresToTolerateCapability    = "hostfailurestotolerate"
 	ForceProvisioningCapability         = "forceprovisioning"
@@ -112,7 +112,6 @@ func (util *VsphereDiskUtil) CreateVolume(v *vsphereVolumeProvisioner) (vmDiskPa
 			} else {
 				volumeOptions.StorageProfileData += capabilityData
 			}
-
 		default:
 			return "", 0, "", fmt.Errorf("invalid option %q for volume plugin %s", parameter, v.plugin.GetPluginName())
 		}

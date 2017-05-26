@@ -30,11 +30,10 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apiserver/pkg/admission"
 	"k8s.io/kubernetes/pkg/api"
-	kubeapiserveradmission "k8s.io/kubernetes/pkg/kubeapiserver/admission"
 )
 
 func init() {
-	kubeapiserveradmission.Plugins.Register("AlwaysPullImages", func(config io.Reader) (admission.Interface, error) {
+	admission.RegisterPlugin("AlwaysPullImages", func(config io.Reader) (admission.Interface, error) {
 		return NewAlwaysPullImages(), nil
 	})
 }

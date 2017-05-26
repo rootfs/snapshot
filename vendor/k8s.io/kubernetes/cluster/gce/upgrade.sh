@@ -28,7 +28,6 @@ if [[ "${KUBERNETES_PROVIDER:-gce}" != "gce" ]]; then
 fi
 
 KUBE_ROOT=$(dirname "${BASH_SOURCE}")/../..
-source "${KUBE_ROOT}/hack/lib/util.sh"
 source "${KUBE_ROOT}/cluster/kube-util.sh"
 
 function usage() {
@@ -131,7 +130,7 @@ function backfile-kubeletauth-certs() {
   echo "${CA_KEY_BASE64}" | base64 -d > "${KUBE_TEMP}/pki/ca.key"
   echo "${CA_CERT_BASE64}" | base64 -d > "${KUBE_TEMP}/pki/ca.crt"
   (cd "${KUBE_TEMP}/pki"
-    kube::util::ensure-cfssl "${KUBE_TEMP}/cfssl"
+    download-cfssl
     cat <<EOF > ca-config.json
 {
   "signing": {
@@ -150,13 +149,13 @@ EOF
     # subpaths required for the apiserver to hit proxy
     # endpoints on the kubelet's handler.
     cat <<EOF \
-      | "${CFSSL_BIN}" gencert \
+      | "${KUBE_TEMP}/cfssl/cfssl" gencert \
         -ca=ca.crt \
         -ca-key=ca.key \
         -config=ca-config.json \
         -profile=client \
         - \
-      | "${CFSSLJSON_BIN}" -bare kube-apiserver
+      | "${KUBE_TEMP}/cfssl/cfssljson" -bare kube-apiserver
 {
   "CN": "kube-apiserver"
 }
@@ -193,7 +192,7 @@ function wait-for-master() {
 # Assumed vars
 #   KUBE_VERSION
 function prepare-upgrade() {
-  kube::util::ensure-temp-dir
+  ensure-temp-dir
   detect-project
   detect-node-names # sets INSTANCE_GROUPS
   write-cluster-name

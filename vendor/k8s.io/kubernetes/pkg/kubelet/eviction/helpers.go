@@ -28,7 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/v1"
-	statsapi "k8s.io/kubernetes/pkg/kubelet/apis/stats/v1alpha1"
+	statsapi "k8s.io/kubernetes/pkg/kubelet/api/v1alpha1/stats"
 	"k8s.io/kubernetes/pkg/kubelet/cm"
 	evictionapi "k8s.io/kubernetes/pkg/kubelet/eviction/api"
 	"k8s.io/kubernetes/pkg/kubelet/qos"
@@ -739,30 +739,24 @@ func thresholdsMet(thresholds []evictionapi.Threshold, observations signalObserv
 }
 
 func debugLogObservations(logPrefix string, observations signalObservations) {
-	if !glog.V(3) {
-		return
-	}
 	for k, v := range observations {
 		if !v.time.IsZero() {
-			glog.Infof("eviction manager: %v: signal=%v, available: %v, capacity: %v, time: %v", logPrefix, k, v.available, v.capacity, v.time)
+			glog.V(3).Infof("eviction manager: %v: signal=%v, available: %v, capacity: %v, time: %v", logPrefix, k, v.available, v.capacity, v.time)
 		} else {
-			glog.Infof("eviction manager: %v: signal=%v, available: %v, capacity: %v", logPrefix, k, v.available, v.capacity)
+			glog.V(3).Infof("eviction manager: %v: signal=%v, available: %v, capacity: %v", logPrefix, k, v.available, v.capacity)
 		}
 	}
 }
 
 func debugLogThresholdsWithObservation(logPrefix string, thresholds []evictionapi.Threshold, observations signalObservations) {
-	if !glog.V(3) {
-		return
-	}
 	for i := range thresholds {
 		threshold := thresholds[i]
 		observed, found := observations[threshold.Signal]
 		if found {
 			quantity := evictionapi.GetThresholdQuantity(threshold.Value, observed.capacity)
-			glog.Infof("eviction manager: %v: threshold [signal=%v, quantity=%v] observed %v", logPrefix, threshold.Signal, quantity, observed.available)
+			glog.V(3).Infof("eviction manager: %v: threshold [signal=%v, quantity=%v] observed %v", logPrefix, threshold.Signal, quantity, observed.available)
 		} else {
-			glog.Infof("eviction manager: %v: threshold [signal=%v] had no observation", logPrefix, threshold.Signal)
+			glog.V(3).Infof("eviction manager: %v: threshold [signal=%v] had no observation", logPrefix, threshold.Signal)
 		}
 	}
 }

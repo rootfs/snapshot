@@ -42,7 +42,6 @@ type DeploymentUpgradeTest struct {
 func (DeploymentUpgradeTest) Name() string { return "deployment-upgrade" }
 
 // Setup creates a deployment and makes sure it has a new and an old replica set running.
-// This calls in to client code and should not be expected to work against a cluster more than one minor version away from the current version.
 func (t *DeploymentUpgradeTest) Setup(f *framework.Framework) {
 	deploymentName := "deployment-hash-test"
 	c := f.ClientSet
@@ -57,13 +56,13 @@ func (t *DeploymentUpgradeTest) Setup(f *framework.Framework) {
 
 	// Wait for it to be updated to revision 1
 	By(fmt.Sprintf("Waiting deployment %q to be updated to revision 1", deploymentName))
-	err = framework.WaitForDeploymentRevisionAndImage(c, ns, deploymentName, "1", nginxImage)
+	err = framework.WaitForDeploymentRevisionAndImageV15(c, ns, deploymentName, "1", nginxImage)
 	framework.ExpectNoError(err)
 
 	By(fmt.Sprintf("Waiting deployment %q to complete", deploymentName))
-	framework.ExpectNoError(framework.WaitForDeploymentStatusValid(c, deployment))
+	framework.ExpectNoError(framework.WaitForDeploymentStatusValidV15(c, deployment))
 
-	rs, err := deploymentutil.GetNewReplicaSet(deployment, c)
+	rs, err := deploymentutil.GetNewReplicaSetV15(deployment, c)
 	framework.ExpectNoError(err)
 	if rs == nil {
 		framework.ExpectNoError(fmt.Errorf("expected a new replica set for deployment %q, found none", deployment.Name))
@@ -85,12 +84,12 @@ func (t *DeploymentUpgradeTest) Setup(f *framework.Framework) {
 
 	// Wait for it to be updated to revision 2
 	By(fmt.Sprintf("Waiting deployment %q to be updated to revision 2", deploymentName))
-	framework.ExpectNoError(framework.WaitForDeploymentRevisionAndImage(c, ns, deploymentName, "2", nginxImage))
+	framework.ExpectNoError(framework.WaitForDeploymentRevisionAndImageV15(c, ns, deploymentName, "2", nginxImage))
 
 	By(fmt.Sprintf("Waiting deployment %q to complete", deploymentName))
-	framework.ExpectNoError(framework.WaitForDeploymentStatus(c, deployment))
+	framework.ExpectNoError(framework.WaitForDeploymentStatusV15(c, deployment))
 
-	rs, err = deploymentutil.GetNewReplicaSet(deployment, c)
+	rs, err = deploymentutil.GetNewReplicaSetV15(deployment, c)
 	framework.ExpectNoError(err)
 	if rs == nil {
 		framework.ExpectNoError(fmt.Errorf("expected a new replica set for deployment %q", deployment.Name))

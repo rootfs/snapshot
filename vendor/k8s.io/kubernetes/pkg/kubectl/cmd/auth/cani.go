@@ -45,7 +45,6 @@ type CanIOptions struct {
 
 	Verb         string
 	Resource     schema.GroupVersionResource
-	Subresource  string
 	ResourceName string
 
 	Out io.Writer
@@ -67,14 +66,8 @@ var (
 		# Check to see if I can list deployments in my current namespace
 		kubectl auth can-i list deployments.extensions
 
-		# Check to see if I can do everything in my current namespace ("*" means all)
-		kubectl auth can-i '*' '*'
-
 		# Check to see if I can get the job named "bar" in namespace "foo"
-		kubectl auth can-i list jobs.batch/bar -n foo
-
-		# check to see if I can read pod logs
-		kubectl auth can-i get pods --subresource=log`)
+		kubectl auth can-i list jobs.batch/bar -n foo`)
 )
 
 func NewCmdCanI(f cmdutil.Factory, out, err io.Writer) *cobra.Command {
@@ -94,9 +87,11 @@ func NewCmdCanI(f cmdutil.Factory, out, err io.Writer) *cobra.Command {
 
 			allowed, err := o.RunAccessCheck()
 			if err == nil {
-				if o.Quiet && !allowed {
-					os.Exit(1)
-				}
+				return
+			}
+
+			if o.Quiet && !allowed {
+				os.Exit(1)
 			}
 
 			cmdutil.CheckErr(err)
@@ -105,21 +100,16 @@ func NewCmdCanI(f cmdutil.Factory, out, err io.Writer) *cobra.Command {
 
 	cmd.Flags().BoolVar(&o.AllNamespaces, "all-namespaces", o.AllNamespaces, "If true, check the specified action in all namespaces.")
 	cmd.Flags().BoolVarP(&o.Quiet, "quiet", "q", o.Quiet, "If true, suppress output and just return the exit code.")
-	cmd.Flags().StringVar(&o.Subresource, "subresource", "", "SubResource such as pod/log or deployment/scale")
 	return cmd
 }
 
 func (o *CanIOptions) Complete(f cmdutil.Factory, args []string) error {
-	if o.Quiet {
-		o.Out = ioutil.Discard
-	}
-
 	switch len(args) {
 	case 2:
 		resourceTokens := strings.SplitN(args[1], "/", 2)
 		restMapper, _ := f.Object()
 		o.Verb = args[0]
-		o.Resource = o.resourceFor(restMapper, resourceTokens[0])
+		o.Resource = resourceFor(restMapper, resourceTokens[0])
 		if len(resourceTokens) > 1 {
 			o.ResourceName = resourceTokens[1]
 		}
@@ -142,6 +132,10 @@ func (o *CanIOptions) Complete(f cmdutil.Factory, args []string) error {
 		}
 	}
 
+	if o.Quiet {
+		o.Out = ioutil.Discard
+	}
+
 	return nil
 }
 
@@ -154,12 +148,11 @@ func (o *CanIOptions) RunAccessCheck() (bool, error) {
 	sar := &authorizationapi.SelfSubjectAccessReview{
 		Spec: authorizationapi.SelfSubjectAccessReviewSpec{
 			ResourceAttributes: &authorizationapi.ResourceAttributes{
-				Namespace:   o.Namespace,
-				Verb:        o.Verb,
-				Group:       o.Resource.Group,
-				Resource:    o.Resource.Resource,
-				Subresource: o.Subresource,
-				Name:        o.ResourceName,
+				Namespace: o.Namespace,
+				Verb:      o.Verb,
+				Group:     o.Resource.Group,
+				Resource:  o.Resource.Resource,
+				Name:      o.ResourceName,
 			},
 		},
 	}
@@ -185,11 +178,7 @@ func (o *CanIOptions) RunAccessCheck() (bool, error) {
 	return response.Status.Allowed, nil
 }
 
-func (o *CanIOptions) resourceFor(mapper meta.RESTMapper, resourceArg string) schema.GroupVersionResource {
-	if resourceArg == "*" {
-		return schema.GroupVersionResource{Resource: resourceArg}
-	}
-
+func resourceFor(mapper meta.RESTMapper, resourceArg string) schema.GroupVersionResource {
 	fullySpecifiedGVR, groupResource := schema.ParseResourceArg(strings.ToLower(resourceArg))
 	gvr := schema.GroupVersionResource{}
 	if fullySpecifiedGVR != nil {
@@ -199,11 +188,6 @@ func (o *CanIOptions) resourceFor(mapper meta.RESTMapper, resourceArg string) sc
 		var err error
 		gvr, err = mapper.ResourceFor(groupResource.WithVersion(""))
 		if err != nil {
-			if len(groupResource.Group) == 0 {
-				fmt.Fprintf(o.Err, "Warning: the server doesn't have a resource type '%s'\n", groupResource.Resource)
-			} else {
-				fmt.Fprintf(o.Err, "Warning: the server doesn't have a resource type '%s' in group '%s'\n", groupResource.Resource, groupResource.Group)
-			}
 			return schema.GroupVersionResource{Resource: resourceArg}
 		}
 	}

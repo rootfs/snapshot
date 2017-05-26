@@ -26,7 +26,6 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
-	"k8s.io/apiserver/pkg/endpoints/discovery"
 	"k8s.io/apiserver/pkg/registry/generic"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/apiserver/pkg/server/healthz"
@@ -164,9 +163,9 @@ func (c *Config) Complete() completedConfig {
 		c.APIServerServiceIP = apiServerServiceIP
 	}
 
-	discoveryAddresses := discovery.DefaultAddresses{DefaultAddress: c.GenericConfig.ExternalAddress}
-	discoveryAddresses.CIDRRules = append(discoveryAddresses.CIDRRules,
-		discovery.CIDRRule{IPRange: c.ServiceIPRange, Address: net.JoinHostPort(c.APIServerServiceIP.String(), strconv.Itoa(c.APIServerServicePort))})
+	discoveryAddresses := genericapiserver.DefaultDiscoveryAddresses{DefaultAddress: c.GenericConfig.ExternalAddress}
+	discoveryAddresses.DiscoveryCIDRRules = append(discoveryAddresses.DiscoveryCIDRRules,
+		genericapiserver.DiscoveryCIDRRule{IPRange: c.ServiceIPRange, Address: net.JoinHostPort(c.APIServerServiceIP.String(), strconv.Itoa(c.APIServerServicePort))})
 	c.GenericConfig.DiscoveryAddresses = discoveryAddresses
 
 	if c.ServiceNodePortRange.Size == 0 {
@@ -206,21 +205,21 @@ func (c *Config) SkipComplete() completedConfig {
 // Certain config fields will be set to a default value if unset.
 // Certain config fields must be specified, including:
 //   KubeletClientConfig
-func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget) (*Master, error) {
+func (c completedConfig) New() (*Master, error) {
 	if reflect.DeepEqual(c.KubeletClientConfig, kubeletclient.KubeletClientConfig{}) {
 		return nil, fmt.Errorf("Master.New() called with empty config.KubeletClientConfig")
 	}
 
-	s, err := c.Config.GenericConfig.SkipComplete().New(delegationTarget) // completion is done in Complete, no need for a second time
+	s, err := c.Config.GenericConfig.SkipComplete().New() // completion is done in Complete, no need for a second time
 	if err != nil {
 		return nil, err
 	}
 
 	if c.EnableUISupport {
-		routes.UIRedirect{}.Install(s.Handler.PostGoRestfulMux)
+		routes.UIRedirect{}.Install(s.HandlerContainer)
 	}
 	if c.EnableLogsSupport {
-		routes.Logs{}.Install(s.Handler.GoRestfulContainer)
+		routes.Logs{}.Install(s.HandlerContainer)
 	}
 
 	m := &Master{
@@ -250,7 +249,7 @@ func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget)
 		autoscalingrest.RESTStorageProvider{},
 		batchrest.RESTStorageProvider{},
 		certificatesrest.RESTStorageProvider{},
-		extensionsrest.RESTStorageProvider{ResourceInterface: thirdparty.NewThirdPartyResourceServer(s, s.DiscoveryGroupManager, c.StorageFactory)},
+		extensionsrest.RESTStorageProvider{ResourceInterface: thirdparty.NewThirdPartyResourceServer(s, c.StorageFactory)},
 		policyrest.RESTStorageProvider{},
 		rbacrest.RESTStorageProvider{Authorizer: c.GenericConfig.Authorizer},
 		settingsrest.RESTStorageProvider{},
@@ -350,6 +349,7 @@ type nodeAddressProvider struct {
 func (n nodeAddressProvider) externalAddresses() ([]string, error) {
 	preferredAddressTypes := []apiv1.NodeAddressType{
 		apiv1.NodeExternalIP,
+		apiv1.NodeLegacyHostIP,
 	}
 	nodes, err := n.nodeClient.List(metav1.ListOptions{})
 	if err != nil {

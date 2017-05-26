@@ -111,11 +111,11 @@ func (dc *DeploymentController) checkPausedConditions(d *extensions.Deployment) 
 // This may lead to stale reads of replica sets, thus incorrect deployment status.
 func (dc *DeploymentController) getAllReplicaSetsAndSyncRevision(d *extensions.Deployment, rsList []*extensions.ReplicaSet, podMap map[types.UID]*v1.PodList, createIfNotExisted bool) (*extensions.ReplicaSet, []*extensions.ReplicaSet, error) {
 	// List the deployment's RSes & Pods and apply pod-template-hash info to deployment's adopted RSes/Pods
-	rsList, err := dc.rsAndPodsWithHashKeySynced(d, rsList, podMap)
+	rsList, podList, err := dc.rsAndPodsWithHashKeySynced(d, rsList, podMap)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error labeling replica sets and pods with pod-template-hash: %v", err)
 	}
-	_, allOldRSs, err := deploymentutil.FindOldReplicaSets(d, rsList)
+	_, allOldRSs, err := deploymentutil.FindOldReplicaSets(d, rsList, podList)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -134,19 +134,24 @@ func (dc *DeploymentController) getAllReplicaSetsAndSyncRevision(d *extensions.D
 //
 // rsList should come from getReplicaSetsForDeployment(d).
 // podMap should come from getPodMapForDeployment(d, rsList).
-func (dc *DeploymentController) rsAndPodsWithHashKeySynced(d *extensions.Deployment, rsList []*extensions.ReplicaSet, podMap map[types.UID]*v1.PodList) ([]*extensions.ReplicaSet, error) {
-	var syncedRSList []*extensions.ReplicaSet
+func (dc *DeploymentController) rsAndPodsWithHashKeySynced(d *extensions.Deployment, rsList []*extensions.ReplicaSet, podMap map[types.UID]*v1.PodList) ([]*extensions.ReplicaSet, *v1.PodList, error) {
+	syncedRSList := []*extensions.ReplicaSet{}
 	for _, rs := range rsList {
 		// Add pod-template-hash information if it's not in the RS.
 		// Otherwise, new RS produced by Deployment will overlap with pre-existing ones
 		// that aren't constrained by the pod-template-hash.
 		syncedRS, err := dc.addHashKeyToRSAndPods(rs, podMap[rs.UID])
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		syncedRSList = append(syncedRSList, syncedRS)
 	}
-	return syncedRSList, nil
+	// Put all Pods from podMap into one list.
+	syncedPodList := &v1.PodList{}
+	for _, podList := range podMap {
+		syncedPodList.Items = append(syncedPodList.Items, podList.Items...)
+	}
+	return syncedRSList, syncedPodList, nil
 }
 
 // addHashKeyToRSAndPods adds pod-template-hash information to the given rs, if it's not already there, with the following steps:
@@ -515,6 +520,7 @@ func (dc *DeploymentController) cleanupDeployment(oldRSs []*extensions.ReplicaSe
 	glog.V(4).Infof("Looking to cleanup old replica sets for deployment %q", deployment.Name)
 
 	var errList []error
+	// TODO: This should be parallelized.
 	for i := int32(0); i < diff; i++ {
 		rs := cleanableRSes[i]
 		// Avoid delete replica set with non-zero replica counts
@@ -551,7 +557,7 @@ func calculateStatus(allRSs []*extensions.ReplicaSet, newRS *extensions.ReplicaS
 	totalReplicas := deploymentutil.GetReplicaCountForReplicaSets(allRSs)
 	unavailableReplicas := totalReplicas - availableReplicas
 	// If unavailableReplicas is negative, then that means the Deployment has more available replicas running than
-	// desired, e.g. whenever it scales down. In such a case we should simply default unavailableReplicas to zero.
+	// desired, eg. whenever it scales down. In such a case we should simply default unavailableReplicas to zero.
 	if unavailableReplicas < 0 {
 		unavailableReplicas = 0
 	}

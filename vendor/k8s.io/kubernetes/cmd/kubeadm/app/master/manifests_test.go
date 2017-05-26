@@ -29,13 +29,9 @@ import (
 	api "k8s.io/client-go/pkg/api/v1"
 	"k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm"
 	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm"
-	"k8s.io/kubernetes/pkg/util/version"
 )
 
-const (
-	testCertsDir = "/var/lib/certs"
-	etcdDataDir  = "/var/lib/etcd"
-)
+const testCertsDir = "/var/lib/certs"
 
 func TestWriteStaticPodManifests(t *testing.T) {
 	tmpdir, err := ioutil.TempDir("", "")
@@ -51,12 +47,12 @@ func TestWriteStaticPodManifests(t *testing.T) {
 
 	var tests = []struct {
 		cfg                  *kubeadmapi.MasterConfiguration
-		expectErr            bool
+		expected             bool
 		expectedAPIProbePort int32
 	}{
 		{
-			cfg:       &kubeadmapi.MasterConfiguration{},
-			expectErr: true,
+			cfg:      &kubeadmapi.MasterConfiguration{},
+			expected: true,
 		},
 		{
 			cfg: &kubeadmapi.MasterConfiguration{
@@ -64,29 +60,25 @@ func TestWriteStaticPodManifests(t *testing.T) {
 					BindPort: 443,
 				},
 			},
-			expectErr:            true,
+			expected:             true,
 			expectedAPIProbePort: 443,
 		},
 	}
 	for _, rt := range tests {
 		actual := WriteStaticPodManifests(rt.cfg)
-		if (actual == nil) && rt.expectErr {
-			t.Error("expected an error from WriteStaticPodManifests but got none")
-			continue
-		}
-		if (actual != nil) && !rt.expectErr {
-			t.Errorf("didn't expect an error from WriteStaticPodManifests but got: %v", err)
-			continue
-		}
-		if rt.expectErr {
+		if (actual == nil) != rt.expected {
+			t.Errorf(
+				"failed WriteStaticPodManifests with an error:\n\texpected: %t\n\t  actual: %t",
+				rt.expected,
+				(actual == nil),
+			)
 			continue
 		}
 
-		// Below is dead code.
 		if rt.expectedAPIProbePort != 0 {
-			manifest, err := os.Open(kubeadmapi.GlobalEnvParams.KubernetesDir + "/manifests/kube-apiserver.yaml")
+			manifest, err := os.Open(fmt.Sprintf("%s/manifests/kube-apiserver.yaml", kubeadmapi.GlobalEnvParams.KubernetesDir))
 			if err != nil {
-				t.Errorf("WriteStaticPodManifests: %v", err)
+				t.Error("WriteStaticPodManifests: error opening manifests/kube-apiserver.yaml")
 				continue
 			}
 
@@ -124,90 +116,18 @@ func TestWriteStaticPodManifests(t *testing.T) {
 	}
 }
 
-func TestNewVolume(t *testing.T) {
-	var tests = []struct {
-		name     string
-		path     string
-		expected api.Volume
-	}{
-		{
-			name: "foo",
-			path: "/etc/foo",
-			expected: api.Volume{
-				Name: "foo",
-				VolumeSource: api.VolumeSource{
-					HostPath: &api.HostPathVolumeSource{Path: "/etc/foo"},
-				}},
-		},
-	}
-
-	for _, rt := range tests {
-		actual := newVolume(rt.name, rt.path)
-		if actual.Name != rt.expected.Name {
-			t.Errorf(
-				"failed newVolume:\n\texpected: %s\n\t  actual: %s",
-				rt.expected.Name,
-				actual.Name,
-			)
-		}
-		if actual.VolumeSource.HostPath.Path != rt.expected.VolumeSource.HostPath.Path {
-			t.Errorf(
-				"failed newVolume:\n\texpected: %s\n\t  actual: %s",
-				rt.expected.VolumeSource.HostPath.Path,
-				actual.VolumeSource.HostPath.Path,
-			)
-		}
-	}
-}
-
-func TestNewVolumeMount(t *testing.T) {
-	var tests = []struct {
-		name     string
-		path     string
-		expected api.VolumeMount
-	}{
-		{
-			name: "foo",
-			path: "/etc/foo",
-			expected: api.VolumeMount{
-				Name:      "foo",
-				MountPath: "/etc/foo",
-			},
-		},
-	}
-
-	for _, rt := range tests {
-		actual := newVolumeMount(rt.name, rt.path)
-		if actual.Name != rt.expected.Name {
-			t.Errorf(
-				"failed newVolumeMount:\n\texpected: %s\n\t  actual: %s",
-				rt.expected.Name,
-				actual.Name,
-			)
-		}
-		if actual.MountPath != rt.expected.MountPath {
-			t.Errorf(
-				"failed newVolumeMount:\n\texpected: %s\n\t  actual: %s",
-				rt.expected.MountPath,
-				actual.MountPath,
-			)
-		}
-	}
-}
-
 func TestEtcdVolume(t *testing.T) {
 	var tests = []struct {
 		cfg      *kubeadmapi.MasterConfiguration
 		expected api.Volume
 	}{
 		{
-			cfg: &kubeadmapi.MasterConfiguration{
-				Etcd: kubeadmapi.Etcd{DataDir: etcdDataDir},
-			},
+			cfg: &kubeadmapi.MasterConfiguration{},
 			expected: api.Volume{
 				Name: "etcd",
 				VolumeSource: api.VolumeSource{
-					HostPath: &api.HostPathVolumeSource{Path: etcdDataDir},
+					HostPath: &api.HostPathVolumeSource{
+						Path: kubeadmapi.GlobalEnvParams.HostEtcdPath},
 				}},
 		},
 	}
@@ -238,13 +158,13 @@ func TestEtcdVolumeMount(t *testing.T) {
 		{
 			expected: api.VolumeMount{
 				Name:      "etcd",
-				MountPath: etcdDataDir,
+				MountPath: "/var/lib/etcd",
 			},
 		},
 	}
 
 	for _, rt := range tests {
-		actual := etcdVolumeMount(etcdDataDir)
+		actual := etcdVolumeMount()
 		if actual.Name != rt.expected.Name {
 			t.Errorf(
 				"failed etcdVolumeMount:\n\texpected: %s\n\t  actual: %s",
@@ -330,9 +250,11 @@ func TestCertsVolumeMount(t *testing.T) {
 
 func TestK8sVolume(t *testing.T) {
 	var tests = []struct {
+		cfg      *kubeadmapi.MasterConfiguration
 		expected api.Volume
 	}{
 		{
+			cfg: &kubeadmapi.MasterConfiguration{},
 			expected: api.Volume{
 				Name: "k8s",
 				VolumeSource: api.VolumeSource{
@@ -343,7 +265,7 @@ func TestK8sVolume(t *testing.T) {
 	}
 
 	for _, rt := range tests {
-		actual := k8sVolume()
+		actual := k8sVolume(rt.cfg)
 		if actual.Name != rt.expected.Name {
 			t.Errorf(
 				"failed k8sVolume:\n\texpected: %s\n\t  actual: %s",
@@ -368,7 +290,7 @@ func TestK8sVolumeMount(t *testing.T) {
 		{
 			expected: api.VolumeMount{
 				Name:      "k8s",
-				MountPath: kubeadmapi.GlobalEnvParams.KubernetesDir,
+				MountPath: "/etc/kubernetes/",
 				ReadOnly:  true,
 			},
 		},
@@ -511,10 +433,9 @@ func TestGetAPIServerCommand(t *testing.T) {
 	}{
 		{
 			cfg: &kubeadmapi.MasterConfiguration{
-				API:               kubeadm.API{BindPort: 123, AdvertiseAddress: "1.2.3.4"},
-				Networking:        kubeadm.Networking{ServiceSubnet: "bar"},
-				CertificatesDir:   testCertsDir,
-				KubernetesVersion: "v1.6.0",
+				API:             kubeadm.API{BindPort: 123, AdvertiseAddress: "1.2.3.4"},
+				Networking:      kubeadm.Networking{ServiceSubnet: "bar"},
+				CertificatesDir: testCertsDir,
 			},
 			expected: []string{
 				"kube-apiserver",
@@ -529,6 +450,7 @@ func TestGetAPIServerCommand(t *testing.T) {
 				"--kubelet-client-key=" + testCertsDir + "/apiserver-kubelet-client.key",
 				fmt.Sprintf("--secure-port=%d", 123),
 				"--allow-privileged=true",
+				"--storage-backend=etcd3",
 				"--kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname",
 				"--experimental-bootstrap-token-auth=true",
 				"--requestheader-username-headers=X-Remote-User",
@@ -543,10 +465,9 @@ func TestGetAPIServerCommand(t *testing.T) {
 		},
 		{
 			cfg: &kubeadmapi.MasterConfiguration{
-				API:               kubeadm.API{BindPort: 123, AdvertiseAddress: "4.3.2.1"},
-				Networking:        kubeadm.Networking{ServiceSubnet: "bar"},
-				CertificatesDir:   testCertsDir,
-				KubernetesVersion: "v1.6.0",
+				API:             kubeadm.API{BindPort: 123, AdvertiseAddress: "4.3.2.1"},
+				Networking:      kubeadm.Networking{ServiceSubnet: "bar"},
+				CertificatesDir: testCertsDir,
 			},
 			expected: []string{
 				"kube-apiserver",
@@ -561,6 +482,7 @@ func TestGetAPIServerCommand(t *testing.T) {
 				"--kubelet-client-key=" + testCertsDir + "/apiserver-kubelet-client.key",
 				fmt.Sprintf("--secure-port=%d", 123),
 				"--allow-privileged=true",
+				"--storage-backend=etcd3",
 				"--kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname",
 				"--experimental-bootstrap-token-auth=true",
 				"--requestheader-username-headers=X-Remote-User",
@@ -575,11 +497,10 @@ func TestGetAPIServerCommand(t *testing.T) {
 		},
 		{
 			cfg: &kubeadmapi.MasterConfiguration{
-				API:               kubeadm.API{BindPort: 123, AdvertiseAddress: "4.3.2.1"},
-				Networking:        kubeadm.Networking{ServiceSubnet: "bar"},
-				Etcd:              kubeadm.Etcd{CertFile: "fiz", KeyFile: "faz"},
-				CertificatesDir:   testCertsDir,
-				KubernetesVersion: "v1.6.0",
+				API:             kubeadm.API{BindPort: 123, AdvertiseAddress: "4.3.2.1"},
+				Networking:      kubeadm.Networking{ServiceSubnet: "bar"},
+				Etcd:            kubeadm.Etcd{CertFile: "fiz", KeyFile: "faz"},
+				CertificatesDir: testCertsDir,
 			},
 			expected: []string{
 				"kube-apiserver",
@@ -594,45 +515,9 @@ func TestGetAPIServerCommand(t *testing.T) {
 				"--kubelet-client-key=" + testCertsDir + "/apiserver-kubelet-client.key",
 				fmt.Sprintf("--secure-port=%d", 123),
 				"--allow-privileged=true",
+				"--storage-backend=etcd3",
 				"--kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname",
 				"--experimental-bootstrap-token-auth=true",
-				"--requestheader-username-headers=X-Remote-User",
-				"--requestheader-group-headers=X-Remote-Group",
-				"--requestheader-extra-headers-prefix=X-Remote-Extra-",
-				"--requestheader-client-ca-file=" + testCertsDir + "/front-proxy-ca.crt",
-				"--requestheader-allowed-names=front-proxy-client",
-				"--authorization-mode=RBAC",
-				"--advertise-address=4.3.2.1",
-				"--etcd-servers=http://127.0.0.1:2379",
-				"--etcd-certfile=fiz",
-				"--etcd-keyfile=faz",
-			},
-		},
-		{
-			cfg: &kubeadmapi.MasterConfiguration{
-				API:               kubeadm.API{BindPort: 123, AdvertiseAddress: "4.3.2.1"},
-				Networking:        kubeadm.Networking{ServiceSubnet: "bar"},
-				Etcd:              kubeadm.Etcd{CertFile: "fiz", KeyFile: "faz"},
-				CertificatesDir:   testCertsDir,
-				KubernetesVersion: "v1.7.0",
-			},
-			expected: []string{
-				"kube-apiserver",
-				"--insecure-port=0",
-				"--admission-control=NamespaceLifecycle,LimitRanger,ServiceAccount,PersistentVolumeLabel,DefaultStorageClass,ResourceQuota,DefaultTolerationSeconds",
-				"--service-cluster-ip-range=bar",
-				"--service-account-key-file=" + testCertsDir + "/sa.pub",
-				"--client-ca-file=" + testCertsDir + "/ca.crt",
-				"--tls-cert-file=" + testCertsDir + "/apiserver.crt",
-				"--tls-private-key-file=" + testCertsDir + "/apiserver.key",
-				"--kubelet-client-certificate=" + testCertsDir + "/apiserver-kubelet-client.crt",
-				"--kubelet-client-key=" + testCertsDir + "/apiserver-kubelet-client.key",
-				fmt.Sprintf("--secure-port=%d", 123),
-				"--allow-privileged=true",
-				"--kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname",
-				"--experimental-bootstrap-token-auth=true",
-				"--proxy-client-cert-file=/var/lib/certs/front-proxy-client.crt",
-				"--proxy-client-key-file=/var/lib/certs/front-proxy-client.key",
 				"--requestheader-username-headers=X-Remote-User",
 				"--requestheader-group-headers=X-Remote-Group",
 				"--requestheader-extra-headers-prefix=X-Remote-Extra-",
@@ -648,7 +533,7 @@ func TestGetAPIServerCommand(t *testing.T) {
 	}
 
 	for _, rt := range tests {
-		actual := getAPIServerCommand(rt.cfg, false, version.MustParseSemantic(rt.cfg.KubernetesVersion))
+		actual := getAPIServerCommand(rt.cfg, false)
 		sort.Strings(actual)
 		sort.Strings(rt.expected)
 		if !reflect.DeepEqual(actual, rt.expected) {
@@ -733,62 +618,6 @@ func TestGetControllerManagerCommand(t *testing.T) {
 	}
 }
 
-func TestGetEtcdCommand(t *testing.T) {
-	var tests = []struct {
-		cfg      *kubeadmapi.MasterConfiguration
-		expected []string
-	}{
-		{
-			cfg: &kubeadmapi.MasterConfiguration{
-				Etcd: kubeadmapi.Etcd{DataDir: "/var/lib/etcd"},
-			},
-			expected: []string{
-				"etcd",
-				"--listen-client-urls=http://127.0.0.1:2379",
-				"--advertise-client-urls=http://127.0.0.1:2379",
-				"--data-dir=/var/lib/etcd",
-			},
-		},
-		{
-			cfg: &kubeadmapi.MasterConfiguration{
-				Etcd: kubeadmapi.Etcd{
-					DataDir: "/var/lib/etcd",
-					ExtraArgs: map[string]string{
-						"listen-client-urls":    "http://10.0.1.10:2379",
-						"advertise-client-urls": "http://10.0.1.10:2379",
-					},
-				},
-			},
-			expected: []string{
-				"etcd",
-				"--listen-client-urls=http://10.0.1.10:2379",
-				"--advertise-client-urls=http://10.0.1.10:2379",
-				"--data-dir=/var/lib/etcd",
-			},
-		},
-		{
-			cfg: &kubeadmapi.MasterConfiguration{
-				Etcd: kubeadmapi.Etcd{DataDir: "/etc/foo"},
-			},
-			expected: []string{
-				"etcd",
-				"--listen-client-urls=http://127.0.0.1:2379",
-				"--advertise-client-urls=http://127.0.0.1:2379",
-				"--data-dir=/etc/foo",
-			},
-		},
-	}
-
-	for _, rt := range tests {
-		actual := getEtcdCommand(rt.cfg)
-		sort.Strings(actual)
-		sort.Strings(rt.expected)
-		if !reflect.DeepEqual(actual, rt.expected) {
-			t.Errorf("failed getEtcdCommand:\nexpected:\n%v\nsaw:\n%v", rt.expected, actual)
-		}
-	}
-}
-
 func TestGetSchedulerCommand(t *testing.T) {
 	var tests = []struct {
 		cfg      *kubeadmapi.MasterConfiguration
@@ -817,53 +646,44 @@ func TestGetSchedulerCommand(t *testing.T) {
 
 func TestGetAuthzParameters(t *testing.T) {
 	var tests = []struct {
-		authMode []string
+		authMode string
 		expected []string
 	}{
 		{
-			authMode: []string{},
+			authMode: "",
 			expected: []string{
 				"--authorization-mode=RBAC",
 			},
 		},
 		{
-			authMode: []string{"RBAC"},
+			authMode: "RBAC",
 			expected: []string{
 				"--authorization-mode=RBAC",
 			},
 		},
 		{
-			authMode: []string{"AlwaysAllow"},
+			authMode: "AlwaysAllow",
 			expected: []string{
 				"--authorization-mode=RBAC,AlwaysAllow",
 			},
 		},
 		{
-			authMode: []string{"AlwaysDeny"},
+			authMode: "AlwaysDeny",
 			expected: []string{
 				"--authorization-mode=RBAC,AlwaysDeny",
 			},
 		},
 		{
-			authMode: []string{"ABAC"},
+			authMode: "ABAC",
 			expected: []string{
 				"--authorization-mode=RBAC,ABAC",
 				"--authorization-policy-file=/etc/kubernetes/abac_policy.json",
 			},
 		},
 		{
-			authMode: []string{"ABAC", "Webhook"},
+			authMode: "Webhook",
 			expected: []string{
-				"--authorization-mode=RBAC,ABAC,Webhook",
-				"--authorization-policy-file=/etc/kubernetes/abac_policy.json",
-				"--authorization-webhook-config-file=/etc/kubernetes/webhook_authz.conf",
-			},
-		},
-		{
-			authMode: []string{"ABAC", "RBAC", "Webhook"},
-			expected: []string{
-				"--authorization-mode=RBAC,ABAC,Webhook",
-				"--authorization-policy-file=/etc/kubernetes/abac_policy.json",
+				"--authorization-mode=RBAC,Webhook",
 				"--authorization-webhook-config-file=/etc/kubernetes/webhook_authz.conf",
 			},
 		},
@@ -871,10 +691,14 @@ func TestGetAuthzParameters(t *testing.T) {
 
 	for _, rt := range tests {
 		actual := getAuthzParameters(rt.authMode)
-		sort.Strings(actual)
-		sort.Strings(rt.expected)
-		if !reflect.DeepEqual(actual, rt.expected) {
-			t.Errorf("failed getAuthzParameters:\nexpected:\n%v\nsaw:\n%v", rt.expected, actual)
+		for i := range actual {
+			if actual[i] != rt.expected[i] {
+				t.Errorf(
+					"failed getAuthzParameters:\n\texpected: %s\n\t  actual: %s",
+					rt.expected[i],
+					actual[i],
+				)
+			}
 		}
 	}
 }
@@ -922,21 +746,6 @@ func TestGetExtraParameters(t *testing.T) {
 		sort.Strings(rt.expected)
 		if !reflect.DeepEqual(actual, rt.expected) {
 			t.Errorf("failed getExtraParameters:\nexpected:\n%v\nsaw:\n%v", rt.expected, actual)
-		}
-	}
-}
-
-func TestVersionCompare(t *testing.T) {
-	versions := []string{
-		"v1.7.0-alpha.1",
-		"v1.7.0-beta.0",
-		"v1.7.0-rc.0",
-		"v1.7.0",
-		"v1.7.1",
-	}
-	for _, v := range versions {
-		if !version.MustParseSemantic(v).AtLeast(v170) {
-			t.Errorf("err")
 		}
 	}
 }

@@ -1,3 +1,5 @@
+// +build integration,!no-etcd
+
 /*
 Copyright 2015 The Kubernetes Authors.
 
@@ -61,6 +63,7 @@ func TestQuota(t *testing.T) {
 		<-h.Initialized
 		h.M.GenericAPIServer.Handler.ServeHTTP(w, req)
 	}))
+	defer s.Close()
 
 	admissionCh := make(chan struct{})
 	clientset := clientset.NewForConfigOrDie(&restclient.Config{QPS: -1, Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: &api.Registry.GroupOrDie(v1.GroupName).GroupVersion}})
@@ -77,8 +80,7 @@ func TestQuota(t *testing.T) {
 
 	masterConfig := framework.NewIntegrationTestMasterConfig()
 	masterConfig.GenericConfig.AdmissionControl = admission
-	_, _, closeFn := framework.RunAMasterUsingServer(masterConfig, s, h)
-	defer closeFn()
+	framework.RunAMasterUsingServer(masterConfig, s, h)
 
 	ns := framework.CreateTestingNamespace("quotaed", s, t)
 	defer framework.DeleteTestingNamespace(ns, s, t)
@@ -237,6 +239,7 @@ func TestQuotaLimitedResourceDenial(t *testing.T) {
 		<-h.Initialized
 		h.M.GenericAPIServer.Handler.ServeHTTP(w, req)
 	}))
+	defer s.Close()
 
 	admissionCh := make(chan struct{})
 	clientset := clientset.NewForConfigOrDie(&restclient.Config{QPS: -1, Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: &api.Registry.GroupOrDie(v1.GroupName).GroupVersion}})
@@ -262,8 +265,7 @@ func TestQuotaLimitedResourceDenial(t *testing.T) {
 
 	masterConfig := framework.NewIntegrationTestMasterConfig()
 	masterConfig.GenericConfig.AdmissionControl = admission
-	_, _, closeFn := framework.RunAMasterUsingServer(masterConfig, s, h)
-	defer closeFn()
+	framework.RunAMasterUsingServer(masterConfig, s, h)
 
 	ns := framework.CreateTestingNamespace("quota", s, t)
 	defer framework.DeleteTestingNamespace(ns, s, t)

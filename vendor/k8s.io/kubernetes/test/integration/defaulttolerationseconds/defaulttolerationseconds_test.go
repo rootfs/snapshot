@@ -1,3 +1,5 @@
+// +build integration,!no-etcd
+
 /*
 Copyright 2017 The Kubernetes Authors.
 
@@ -22,7 +24,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/helper"
 	"k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/plugin/pkg/admission/defaulttolerationseconds"
@@ -34,8 +35,8 @@ func TestAdmission(t *testing.T) {
 	masterConfig.GenericConfig.EnableProfiling = true
 	masterConfig.GenericConfig.EnableMetrics = true
 	masterConfig.GenericConfig.AdmissionControl = defaulttolerationseconds.NewDefaultTolerationSeconds()
-	_, s, closeFn := framework.RunAMaster(masterConfig)
-	defer closeFn()
+	_, s := framework.RunAMaster(masterConfig)
+	defer s.Close()
 
 	client := clientset.NewForConfigOrDie(&restclient.Config{Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: &api.Registry.GroupOrDie(v1.GroupName).GroupVersion}})
 
@@ -84,13 +85,13 @@ func TestAdmission(t *testing.T) {
 			break
 		}
 		if tolerations[i].MatchToleration(&nodeNotReady) {
-			if helper.Semantic.DeepEqual(tolerations[i], nodeNotReady) {
+			if api.Semantic.DeepEqual(tolerations[i], nodeNotReady) {
 				found++
 				continue
 			}
 		}
 		if tolerations[i].MatchToleration(&nodeUnreachable) {
-			if helper.Semantic.DeepEqual(tolerations[i], nodeUnreachable) {
+			if api.Semantic.DeepEqual(tolerations[i], nodeUnreachable) {
 				found++
 				continue
 			}

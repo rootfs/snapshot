@@ -473,7 +473,7 @@
         "type": "string",
         "paramType": "query",
         "name": "propagationPolicy",
-        "description": "Whether and how garbage collection will be performed. Either this field or OrphanDependents may be set, but not both. The default policy is decided by the existing finalizer set in the metadata.finalizers and the resource-specific default policy.",
+        "description": "Whether and how garbage collection will be performed. Defaults to Default. Either this field or OrphanDependents may be set, but not both.",
         "required": false,
         "allowMultiple": false
        },
@@ -686,7 +686,7 @@
      },
      "metadata": {
       "$ref": "v1.ListMeta",
-      "description": "Standard list metadata. More info: https://github.com/kubernetes/community/blob/master/contributors/devel/api-conventions.md#types-kinds"
+      "description": "Standard list metadata. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds"
      },
      "items": {
       "type": "array",
@@ -725,7 +725,7 @@
      },
      "metadata": {
       "$ref": "v1.ObjectMeta",
-      "description": "Standard object's metadata. More info: https://github.com/kubernetes/community/blob/master/contributors/devel/api-conventions.md#metadata"
+      "description": "Standard object's metadata. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata"
      },
      "spec": {
       "$ref": "v1beta1.ClusterSpec",
@@ -891,7 +891,7 @@
     "properties": {
      "name": {
       "type": "string",
-      "description": "Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names"
+      "description": "Name of the referent. More info: http://kubernetes.io/docs/user-guide/identifiers#names"
      }
     }
    },
@@ -1008,10 +1008,6 @@
       "type": "string",
       "description": "The kind attribute of the resource associated with the status StatusReason. On some operations may differ from the requested resource Kind. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds"
      },
-     "uid": {
-      "type": "string",
-      "description": "UID of the resource. (when there is a single resource which can be described). More info: http://kubernetes.io/docs/user-guide/identifiers#uids"
-     },
      "causes": {
       "type": "array",
       "items": {
@@ -1091,7 +1087,7 @@
      },
      "propagationPolicy": {
       "$ref": "v1.DeletionPropagation",
-      "description": "Whether and how garbage collection will be performed. Either this field or OrphanDependents may be set, but not both. The default policy is decided by the existing finalizer set in the metadata.finalizers and the resource-specific default policy."
+      "description": "Whether and how garbage collection will be performed. Defaults to Default. Either this field or OrphanDependents may be set, but not both."
      }
     }
    },
@@ -1147,7 +1143,6 @@
     "description": "APIResource specifies the name of a resource and whether it is namespaced.",
     "required": [
      "name",
-     "singularName",
      "namespaced",
      "kind",
      "verbs"
@@ -1155,11 +1150,7 @@
     "properties": {
      "name": {
       "type": "string",
-      "description": "name is the plural name of the resource."
-     },
-     "singularName": {
-      "type": "string",
-      "description": "singularName is the singular name of the resource.  This allows clients to handle plural and singular opaquely. The singularName is more correct for reporting status on a single item and both singular and plural are allowed from the kubectl CLI interface."
+      "description": "name is the name of the resource."
      },
      "namespaced": {
       "type": "boolean",

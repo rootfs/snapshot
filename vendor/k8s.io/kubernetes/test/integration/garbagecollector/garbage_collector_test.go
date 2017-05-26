@@ -1,3 +1,5 @@
+// +build integration,!no-etcd
+
 /*
 Copyright 2015 The Kubernetes Authors.
 
@@ -123,10 +125,10 @@ func newOwnerRC(name, namespace string) *v1.ReplicationController {
 	}
 }
 
-func setup(t *testing.T) (*httptest.Server, framework.CloseFunc, *garbagecollector.GarbageCollector, clientset.Interface) {
+func setup(t *testing.T) (*httptest.Server, *garbagecollector.GarbageCollector, clientset.Interface) {
 	masterConfig := framework.NewIntegrationTestMasterConfig()
 	masterConfig.EnableCoreControllers = false
-	_, s, closeFn := framework.RunAMaster(masterConfig)
+	_, s := framework.RunAMaster(masterConfig)
 
 	clientSet, err := clientset.NewForConfig(&restclient.Config{Host: s.URL})
 	if err != nil {
@@ -150,15 +152,15 @@ func setup(t *testing.T) (*httptest.Server, framework.CloseFunc, *garbagecollect
 	if err != nil {
 		t.Fatalf("Failed to create garbage collector")
 	}
-	return s, closeFn, gc, clientSet
+	return s, gc, clientSet
 }
 
 // This test simulates the cascading deletion.
 func TestCascadingDeletion(t *testing.T) {
 	glog.V(6).Infof("TestCascadingDeletion starts")
 	defer glog.V(6).Infof("TestCascadingDeletion ends")
-	s, closeFn, gc, clientSet := setup(t)
-	defer closeFn()
+	s, gc, clientSet := setup(t)
+	defer s.Close()
 
 	ns := framework.CreateTestingNamespace("gc-cascading-deletion", s, t)
 	defer framework.DeleteTestingNamespace(ns, s, t)
@@ -245,8 +247,8 @@ func TestCascadingDeletion(t *testing.T) {
 // This test simulates the case where an object is created with an owner that
 // doesn't exist. It verifies the GC will delete such an object.
 func TestCreateWithNonExistentOwner(t *testing.T) {
-	s, closeFn, gc, clientSet := setup(t)
-	defer closeFn()
+	s, gc, clientSet := setup(t)
+	defer s.Close()
 
 	ns := framework.CreateTestingNamespace("gc-non-existing-owner", s, t)
 	defer framework.DeleteTestingNamespace(ns, s, t)
@@ -341,8 +343,8 @@ func verifyRemainingObjects(t *testing.T, clientSet clientset.Interface, namespa
 // e2e tests that put more stress.
 func TestStressingCascadingDeletion(t *testing.T) {
 	t.Logf("starts garbage collector stress test")
-	s, closeFn, gc, clientSet := setup(t)
-	defer closeFn()
+	s, gc, clientSet := setup(t)
+	defer s.Close()
 
 	ns := framework.CreateTestingNamespace("gc-stressing-cascading-deletion", s, t)
 	defer framework.DeleteTestingNamespace(ns, s, t)
@@ -402,8 +404,8 @@ func TestStressingCascadingDeletion(t *testing.T) {
 }
 
 func TestOrphaning(t *testing.T) {
-	s, closeFn, gc, clientSet := setup(t)
-	defer closeFn()
+	s, gc, clientSet := setup(t)
+	defer s.Close()
 
 	ns := framework.CreateTestingNamespace("gc-orphaning", s, t)
 	defer framework.DeleteTestingNamespace(ns, s, t)
@@ -473,8 +475,8 @@ func TestOrphaning(t *testing.T) {
 }
 
 func TestSolidOwnerDoesNotBlockWaitingOwner(t *testing.T) {
-	s, closeFn, gc, clientSet := setup(t)
-	defer closeFn()
+	s, gc, clientSet := setup(t)
+	defer s.Close()
 
 	ns := framework.CreateTestingNamespace("gc-foreground1", s, t)
 	defer framework.DeleteTestingNamespace(ns, s, t)
@@ -535,8 +537,8 @@ func TestSolidOwnerDoesNotBlockWaitingOwner(t *testing.T) {
 }
 
 func TestNonBlockingOwnerRefDoesNotBlock(t *testing.T) {
-	s, closeFn, gc, clientSet := setup(t)
-	defer closeFn()
+	s, gc, clientSet := setup(t)
+	defer s.Close()
 
 	ns := framework.CreateTestingNamespace("gc-foreground2", s, t)
 	defer framework.DeleteTestingNamespace(ns, s, t)
@@ -603,8 +605,8 @@ func TestNonBlockingOwnerRefDoesNotBlock(t *testing.T) {
 }
 
 func TestBlockingOwnerRefDoesBlock(t *testing.T) {
-	s, closeFn, gc, clientSet := setup(t)
-	defer closeFn()
+	s, gc, clientSet := setup(t)
+	defer s.Close()
 
 	ns := framework.CreateTestingNamespace("gc-foreground3", s, t)
 	defer framework.DeleteTestingNamespace(ns, s, t)

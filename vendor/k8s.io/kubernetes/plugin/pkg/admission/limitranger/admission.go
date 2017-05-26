@@ -44,7 +44,7 @@ const (
 )
 
 func init() {
-	kubeapiserveradmission.Plugins.Register("LimitRanger", func(config io.Reader) (admission.Interface, error) {
+	admission.RegisterPlugin("LimitRanger", func(config io.Reader) (admission.Interface, error) {
 		return NewLimitRanger(&DefaultLimitRangerActions{})
 	})
 }

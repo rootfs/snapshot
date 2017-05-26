@@ -33,7 +33,8 @@ var upgradeTests = []upgrades.Test{
 	&upgrades.DeploymentUpgradeTest{},
 	&upgrades.JobUpgradeTest{},
 	&upgrades.ConfigMapUpgradeTest{},
-	&upgrades.HPAUpgradeTest{},
+	// Disabling until can be debugged, causing upgrade jobs to timeout
+	// &upgrades.HPAUpgradeTest{},
 	&upgrades.PersistentVolumeUpgradeTest{},
 	&upgrades.DaemonSetUpgradeTest{},
 	&upgrades.IngressUpgradeTest{},
@@ -208,8 +209,8 @@ func (cma *chaosMonkeyAdapter) Test(sem *chaosmonkey.Semaphore) {
 		return
 	}
 
-	defer cma.test.Teardown(cma.framework)
 	cma.test.Setup(cma.framework)
+	defer cma.test.Teardown(cma.framework)
 	sem.Ready()
 	cma.test.Test(cma.framework, sem.StopCh, cma.upgradeType)
 }

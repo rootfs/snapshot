@@ -34,7 +34,6 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/v1"
-	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	policy "k8s.io/kubernetes/pkg/apis/policy/v1beta1"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 	policyclientset "k8s.io/kubernetes/pkg/client/clientset_generated/clientset/typed/policy/v1beta1"
@@ -267,23 +266,24 @@ func (dc *DisruptionController) Run(stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer dc.queue.ShutDown()
 
-	glog.Infof("Starting disruption controller")
-	defer glog.Infof("Shutting down disruption controller")
+	glog.V(0).Infof("Starting disruption controller")
 
-	if !controller.WaitForCacheSync("disruption", stopCh, dc.podListerSynced, dc.pdbListerSynced, dc.rcListerSynced, dc.rsListerSynced, dc.dListerSynced, dc.ssListerSynced) {
+	if !cache.WaitForCacheSync(stopCh, dc.podListerSynced, dc.pdbListerSynced, dc.rcListerSynced, dc.rsListerSynced, dc.dListerSynced, dc.ssListerSynced) {
+		utilruntime.HandleError(fmt.Errorf("timed out waiting for caches to sync"))
 		return
 	}
 
 	if dc.kubeClient != nil {
-		glog.Infof("Sending events to api server.")
+		glog.V(0).Infof("Sending events to api server.")
 		dc.broadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: v1core.New(dc.kubeClient.Core().RESTClient()).Events("")})
 	} else {
-		glog.Infof("No api server defined - no events will be sent to API server.")
+		glog.V(0).Infof("No api server defined - no events will be sent to API server.")
 	}
 	go wait.Until(dc.worker, time.Second, stopCh)
 	go wait.Until(dc.recheckWorker, time.Second, stopCh)
 
 	<-stopCh
+	glog.V(0).Infof("Shutting down disruption controller")
 }
 
 func (dc *DisruptionController) addDb(obj interface{}) {
@@ -492,7 +492,7 @@ func (dc *DisruptionController) trySync(pdb *policy.PodDisruptionBudget) error {
 
 	expectedCount, desiredHealthy, err := dc.getExpectedPodCount(pdb, pods)
 	if err != nil {
-		dc.recorder.Eventf(pdb, v1.EventTypeWarning, "CalculateExpectedPodCountFailed", "Failed to calculate the number of expected pods: %v", err)
+		dc.recorder.Eventf(pdb, v1.EventTypeNormal, "ExpectedPods", "Failed to calculate the number of expected pods: %v", err)
 		return err
 	}
 
@@ -590,7 +590,7 @@ Pod:
 		if disruptionTime, found := disruptedPods[pod.Name]; found && disruptionTime.Time.Add(DeletionTimeout).After(currentTime) {
 			continue
 		}
-		if podutil.IsPodReady(pod) {
+		if v1.IsPodReady(pod) {
 			currentHealthy++
 			continue Pod
 		}

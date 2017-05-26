@@ -48,7 +48,6 @@ func TestImageLocal(t *testing.T) {
 	cmd := NewCmdImage(f, buf, buf)
 	cmd.SetOutput(buf)
 	cmd.Flags().Set("output", "name")
-	cmd.Flags().Set("local", "true")
 	mapper, typer := f.Object()
 	tf.Printer = &printers.NamePrinter{Decoders: []runtime.Decoder{codec}, Typer: typer, Mapper: mapper}
 

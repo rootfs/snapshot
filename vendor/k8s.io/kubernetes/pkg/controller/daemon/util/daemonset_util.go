@@ -22,8 +22,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/v1"
-	v1helper "k8s.io/kubernetes/pkg/api/v1/helper"
-	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	extensions "k8s.io/kubernetes/pkg/apis/extensions/v1beta1"
 	labelsutil "k8s.io/kubernetes/pkg/util/labels"
 )
@@ -37,7 +35,7 @@ func GetPodTemplateWithGeneration(template v1.PodTemplateSpec, generation int64)
 	// Add infinite toleration for taint notReady:NoExecute here
 	// to survive taint-based eviction enforced by NodeController
 	// when node turns not ready.
-	v1helper.AddOrUpdateTolerationInPodSpec(&newTemplate.Spec, &v1.Toleration{
+	v1.AddOrUpdateTolerationInPodSpec(&newTemplate.Spec, &v1.Toleration{
 		Key:      metav1.TaintNodeNotReady,
 		Operator: v1.TolerationOpExists,
 		Effect:   v1.TaintEffectNoExecute,
@@ -47,7 +45,7 @@ func GetPodTemplateWithGeneration(template v1.PodTemplateSpec, generation int64)
 	// Add infinite toleration for taint unreachable:NoExecute here
 	// to survive taint-based eviction enforced by NodeController
 	// when node turns unreachable.
-	v1helper.AddOrUpdateTolerationInPodSpec(&newTemplate.Spec, &v1.Toleration{
+	v1.AddOrUpdateTolerationInPodSpec(&newTemplate.Spec, &v1.Toleration{
 		Key:      metav1.TaintNodeUnreachable,
 		Operator: v1.TolerationOpExists,
 		Effect:   v1.TaintEffectNoExecute,
@@ -74,7 +72,7 @@ func SplitByAvailablePods(minReadySeconds int32, pods []*v1.Pod) ([]*v1.Pod, []*
 	unavailablePods := []*v1.Pod{}
 	availablePods := []*v1.Pod{}
 	for _, pod := range pods {
-		if podutil.IsPodAvailable(pod, minReadySeconds, metav1.Now()) {
+		if v1.IsPodAvailable(pod, minReadySeconds, metav1.Now()) {
 			availablePods = append(availablePods, pod)
 		} else {
 			unavailablePods = append(unavailablePods, pod)

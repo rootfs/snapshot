@@ -28,8 +28,12 @@ import (
 	dockerstrslice "github.com/docker/engine-api/types/strslice"
 	"github.com/golang/glog"
 
-	runtimeapi "k8s.io/kubernetes/pkg/kubelet/apis/cri/v1alpha1"
-	"k8s.io/kubernetes/pkg/kubelet/dockershim/libdocker"
+	runtimeapi "k8s.io/kubernetes/pkg/kubelet/api/v1alpha1/runtime"
+	"k8s.io/kubernetes/pkg/kubelet/dockertools"
+)
+
+const (
+	dockerDefaultLoggingDriver = "json-file"
 )
 
 // ListContainers lists all containers matching the filter.
@@ -141,13 +145,14 @@ func (ds *dockerService) CreateContainer(podSandboxID string, config *runtimeapi
 
 	// Apply Linux-specific options if applicable.
 	if lc := config.GetLinux(); lc != nil {
+		// Apply resource options.
 		// TODO: Check if the units are correct.
 		// TODO: Can we assume the defaults are sane?
 		rOpts := lc.GetResources()
 		if rOpts != nil {
 			hc.Resources = dockercontainer.Resources{
 				Memory:     rOpts.MemoryLimitInBytes,
-				MemorySwap: DefaultMemorySwap(),
+				MemorySwap: dockertools.DefaultMemorySwap(),
 				CPUShares:  rOpts.CpuShares,
 				CPUQuota:   rOpts.CpuQuota,
 				CPUPeriod:  rOpts.CpuPeriod,
@@ -157,10 +162,7 @@ func (ds *dockerService) CreateContainer(podSandboxID string, config *runtimeapi
 		// Note: ShmSize is handled in kube_docker_client.go
 
 		// Apply security context.
-		if err = applyContainerSecurityContext(lc, podSandboxID, createConfig.Config, hc, securityOptSep); err != nil {
-			return "", fmt.Errorf("failed to apply container security context for container %q: %v", config.Metadata.Name, err)
-		}
-		modifyPIDNamespaceOverrides(ds.disableSharedPID, apiVersion, hc)
+		applyContainerSecurityContext(lc, podSandboxID, createConfig.Config, hc, securityOptSep)
 	}
 
 	// Apply cgroupsParent derived from the sandbox config.
@@ -184,12 +186,12 @@ func (ds *dockerService) CreateContainer(podSandboxID string, config *runtimeapi
 	}
 	hc.Resources.Devices = devices
 
-	// Apply seccomp options.
-	seccompSecurityOpts, err := getSeccompSecurityOpts(config.Metadata.Name, sandboxConfig, ds.seccompProfileRoot, securityOptSep)
+	// Apply appArmor and seccomp options.
+	securityOpts, err := getContainerSecurityOpts(config.Metadata.Name, sandboxConfig, ds.seccompProfileRoot, securityOptSep)
 	if err != nil {
-		return "", fmt.Errorf("failed to generate seccomp security options for container %q: %v", config.Metadata.Name, err)
+		return "", fmt.Errorf("failed to generate container security options for container %q: %v", config.Metadata.Name, err)
 	}
-	hc.SecurityOpt = append(hc.SecurityOpt, seccompSecurityOpts...)
+	hc.SecurityOpt = append(hc.SecurityOpt, securityOpts...)
 
 	createConfig.HostConfig = hc
 	createResp, err := ds.client.CreateContainer(createConfig)
@@ -232,16 +234,19 @@ func (ds *dockerService) createContainerLogSymlink(containerID string) error {
 				path, realPath, containerID, err)
 		}
 	} else {
-		supported, err := IsCRISupportedLogDriver(ds.client)
+		dockerLoggingDriver := ""
+		dockerInfo, err := ds.client.Info()
 		if err != nil {
-			glog.Warningf("Failed to check supported logging driver by CRI: %v", err)
-			return nil
+			glog.Errorf("Failed to execute Info() call to the Docker client: %v", err)
+		} else {
+			dockerLoggingDriver = dockerInfo.LoggingDriver
+			glog.V(10).Infof("Docker logging driver is %s", dockerLoggingDriver)
 		}
 
-		if supported {
-			glog.Warningf("Cannot create symbolic link because container log file doesn't exist!")
+		if dockerLoggingDriver == dockerDefaultLoggingDriver {
+			glog.Errorf("Cannot create symbolic link because container log file doesn't exist!")
 		} else {
-			glog.V(5).Infof("Unsupported logging driver by CRI")
+			glog.V(5).Infof("Unsupported logging driver: %s", dockerLoggingDriver)
 		}
 	}
 
@@ -287,6 +292,7 @@ func (ds *dockerService) StopContainer(containerID string, timeout int64) error 
 }
 
 // RemoveContainer removes the container.
+// TODO: If a container is still running, should we forcibly remove it?
 func (ds *dockerService) RemoveContainer(containerID string) error {
 	// Ideally, log lifecycle should be independent of container lifecycle.
 	// However, docker will remove container log after container is removed,
@@ -295,7 +301,7 @@ func (ds *dockerService) RemoveContainer(containerID string) error {
 	if err != nil {
 		return err
 	}
-	err = ds.client.RemoveContainer(containerID, dockertypes.ContainerRemoveOptions{RemoveVolumes: true, Force: true})
+	err = ds.client.RemoveContainer(containerID, dockertypes.ContainerRemoveOptions{RemoveVolumes: true})
 	if err != nil {
 		return fmt.Errorf("failed to remove container %q: %v", containerID, err)
 	}
@@ -306,15 +312,15 @@ func getContainerTimestamps(r *dockertypes.ContainerJSON) (time.Time, time.Time,
 	var createdAt, startedAt, finishedAt time.Time
 	var err error
 
-	createdAt, err = libdocker.ParseDockerTimestamp(r.Created)
+	createdAt, err = dockertools.ParseDockerTimestamp(r.Created)
 	if err != nil {
 		return createdAt, startedAt, finishedAt, err
 	}
-	startedAt, err = libdocker.ParseDockerTimestamp(r.State.StartedAt)
+	startedAt, err = dockertools.ParseDockerTimestamp(r.State.StartedAt)
 	if err != nil {
 		return createdAt, startedAt, finishedAt, err
 	}
-	finishedAt, err = libdocker.ParseDockerTimestamp(r.State.FinishedAt)
+	finishedAt, err = dockertools.ParseDockerTimestamp(r.State.FinishedAt)
 	if err != nil {
 		return createdAt, startedAt, finishedAt, err
 	}
@@ -328,7 +334,7 @@ func (ds *dockerService) ContainerStatus(containerID string) (*runtimeapi.Contai
 		return nil, err
 	}
 
-	// Parse the timestamps.
+	// Parse the timstamps.
 	createdAt, startedAt, finishedAt, err := getContainerTimestamps(r)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse timestamp for container %q: %v", containerID, err)
@@ -429,6 +435,5 @@ func (ds *dockerService) ContainerStatus(containerID string) (*runtimeapi.Contai
 		Message:     message,
 		Labels:      labels,
 		Annotations: annotations,
-		LogPath:     r.Config.Labels[containerLogPathLabelKey],
 	}, nil
 }

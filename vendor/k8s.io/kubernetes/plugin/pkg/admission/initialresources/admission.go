@@ -29,7 +29,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apiserver/pkg/admission"
 	"k8s.io/kubernetes/pkg/api"
-	kubeapiserveradmission "k8s.io/kubernetes/pkg/kubeapiserver/admission"
 )
 
 var (
@@ -47,7 +46,7 @@ const (
 
 // WARNING: this feature is experimental and will definitely change.
 func init() {
-	kubeapiserveradmission.Plugins.Register("InitialResources", func(config io.Reader) (admission.Interface, error) {
+	admission.RegisterPlugin("InitialResources", func(config io.Reader) (admission.Interface, error) {
 		// TODO: remove the usage of flags in favor of reading versioned configuration
 		s, err := newDataSource(*source)
 		if err != nil {

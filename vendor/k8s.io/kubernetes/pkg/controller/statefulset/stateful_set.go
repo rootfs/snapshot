@@ -141,10 +141,10 @@ func (ssc *StatefulSetController) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer ssc.queue.ShutDown()
 
-	glog.Infof("Starting stateful set controller")
-	defer glog.Infof("Shutting down statefulset controller")
+	glog.Infof("Starting statefulset controller")
 
-	if !controller.WaitForCacheSync("stateful set", stopCh, ssc.podListerSynced, ssc.setListerSynced, ssc.pvcListerSynced) {
+	if !cache.WaitForCacheSync(stopCh, ssc.podListerSynced, ssc.setListerSynced, ssc.pvcListerSynced) {
+		utilruntime.HandleError(fmt.Errorf("timed out waiting for caches to sync"))
 		return
 	}
 
@@ -153,6 +153,7 @@ func (ssc *StatefulSetController) Run(workers int, stopCh <-chan struct{}) {
 	}
 
 	<-stopCh
+	glog.Infof("Shutting down statefulset controller")
 }
 
 // addPod adds the statefulset for the pod to the sync queue
@@ -416,10 +417,11 @@ func (ssc *StatefulSetController) sync(key string) error {
 
 // syncStatefulSet syncs a tuple of (statefulset, []*v1.Pod).
 func (ssc *StatefulSetController) syncStatefulSet(set *apps.StatefulSet, pods []*v1.Pod) error {
-	glog.V(4).Infof("Syncing StatefulSet %v/%v with %d pods", set.Namespace, set.Name, len(pods))
+	glog.V(2).Infof("Syncing StatefulSet %v/%v with %d pods", set.Namespace, set.Name, len(pods))
 	if err := ssc.control.UpdateStatefulSet(set, pods); err != nil {
+		glog.V(2).Infof("Error syncing StatefulSet %s/%s with %d pods : %s", set.Namespace, set.Name, err)
 		return err
 	}
-	glog.V(4).Infof("Successfully synced StatefulSet %s/%s successful", set.Namespace, set.Name)
+	glog.V(2).Infof("Succesfully synced StatefulSet %s/%s successful", set.Namespace, set.Name)
 	return nil
 }

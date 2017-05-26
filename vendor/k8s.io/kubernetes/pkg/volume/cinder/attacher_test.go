@@ -33,9 +33,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-const VolumeStatusPending = "pending"
-const VolumeStatusDone = "done"
-
 func TestGetDeviceName_Volume(t *testing.T) {
 	plugin := newPlugin()
 	name := "my-cinder-volume"
@@ -91,7 +88,6 @@ type testcase struct {
 	// For fake GCE:
 	attach           attachCall
 	detach           detachCall
-	operationPending operationPendingCall
 	diskIsAttached   diskIsAttachedCall
 	disksAreAttached disksAreAttachedCall
 	diskPath         diskPathCall
@@ -108,8 +104,6 @@ type testcase struct {
 func TestAttachDetach(t *testing.T) {
 	diskName := "disk"
 	instanceID := "instance"
-	pending := VolumeStatusPending
-	done := VolumeStatusDone
 	nodeName := types.NodeName("nodeName")
 	readOnly := false
 	spec := createVolSpec(diskName, readOnly)
@@ -121,12 +115,11 @@ func TestAttachDetach(t *testing.T) {
 	tests := []testcase{
 		// Successful Attach call
 		{
-			name:             "Attach_Positive",
-			instanceID:       instanceID,
-			operationPending: operationPendingCall{diskName, false, done, nil},
-			diskIsAttached:   diskIsAttachedCall{diskName, instanceID, false, nil},
-			attach:           attachCall{diskName, instanceID, "", nil},
-			diskPath:         diskPathCall{diskName, instanceID, "/dev/sda", nil},
+			name:           "Attach_Positive",
+			instanceID:     instanceID,
+			diskIsAttached: diskIsAttachedCall{diskName, instanceID, false, nil},
+			attach:         attachCall{diskName, instanceID, "", nil},
+			diskPath:       diskPathCall{diskName, instanceID, "/dev/sda", nil},
 			test: func(testcase *testcase) (string, error) {
 				attacher := newAttacher(testcase)
 				return attacher.Attach(spec, nodeName)
@@ -136,11 +129,10 @@ func TestAttachDetach(t *testing.T) {
 
 		// Disk is already attached
 		{
-			name:             "Attach_Positive_AlreadyAttached",
-			instanceID:       instanceID,
-			operationPending: operationPendingCall{diskName, false, done, nil},
-			diskIsAttached:   diskIsAttachedCall{diskName, instanceID, true, nil},
-			diskPath:         diskPathCall{diskName, instanceID, "/dev/sda", nil},
+			name:           "Attach_Positive_AlreadyAttached",
+			instanceID:     instanceID,
+			diskIsAttached: diskIsAttachedCall{diskName, instanceID, true, nil},
+			diskPath:       diskPathCall{diskName, instanceID, "/dev/sda", nil},
 			test: func(testcase *testcase) (string, error) {
 				attacher := newAttacher(testcase)
 				return attacher.Attach(spec, nodeName)
@@ -148,27 +140,13 @@ func TestAttachDetach(t *testing.T) {
 			expectedResult: "/dev/sda",
 		},
 
-		// Disk is attaching
-		{
-			name:             "Attach_is_attaching",
-			instanceID:       instanceID,
-			operationPending: operationPendingCall{diskName, true, pending, nil},
-			diskIsAttached:   diskIsAttachedCall{diskName, instanceID, false, diskCheckError},
-			test: func(testcase *testcase) (string, error) {
-				attacher := newAttacher(testcase)
-				return attacher.Attach(spec, nodeName)
-			},
-			expectedResult: "",
-		},
-
 		// DiskIsAttached fails and Attach succeeds
 		{
-			name:             "Attach_Positive_CheckFails",
-			instanceID:       instanceID,
-			operationPending: operationPendingCall{diskName, false, done, nil},
-			diskIsAttached:   diskIsAttachedCall{diskName, instanceID, false, diskCheckError},
-			attach:           attachCall{diskName, instanceID, "", nil},
-			diskPath:         diskPathCall{diskName, instanceID, "/dev/sda", nil},
+			name:           "Attach_Positive_CheckFails",
+			instanceID:     instanceID,
+			diskIsAttached: diskIsAttachedCall{diskName, instanceID, false, diskCheckError},
+			attach:         attachCall{diskName, instanceID, "", nil},
+			diskPath:       diskPathCall{diskName, instanceID, "/dev/sda", nil},
 			test: func(testcase *testcase) (string, error) {
 				attacher := newAttacher(testcase)
 				return attacher.Attach(spec, nodeName)
@@ -178,11 +156,10 @@ func TestAttachDetach(t *testing.T) {
 
 		// Attach call fails
 		{
-			name:             "Attach_Negative",
-			instanceID:       instanceID,
-			operationPending: operationPendingCall{diskName, false, done, nil},
-			diskIsAttached:   diskIsAttachedCall{diskName, instanceID, false, diskCheckError},
-			attach:           attachCall{diskName, instanceID, "/dev/sda", attachError},
+			name:           "Attach_Negative",
+			instanceID:     instanceID,
+			diskIsAttached: diskIsAttachedCall{diskName, instanceID, false, diskCheckError},
+			attach:         attachCall{diskName, instanceID, "/dev/sda", attachError},
 			test: func(testcase *testcase) (string, error) {
 				attacher := newAttacher(testcase)
 				return attacher.Attach(spec, nodeName)
@@ -192,12 +169,11 @@ func TestAttachDetach(t *testing.T) {
 
 		// GetAttachmentDiskPath call fails
 		{
-			name:             "Attach_Negative_DiskPatchFails",
-			instanceID:       instanceID,
-			operationPending: operationPendingCall{diskName, false, done, nil},
-			diskIsAttached:   diskIsAttachedCall{diskName, instanceID, false, diskCheckError},
-			attach:           attachCall{diskName, instanceID, "", nil},
-			diskPath:         diskPathCall{diskName, instanceID, "", diskPathError},
+			name:           "Attach_Negative_DiskPatchFails",
+			instanceID:     instanceID,
+			diskIsAttached: diskIsAttachedCall{diskName, instanceID, false, diskCheckError},
+			attach:         attachCall{diskName, instanceID, "", nil},
+			diskPath:       diskPathCall{diskName, instanceID, "", diskPathError},
 			test: func(testcase *testcase) (string, error) {
 				attacher := newAttacher(testcase)
 				return attacher.Attach(spec, nodeName)
@@ -408,13 +384,6 @@ type detachCall struct {
 	ret        error
 }
 
-type operationPendingCall struct {
-	diskName     string
-	pending      bool
-	volumeStatus string
-	ret          error
-}
-
 type diskIsAttachedCall struct {
 	diskName, instanceID string
 	isAttached           bool
@@ -484,19 +453,6 @@ func (testcase *testcase) DetachDisk(instanceID string, partialDiskId string) er
 	return expected.ret
 }
 
-func (testcase *testcase) OperationPending(diskName string) (bool, string, error) {
-	expected := &testcase.operationPending
-
-	if expected.volumeStatus == VolumeStatusPending {
-		glog.V(4).Infof("OperationPending call: %s, returning %v, %v, %v", diskName, expected.pending, expected.volumeStatus, expected.ret)
-		return true, expected.volumeStatus, expected.ret
-	}
-
-	glog.V(4).Infof("OperationPending call: %s, returning %v, %v, %v", diskName, expected.pending, expected.volumeStatus, expected.ret)
-
-	return false, expected.volumeStatus, expected.ret
-}
-
 func (testcase *testcase) DiskIsAttached(diskName, instanceID string) (bool, error) {
 	expected := &testcase.diskIsAttached
 
@@ -550,8 +506,8 @@ func (testcase *testcase) ShouldTrustDevicePath() bool {
 	return true
 }
 
-func (testcase *testcase) CreateVolume(name string, size int, vtype, availability string, tags *map[string]string) (volumeId string, volumeAZ string, err error) {
-	return "", "", errors.New("Not implemented")
+func (testcase *testcase) CreateVolume(name string, size int, vtype, availability string, tags *map[string]string) (volumeName string, err error) {
+	return "", errors.New("Not implemented")
 }
 
 func (testcase *testcase) GetDevicePath(diskId string) string {
@@ -609,10 +565,6 @@ func (instances *instances) NodeAddresses(name types.NodeName) ([]v1.NodeAddress
 	return []v1.NodeAddress{}, errors.New("Not implemented")
 }
 
-func (instances *instances) NodeAddressesByProviderID(providerID string) ([]v1.NodeAddress, error) {
-	return []v1.NodeAddress{}, errors.New("Not implemented")
-}
-
 func (instances *instances) ExternalID(name types.NodeName) (string, error) {
 	return "", errors.New("Not implemented")
 }
@@ -622,10 +574,6 @@ func (instances *instances) InstanceID(name types.NodeName) (string, error) {
 }
 
 func (instances *instances) InstanceType(name types.NodeName) (string, error) {
-	return "", errors.New("Not implemented")
-}
-
-func (instances *instances) InstanceTypeByProviderID(providerID string) (string, error) {
 	return "", errors.New("Not implemented")
 }
 

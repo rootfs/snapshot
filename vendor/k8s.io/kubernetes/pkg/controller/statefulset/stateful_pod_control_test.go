@@ -29,6 +29,7 @@ import (
 	"k8s.io/client-go/tools/record"
 
 	"k8s.io/kubernetes/pkg/api/v1"
+	podapi "k8s.io/kubernetes/pkg/api/v1/pod"
 	apps "k8s.io/kubernetes/pkg/apis/apps/v1beta1"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset/fake"
 	appslisters "k8s.io/kubernetes/pkg/client/listers/apps/v1beta1"
@@ -400,7 +401,7 @@ func TestStatefulPodControlUpdatePodConflictFailure(t *testing.T) {
 	fakeClient := &fake.Clientset{}
 	indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
 	updatedPod := newStatefulSetPod(set, 0)
-	updatedPod.Spec.Hostname = "wrong"
+	updatedPod.Annotations[podapi.PodHostnameAnnotation] = "wrong"
 	indexer.Add(updatedPod)
 	podLister := corelisters.NewPodLister(indexer)
 	control := NewRealStatefulPodControl(fakeClient, nil, podLister, nil, recorder)

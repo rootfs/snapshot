@@ -1,7 +1,8 @@
 package: .
 import:
 - package: k8s.io/kubernetes
-  version: ~1.7.0-alpha.4
+  version: v1.6.4
 - package: k8s.io/client-go
-  version: ~3.0.0-beta.0
+  version: 0ec10d4 
 - package: k8s.io/apimachinery
+  version: 28d5d92

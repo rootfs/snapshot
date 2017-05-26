@@ -49,13 +49,12 @@ func (APIGroupList) SwaggerDoc() map[string]string {
 }
 
 var map_APIResource = map[string]string{
-	"":             "APIResource specifies the name of a resource and whether it is namespaced.",
-	"name":         "name is the plural name of the resource.",
-	"singularName": "singularName is the singular name of the resource.  This allows clients to handle plural and singular opaquely. The singularName is more correct for reporting status on a single item and both singular and plural are allowed from the kubectl CLI interface.",
-	"namespaced":   "namespaced indicates if a resource is namespaced or not.",
-	"kind":         "kind is the kind for the resource (e.g. 'Foo' is the kind for a resource 'foo')",
-	"verbs":        "verbs is a list of supported kube verbs (this includes get, list, watch, create, update, patch, delete, deletecollection, and proxy)",
-	"shortNames":   "shortNames is a list of suggested short names of the resource.",
+	"":           "APIResource specifies the name of a resource and whether it is namespaced.",
+	"name":       "name is the name of the resource.",
+	"namespaced": "namespaced indicates if a resource is namespaced or not.",
+	"kind":       "kind is the kind for the resource (e.g. 'Foo' is the kind for a resource 'foo')",
+	"verbs":      "verbs is a list of supported kube verbs (this includes get, list, watch, create, update, patch, delete, deletecollection, and proxy)",
+	"shortNames": "shortNames is a list of suggested short names of the resource.",
 }
 
 func (APIResource) SwaggerDoc() map[string]string {
@@ -270,7 +269,6 @@ var map_StatusDetails = map[string]string{
 	"name":              "The name attribute of the resource associated with the status StatusReason (when there is a single name which can be described).",
 	"group":             "The group attribute of the resource associated with the status StatusReason.",
 	"kind":              "The kind attribute of the resource associated with the status StatusReason. On some operations may differ from the requested resource Kind. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds",
-	"uid":               "UID of the resource. (when there is a single resource which can be described). More info: http://kubernetes.io/docs/user-guide/identifiers#uids",
 	"causes":            "The Causes array includes more details associated with the StatusReason failure. Not all StatusReasons may provide detailed causes.",
 	"retryAfterSeconds": "If specified, the time in seconds before the operation should be retried.",
 }
