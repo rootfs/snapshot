@@ -17,57 +17,125 @@ limitations under the License.
 package controller
 
 import (
+	"time"
+
 	"github.com/golang/glog"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
+	//v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	apiv1 "k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/cache"
+	kcache "k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/record"
+	//"k8s.io/kubernetes/pkg/api"
 
 	tprv1 "github.com/rootfs/snapshot/apis/tpr/v1"
 
+	"github.com/rootfs/snapshot/controller/cache"
+	"github.com/rootfs/snapshot/controller/reconciler"
+	"github.com/rootfs/snapshot/controller/snapshotter"
 	"github.com/rootfs/snapshot/volume/hostpath"
 )
 
-type SnapshotController struct {
-	SnapshotClient *rest.RESTClient
-	SnapshotScheme *runtime.Scheme
+const (
+	reconcilerLoopPeriod time.Duration = 100 * time.Millisecond
+)
+
+type SnapshotController interface {
+	Run(stopCh <-chan struct{})
+}
+
+type snapshotController struct {
+	snapshotClient *rest.RESTClient
+	snapshotScheme *runtime.Scheme
+
+	// desiredStateOfWorld is a data structure containing the desired state of
+	// the world according to this controller: i.e. what VolumeSnapshots need
+	// the VolumeSnapshotData to be created, what VolumeSnapshotData and their
+	// representing "on-disk" snapshots to be removed.
+	desiredStateOfWorld cache.DesiredStateOfWorld
+
+	// actualStateOfWorld is a data structure containing the actual state of
+	// the world according to this controller: i.e. which VolumeSnapshots and
+	// VolumeSnapshot data exist and to which PV/PVCs are associated.
+	actualStateOfWorld cache.ActualStateOfWorld
+
+	// reconciler is used to run an asynchronous periodic loop to create and delete
+	// VolumeSnapshotData for the user created and deleted VolumeSnapshot objects and
+	// trigger the actual snapshot creation in the volume backends.
+	reconciler reconciler.Reconciler
+
+	// Volume snapshotter is responsible for talking to the backend and creating, removing
+	// or promoting the snapshots.
+	snapshotter snapshotter.VolumeSnapshotter
+	// recorder is used to record events in the API server
+	recorder record.EventRecorder
+}
+
+func NewSnapshotController(client *rest.RESTClient,
+	scheme *runtime.Scheme,
+	syncDuration time.Duration) SnapshotController {
+	sc := &snapshotController{
+		snapshotClient: client,
+		snapshotScheme: scheme,
+	}
+
+	//eventBroadcaster := record.NewBroadcaster()
+	//eventBroadcaster.StartLogging(glog.Infof)
+	//eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: v1core.New(client).Events("")})
+	//	sc.recorder = eventBroadcaster.NewRecorder(api.Scheme, apiv1.EventSource{Component: "volume snapshotting"})
+
+	sc.desiredStateOfWorld = cache.NewDesiredStateOfWorld()
+	sc.actualStateOfWorld = cache.NewActualStateOfWorld()
+
+	sc.snapshotter = snapshotter.NewVolumeSnapshotter(sc.desiredStateOfWorld)
+
+	sc.reconciler = reconciler.NewReconciler(
+		reconcilerLoopPeriod,
+		syncDuration,
+		false, /* disableReconciliationSync */
+		sc.desiredStateOfWorld,
+		sc.actualStateOfWorld,
+		sc.snapshotter)
+
+	return sc
 }
 
 // Run starts an Snapshot resource controller
-func (c *SnapshotController) Run(ctx <-chan struct{}) error {
+func (c *snapshotController) Run(ctx <-chan struct{}) {
 	glog.Infof("Watch snapshot objects\n")
 
 	// Watch snapshot objects
-	source := cache.NewListWatchFromClient(
-		c.SnapshotClient,
+	source := kcache.NewListWatchFromClient(
+		c.snapshotClient,
 		tprv1.VolumeSnapshotResourcePlural,
 		apiv1.NamespaceAll,
 		fields.Everything())
 
-	_, controller := cache.NewInformer(
+	_, controller := kcache.NewInformer(
 		source,
 
 		// The object type.
 		&tprv1.VolumeSnapshot{},
 
 		// resyncPeriod
-		// Every resyncPeriod, all resources in the cache will retrigger events.
+		// Every resyncPeriod, all resources in the kcache will retrigger events.
 		// Set to 0 to disable the resync.
 		0,
 
 		// Your custom resource event handlers.
-		cache.ResourceEventHandlerFuncs{
+		kcache.ResourceEventHandlerFuncs{
 			AddFunc:    c.onAdd,
 			UpdateFunc: c.onUpdate,
 			DeleteFunc: c.onDelete,
 		})
-
+	go c.reconciler.Run(ctx)
 	go controller.Run(ctx)
-	return nil
 }
 
-func (c *SnapshotController) onAdd(obj interface{}) {
+func (c *snapshotController) onAdd(obj interface{}) {
+	// Add snapshot: Add snapshot to DesiredStateOfWorld, then ask snapshotter to create
+	// the actual snapshot
 	snapshot := obj.(*tprv1.VolumeSnapshot)
 	glog.Infof("[CONTROLLER] OnAdd %s", snapshot.ObjectMeta.SelfLink)
 
@@ -83,14 +151,16 @@ func (c *SnapshotController) onAdd(obj interface{}) {
 
 }
 
-func (c *SnapshotController) onUpdate(oldObj, newObj interface{}) {
+func (c *snapshotController) onUpdate(oldObj, newObj interface{}) {
 	oldSnapshot := oldObj.(*tprv1.VolumeSnapshot)
 	newSnapshot := newObj.(*tprv1.VolumeSnapshot)
 	glog.Infof("[CONTROLLER] OnUpdate oldObj: %s\n", oldSnapshot.ObjectMeta.SelfLink)
 	glog.Infof("[CONTROLLER] OnUpdate newObj: %s\n", newSnapshot.ObjectMeta.SelfLink)
 }
 
-func (c *SnapshotController) onDelete(obj interface{}) {
+func (c *snapshotController) onDelete(obj interface{}) {
+	// Delete snapshot: Remove the snapshot from DesiredStateOfWorld, then ask snapshotter to delete
+	// the snapshot itself
 	snapshot := obj.(*tprv1.VolumeSnapshot)
 	glog.Infof("[CONTROLLER] OnDelete %s\n", snapshot.ObjectMeta.SelfLink)
 }
