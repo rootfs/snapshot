@@ -70,7 +70,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
 	// start a controller on instances of our TPR
 	controller := controller.NewSnapshotController(snapshotClient, snapshotScheme, defaultSyncDuration)
 	glog.Infof("starting snapshot controller")

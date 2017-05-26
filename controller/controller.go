@@ -34,7 +34,7 @@ import (
 	"github.com/rootfs/snapshot/controller/cache"
 	"github.com/rootfs/snapshot/controller/reconciler"
 	"github.com/rootfs/snapshot/controller/snapshotter"
-	"github.com/rootfs/snapshot/volume/hostpath"
+	//	"github.com/rootfs/snapshot/volume/hostpath"
 )
 
 const (
@@ -51,7 +51,7 @@ type snapshotController struct {
 
 	// desiredStateOfWorld is a data structure containing the desired state of
 	// the world according to this controller: i.e. what VolumeSnapshots need
-	// the VolumeSnapshotData to be created, what VolumeSnapshotData and their
+	// the Volumesnapshotdata to be created, what Volumesnapshotdata and their
 	// representing "on-disk" snapshots to be removed.
 	desiredStateOfWorld cache.DesiredStateOfWorld
 
@@ -61,7 +61,7 @@ type snapshotController struct {
 	actualStateOfWorld cache.ActualStateOfWorld
 
 	// reconciler is used to run an asynchronous periodic loop to create and delete
-	// VolumeSnapshotData for the user created and deleted VolumeSnapshot objects and
+	// Volumesnapshotdata for the user created and deleted VolumeSnapshot objects and
 	// trigger the actual snapshot creation in the volume backends.
 	reconciler reconciler.Reconciler
 
@@ -116,7 +116,7 @@ func (c *snapshotController) Run(ctx <-chan struct{}) {
 		source,
 
 		// The object type.
-		&tprv1.VolumeSnapshot{},
+		&tprv1.Volumesnapshotdata{},
 
 		// resyncPeriod
 		// Every resyncPeriod, all resources in the kcache will retrigger events.
@@ -136,10 +136,9 @@ func (c *snapshotController) Run(ctx <-chan struct{}) {
 func (c *snapshotController) onAdd(obj interface{}) {
 	// Add snapshot: Add snapshot to DesiredStateOfWorld, then ask snapshotter to create
 	// the actual snapshot
-	snapshot := obj.(*tprv1.VolumeSnapshot)
-	glog.Infof("[CONTROLLER] OnAdd %s", snapshot.ObjectMeta.SelfLink)
+	snapshot := obj.(*tprv1.Volumesnapshotdata)
+	glog.Infof("[CONTROLLER] OnAdd %s, Spec %#v", snapshot.ObjectMeta.SelfLink, snapshot.Spec)
 
-	//HACK this should move to snapshot data
 	if snapshot.Spec.HostPath != nil {
 		snap, err := hostpath.Snapshot(snapshot.Spec.HostPath.Path)
 		if err != nil {
@@ -152,8 +151,8 @@ func (c *snapshotController) onAdd(obj interface{}) {
 }
 
 func (c *snapshotController) onUpdate(oldObj, newObj interface{}) {
-	oldSnapshot := oldObj.(*tprv1.VolumeSnapshot)
-	newSnapshot := newObj.(*tprv1.VolumeSnapshot)
+	oldSnapshot := oldObj.(*tprv1.Volumesnapshotdata)
+	newSnapshot := newObj.(*tprv1.Volumesnapshotdata)
 	glog.Infof("[CONTROLLER] OnUpdate oldObj: %s\n", oldSnapshot.ObjectMeta.SelfLink)
 	glog.Infof("[CONTROLLER] OnUpdate newObj: %s\n", newSnapshot.ObjectMeta.SelfLink)
 }
@@ -161,6 +160,6 @@ func (c *snapshotController) onUpdate(oldObj, newObj interface{}) {
 func (c *snapshotController) onDelete(obj interface{}) {
 	// Delete snapshot: Remove the snapshot from DesiredStateOfWorld, then ask snapshotter to delete
 	// the snapshot itself
-	snapshot := obj.(*tprv1.VolumeSnapshot)
+	snapshot := obj.(*tprv1.Volumesnapshotdata)
 	glog.Infof("[CONTROLLER] OnDelete %s\n", snapshot.ObjectMeta.SelfLink)
 }

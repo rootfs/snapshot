@@ -22,7 +22,8 @@ import (
 )
 
 const (
-	VolumeSnapshotResourcePlural = "volumesnapshots"
+	VolumeSnapshotResourcePlural = "volumesnapshotdatas"
+	VolumeSnapshotResource       = "volumesnapshotdata"
 )
 
 type VolumeSnapshotStatus struct {
@@ -92,9 +93,6 @@ type VolumeSnapshotSpec struct {
 
 	// SnapshotDataName binds the VolumeSnapshot object with the VolumeSnapshotData
 	SnapshotDataName string `json:"snapshotDataName" protobuf:"bytes,2,opt,name=snapshotDataName"`
-
-	//HACK add source here for hacking
-	VolumeSnapshotDataSource `json:",inline"`
 }
 
 // The actual state of the volume snapshot
@@ -107,7 +105,7 @@ type VolumeSnapshotDataStatus struct {
 	Conditions []VolumeSnapshotDataCondition `json:"conditions" protobuf:"bytes,2,rep,name=conditions"`
 }
 
-type VolumeSnapshotDataList struct {
+type VolumesnapshotdataList struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
 	metav1.ListMeta `json:"metadata"`
@@ -143,7 +141,7 @@ type VolumeSnapshotDataCondition struct {
 // +nonNamespaced=true
 
 // VolumeSnapshotData represents the actual "on-disk" snapshot object
-type VolumeSnapshotData struct {
+type Volumesnapshotdata struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
 	metav1.ObjectMeta `json:"metadata" protobuf:"bytes,1,opt,name=metadata"`

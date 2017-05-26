@@ -17,11 +17,18 @@ limitations under the License.
 package client
 
 import (
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
-	"k8s.io/client-go/rest"
+	"time"
 
 	tprv1 "github.com/rootfs/snapshot/apis/tpr/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
+	apiv1 "k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
+	"k8s.io/client-go/rest"
 )
 
 func NewClient(cfg *rest.Config) (*rest.RESTClient, *runtime.Scheme, error) {
@@ -42,4 +49,31 @@ func NewClient(cfg *rest.Config) (*rest.RESTClient, *runtime.Scheme, error) {
 	}
 
 	return client, scheme, nil
+}
+
+func CreateTPR(clientset kubernetes.Interface) error {
+	tpr := &v1beta1.ThirdPartyResource{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: tprv1.VolumeSnapshotResource + "." + tprv1.GroupName,
+		},
+		Versions: []v1beta1.APIVersion{
+			{Name: tprv1.SchemeGroupVersion.Version},
+		},
+		Description: "Volume Snapshot Data ThirdPartyResource",
+	}
+	_, err := clientset.ExtensionsV1beta1().ThirdPartyResources().Create(tpr)
+	return err
+}
+
+func WaitForSnapshotResource(snapshotClient *rest.RESTClient) error {
+	return wait.Poll(100*time.Millisecond, 60*time.Second, func() (bool, error) {
+		_, err := snapshotClient.Get().Namespace(apiv1.NamespaceDefault).Resource(tprv1.VolumeSnapshotResourcePlural).DoRaw()
+		if err == nil {
+			return true, nil
+		}
+		if apierrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	})
 }

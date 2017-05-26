@@ -105,7 +105,7 @@ func (rc *reconciler) syncStates() {
 }
 
 func (rc *reconciler) reconcile() {
-	glog.Infof("Volume snapshots are being reconciled")
+	//glog.Infof("Volume snapshots are being reconciled")
 	// Ensure the snapshots that should be deleted are deleted
 	for _, snapshot := range rc.actualStateOfWorld.GetSnapshots() {
 		if !rc.desiredStateOfWorld.SnapshotExists(snapshot) {
