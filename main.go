@@ -20,6 +20,7 @@ import (
 	"flag"
 	"os"
 	"os/signal"
+	"time"
 
 	"github.com/golang/glog"
 
@@ -31,6 +32,10 @@ import (
 	"github.com/rootfs/snapshot/controller"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+)
+
+const (
+	defaultSyncDuration time.Duration = 60 * time.Second
 )
 
 func main() {
@@ -67,10 +72,7 @@ func main() {
 	}
 
 	// start a controller on instances of our TPR
-	controller := controller.SnapshotController{
-		SnapshotClient: snapshotClient,
-		SnapshotScheme: snapshotScheme,
-	}
+	controller := controller.NewSnapshotController(snapshotClient, snapshotScheme, defaultSyncDuration)
 	glog.Infof("starting snapshot controller")
 	stopCh := make(chan struct{})
 	go controller.Run(stopCh)
