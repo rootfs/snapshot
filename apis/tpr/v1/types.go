@@ -92,6 +92,9 @@ type VolumeSnapshotSpec struct {
 
 	// SnapshotDataName binds the VolumeSnapshot object with the VolumeSnapshotData
 	SnapshotDataName string `json:"snapshotDataName" protobuf:"bytes,2,opt,name=snapshotDataName"`
+
+	//HACK add source here for hacking
+	VolumeSnapshotDataSource `json:",inline"`
 }
 
 // The actual state of the volume snapshot

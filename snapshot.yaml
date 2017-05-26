@@ -3,5 +3,5 @@ kind: Volumesnapshot
 metadata:
   name: demo
 spec:
-    pvc: foo
-    data: bar
+  hostPath:
+    path: /test

@@ -25,6 +25,8 @@ import (
 	"k8s.io/client-go/tools/cache"
 
 	tprv1 "github.com/rootfs/snapshot/apis/tpr/v1"
+
+	"github.com/rootfs/snapshot/volume/hostpath"
 )
 
 type SnapshotController struct {
@@ -67,39 +69,18 @@ func (c *SnapshotController) Run(ctx <-chan struct{}) error {
 
 func (c *SnapshotController) onAdd(obj interface{}) {
 	snapshot := obj.(*tprv1.VolumeSnapshot)
-	glog.Infof("[CONTROLLER] OnAdd %s\n", snapshot.ObjectMeta.SelfLink)
+	glog.Infof("[CONTROLLER] OnAdd %s", snapshot.ObjectMeta.SelfLink)
 
-	// NEVER modify objects from the store. It's a read-only, local cache.
-	// You can use exampleScheme.Copy() to make a deep copy of original object and modify this copy
-	// Or create a copy manually for better performance
-	copyObj, err := c.SnapshotScheme.Copy(snapshot)
-	if err != nil {
-		glog.Infof("ERROR creating a deep copy of snapshot object: %v\n", err)
-		return
+	//HACK this should move to snapshot data
+	if snapshot.Spec.HostPath != nil {
+		snap, err := hostpath.Snapshot(snapshot.Spec.HostPath.Path)
+		if err != nil {
+			glog.Warningf("failed to snapshot %s, err: %v", snapshot.Spec.HostPath.Path, err)
+		} else {
+			glog.Infof("snapshot %s to snap %s", snapshot.Spec.HostPath.Path, snap)
+		}
 	}
 
-	snapshotCopy := copyObj.(*tprv1.VolumeSnapshot)
-	snapshotCopy.Status = tprv1.VolumeSnapshotStatus{
-		Conditions: []tprv1.VolumeSnapshotCondition{
-			tprv1.VolumeSnapshotCondition{
-				Type: tprv1.VolumeSnapshotConditionReady,
-			},
-		},
-	}
-
-	err = c.SnapshotClient.Put().
-		Name(snapshot.ObjectMeta.Name).
-		Namespace(snapshot.ObjectMeta.Namespace).
-		Resource(tprv1.VolumeSnapshotResourcePlural).
-		Body(snapshotCopy).
-		Do().
-		Error()
-
-	if err != nil {
-		glog.Infof("ERROR updating status: %v\n", err)
-	} else {
-		glog.Infof("UPDATED status: %#v\n", snapshotCopy)
-	}
 }
 
 func (c *SnapshotController) onUpdate(oldObj, newObj interface{}) {
