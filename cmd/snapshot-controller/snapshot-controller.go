@@ -25,13 +25,12 @@ import (
 	"github.com/golang/glog"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-
 	"k8s.io/client-go/kubernetes"
-
-	"github.com/rootfs/snapshot/client"
-	"github.com/rootfs/snapshot/controller"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+
+	"github.com/rootfs/snapshot/pkg/client"
+	"github.com/rootfs/snapshot/pkg/controller"
 )
 
 const (

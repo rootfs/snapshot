@@ -21,8 +21,8 @@ import (
 
 	"k8s.io/kubernetes/pkg/util/goroutinemap"
 
-	tprv1 "github.com/rootfs/snapshot/apis/tpr/v1"
-	"github.com/rootfs/snapshot/controller/cache"
+	tprv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
+	"github.com/rootfs/snapshot/pkg/controller/cache"
 )
 
 // VolumeSnapshotter does the "heavy lifting": it spawns gouroutines that talk to the

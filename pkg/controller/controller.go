@@ -29,12 +29,11 @@ import (
 	"k8s.io/client-go/tools/record"
 	//"k8s.io/kubernetes/pkg/api"
 
-	tprv1 "github.com/rootfs/snapshot/apis/tpr/v1"
-
-	"github.com/rootfs/snapshot/controller/cache"
-	"github.com/rootfs/snapshot/controller/reconciler"
-	"github.com/rootfs/snapshot/controller/snapshotter"
-	"github.com/rootfs/snapshot/volume/hostpath"
+	tprv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
+	"github.com/rootfs/snapshot/pkg/controller/cache"
+	"github.com/rootfs/snapshot/pkg/controller/reconciler"
+	"github.com/rootfs/snapshot/pkg/controller/snapshotter"
+	"github.com/rootfs/snapshot/pkg/volume/hostpath"
 )
 
 const (

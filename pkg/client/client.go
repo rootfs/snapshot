@@ -19,7 +19,7 @@ package client
 import (
 	"time"
 
-	tprv1 "github.com/rootfs/snapshot/apis/tpr/v1"
+	tprv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
