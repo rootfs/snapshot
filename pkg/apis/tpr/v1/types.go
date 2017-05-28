@@ -26,7 +26,7 @@ import (
 
 const (
 	VolumeSnapshotDataResourcePlural = "volumesnapshotdatas"
-	VolumeSnapshotDataResource       = "volumesnapshotdata"
+	VolumeSnapshotDataResource       = "volume-snapshot-data"
 )
 
 type VolumeSnapshotStatus struct {
@@ -70,7 +70,7 @@ type VolumeSnapshotCondition struct {
 // the VolumeSnapshotSpec
 type VolumeSnapshot struct {
 	metav1.TypeMeta `json:",inline"`
-	Metadata        metav1.ObjectMeta `json:"metadata" protobuf:"bytes,1,opt,name=metadata"`
+	Metadata        metav1.ObjectMeta `json:"metadata"`
 
 	// Spec represents the desired state of the snapshot
 	// +optional
@@ -106,7 +106,7 @@ type VolumeSnapshotDataStatus struct {
 	Conditions []VolumeSnapshotDataCondition `json:"conditions" protobuf:"bytes,2,rep,name=conditions"`
 }
 
-type VolumesnapshotdataList struct {
+type VolumeSnapshotDataList struct {
 	metav1.TypeMeta `json:",inline"`
 	Metadata        metav1.ListMeta  `json:"metadata"`
 	Items           []VolumeSnapshot `json:"items"`
@@ -141,10 +141,10 @@ type VolumeSnapshotDataCondition struct {
 // +nonNamespaced=true
 
 // VolumeSnapshotData represents the actual "on-disk" snapshot object
-type Volumesnapshotdata struct {
+type VolumeSnapshotData struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
-	Metadata metav1.ObjectMeta `json:"metadata" protobuf:"bytes,1,opt,name=metadata"`
+	Metadata metav1.ObjectMeta `json:"metadata"`
 
 	// Spec represents the desired state of the snapshot
 	// +optional
@@ -183,22 +183,22 @@ type VolumeSnapshotDataSource struct {
 }
 
 // Required to satisfy Object interface
-func (v *Volumesnapshotdata) GetObjectKind() schema.ObjectKind {
+func (v *VolumeSnapshotData) GetObjectKind() schema.ObjectKind {
 	return &v.TypeMeta
 }
 
 // Required to satisfy ObjectMetaAccessor interface
-func (v *Volumesnapshotdata) GetObjectMeta() metav1.Object {
+func (v *VolumeSnapshotData) GetObjectMeta() metav1.Object {
 	return &v.Metadata
 }
 
 // Required to satisfy Object interface
-func (vd *VolumesnapshotdataList) GetObjectKind() schema.ObjectKind {
+func (vd *VolumeSnapshotDataList) GetObjectKind() schema.ObjectKind {
 	return &vd.TypeMeta
 }
 
 // Required to satisfy ListMetaAccessor interface
-func (vd *VolumesnapshotdataList) GetListMeta() metav1.List {
+func (vd *VolumeSnapshotDataList) GetListMeta() metav1.List {
 	return &vd.Metadata
 }
 
@@ -222,8 +222,8 @@ func (vd *VolumesnapshotList) GetListMeta() metav1.List {
 	return &vd.Metadata
 }
 
-type VolumesnapshotdataListCopy VolumesnapshotdataList
-type VolumesnapshotdataCopy Volumesnapshotdata
+type VolumeSnapshotDataListCopy VolumeSnapshotDataList
+type VolumeSnapshotDataCopy VolumeSnapshotData
 type VolumesnapshotListCopy VolumesnapshotList
 type VolumeSnapshotCopy VolumeSnapshot
 
@@ -249,24 +249,24 @@ func (el *VolumesnapshotList) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (e *Volumesnapshotdata) UnmarshalJSON(data []byte) error {
-	tmp := VolumesnapshotdataCopy{}
+func (e *VolumeSnapshotData) UnmarshalJSON(data []byte) error {
+	tmp := VolumeSnapshotDataCopy{}
 	err := json.Unmarshal(data, &tmp)
 	if err != nil {
 		return err
 	}
-	tmp2 := Volumesnapshotdata(tmp)
+	tmp2 := VolumeSnapshotData(tmp)
 	*e = tmp2
 	return nil
 }
 
-func (el *VolumesnapshotdataList) UnmarshalJSON(data []byte) error {
-	tmp := VolumesnapshotdataListCopy{}
+func (el *VolumeSnapshotDataList) UnmarshalJSON(data []byte) error {
+	tmp := VolumeSnapshotDataListCopy{}
 	err := json.Unmarshal(data, &tmp)
 	if err != nil {
 		return err
 	}
-	tmp2 := VolumesnapshotdataList(tmp)
+	tmp2 := VolumeSnapshotDataList(tmp)
 	*el = tmp2
 	return nil
 }
