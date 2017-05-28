@@ -135,7 +135,11 @@ func (c *snapshotController) Run(ctx <-chan struct{}) {
 func (c *snapshotController) onAdd(obj interface{}) {
 	// Add snapshot: Add snapshot to DesiredStateOfWorld, then ask snapshotter to create
 	// the actual snapshot
-	snapshotdata := obj.(*tprv1.VolumeSnapshotData)
+	snapshotdata, ok := obj.(*tprv1.VolumeSnapshotData)
+	if !ok {
+		glog.Warning("expecting type VolumeSnapshotData but received type %T", obj)
+		return
+	}
 	glog.Infof("[CONTROLLER] OnAdd %s, Spec %#v", snapshotdata.Metadata.SelfLink, snapshotdata.Spec)
 
 	if snapshotdata.Spec.HostPath != nil {
