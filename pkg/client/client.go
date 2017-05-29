@@ -19,6 +19,7 @@ package client
 import (
 	"time"
 
+	"github.com/golang/glog"
 	tprv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -61,8 +62,27 @@ func CreateTPR(clientset kubernetes.Interface) error {
 		},
 		Description: "Volume Snapshot Data ThirdPartyResource",
 	}
-	_, err := clientset.ExtensionsV1beta1().ThirdPartyResources().Create(tpr)
-	return err
+	res, err := clientset.ExtensionsV1beta1().ThirdPartyResources().Create(tpr)
+	if err != nil && !apierrors.IsAlreadyExists(err) {
+		glog.Fatalf("failed to create VolumeSnapshotDataResource: %#v, err: %#v",
+			res, err)
+	}
+
+	tpr = &v1beta1.ThirdPartyResource{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: tprv1.VolumeSnapshotResource + "." + tprv1.GroupName,
+		},
+		Versions: []v1beta1.APIVersion{
+			{Name: tprv1.SchemeGroupVersion.Version},
+		},
+		Description: "Volume Snapshot ThirdPartyResource",
+	}
+	res, err = clientset.ExtensionsV1beta1().ThirdPartyResources().Create(tpr)
+	if err != nil && !apierrors.IsAlreadyExists(err) {
+		glog.Fatalf("failed to create VolumeSnapshotResource: %#v, err: %#v",
+			res, err)
+	}
+	return nil
 }
 
 func WaitForSnapshotResource(snapshotClient *rest.RESTClient) error {

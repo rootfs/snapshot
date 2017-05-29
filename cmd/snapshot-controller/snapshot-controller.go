@@ -24,7 +24,6 @@ import (
 
 	"github.com/golang/glog"
 
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -54,7 +53,7 @@ func main() {
 
 	// initialize third party resource if it does not exist
 	err = client.CreateTPR(clientset)
-	if err != nil && !apierrors.IsAlreadyExists(err) {
+	if err != nil {
 		panic(err)
 	}
 

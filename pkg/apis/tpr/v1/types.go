@@ -27,6 +27,8 @@ import (
 const (
 	VolumeSnapshotDataResourcePlural = "volumesnapshotdatas"
 	VolumeSnapshotDataResource       = "volume-snapshot-data"
+	VolumeSnapshotResourcePlural     = "volumesnapshots"
+	VolumeSnapshotResource           = "volume-snapshot"
 )
 
 type VolumeSnapshotStatus struct {
@@ -81,7 +83,7 @@ type VolumeSnapshot struct {
 	Status VolumeSnapshotStatus `json:"status" protobuf:"bytes,3,opt,name=status"`
 }
 
-type VolumesnapshotList struct {
+type VolumeSnapshotList struct {
 	metav1.TypeMeta `json:",inline"`
 	Metadata        metav1.ListMeta  `json:"metadata"`
 	Items           []VolumeSnapshot `json:"items"`
@@ -215,18 +217,18 @@ func (v *VolumeSnapshot) GetObjectMeta() metav1.Object {
 }
 
 // Required to satisfy Object interface
-func (vd *VolumesnapshotList) GetObjectKind() schema.ObjectKind {
+func (vd *VolumeSnapshotList) GetObjectKind() schema.ObjectKind {
 	return &vd.TypeMeta
 }
 
 // Required to satisfy ListMetaAccessor interface
-func (vd *VolumesnapshotList) GetListMeta() metav1.List {
+func (vd *VolumeSnapshotList) GetListMeta() metav1.List {
 	return &vd.Metadata
 }
 
 type VolumeSnapshotDataListCopy VolumeSnapshotDataList
 type VolumeSnapshotDataCopy VolumeSnapshotData
-type VolumesnapshotListCopy VolumesnapshotList
+type VolumeSnapshotListCopy VolumeSnapshotList
 type VolumeSnapshotCopy VolumeSnapshot
 
 func (e *VolumeSnapshot) UnmarshalJSON(data []byte) error {
@@ -240,13 +242,13 @@ func (e *VolumeSnapshot) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (el *VolumesnapshotList) UnmarshalJSON(data []byte) error {
-	tmp := VolumesnapshotListCopy{}
+func (el *VolumeSnapshotList) UnmarshalJSON(data []byte) error {
+	tmp := VolumeSnapshotListCopy{}
 	err := json.Unmarshal(data, &tmp)
 	if err != nil {
 		return err
 	}
-	tmp2 := VolumesnapshotList(tmp)
+	tmp2 := VolumeSnapshotList(tmp)
 	*el = tmp2
 	return nil
 }
