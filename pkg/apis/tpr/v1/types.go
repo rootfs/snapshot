@@ -90,9 +90,11 @@ type VolumesnapshotList struct {
 // The desired state of the volume snapshot
 type VolumeSnapshotSpec struct {
 	// PersistentVolumeClaimName is the name of the PVC being snapshotted
+	// +optional
 	PersistentVolumeClaimName string `json:"persistentVolumeClaimName" protobuf:"bytes,1,opt,name=persistentVolumeClaimName"`
 
 	// SnapshotDataName binds the VolumeSnapshot object with the VolumeSnapshotData
+	// +optional
 	SnapshotDataName string `json:"snapshotDataName" protobuf:"bytes,2,opt,name=snapshotDataName"`
 }
 

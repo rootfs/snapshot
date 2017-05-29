@@ -87,7 +87,10 @@ func NewSnapshotController(client *rest.RESTClient,
 	sc.desiredStateOfWorld = cache.NewDesiredStateOfWorld()
 	sc.actualStateOfWorld = cache.NewActualStateOfWorld()
 
-	sc.snapshotter = snapshotter.NewVolumeSnapshotter(sc.desiredStateOfWorld)
+	sc.snapshotter = snapshotter.NewVolumeSnapshotter(
+		client,
+		scheme,
+		sc.desiredStateOfWorld)
 
 	sc.reconciler = reconciler.NewReconciler(
 		reconcilerLoopPeriod,
@@ -124,15 +127,15 @@ func (c *snapshotController) Run(ctx <-chan struct{}) {
 
 		// Your custom resource event handlers.
 		kcache.ResourceEventHandlerFuncs{
-			AddFunc:    c.onAdd,
-			UpdateFunc: c.onUpdate,
-			DeleteFunc: c.onDelete,
+			AddFunc:    c.onSnapshotDataAdd,
+			UpdateFunc: c.onSnapshotDataUpdate,
+			DeleteFunc: c.onSnapshotDataDelete,
 		})
 	go c.reconciler.Run(ctx)
 	go controller.Run(ctx)
 }
 
-func (c *snapshotController) onAdd(obj interface{}) {
+func (c *snapshotController) onSnapshotDataAdd(obj interface{}) {
 	// Add snapshot: Add snapshot to DesiredStateOfWorld, then ask snapshotter to create
 	// the actual snapshot
 	snapshotdata, ok := obj.(*tprv1.VolumeSnapshotData)
@@ -153,14 +156,14 @@ func (c *snapshotController) onAdd(obj interface{}) {
 
 }
 
-func (c *snapshotController) onUpdate(oldObj, newObj interface{}) {
+func (c *snapshotController) onSnapshotDataUpdate(oldObj, newObj interface{}) {
 	oldSnapshot := oldObj.(*tprv1.VolumeSnapshotData)
 	newSnapshot := newObj.(*tprv1.VolumeSnapshotData)
 	glog.Infof("[CONTROLLER] OnUpdate oldObj: %s\n", oldSnapshot.Metadata.SelfLink)
 	glog.Infof("[CONTROLLER] OnUpdate newObj: %s\n", newSnapshot.Metadata.SelfLink)
 }
 
-func (c *snapshotController) onDelete(obj interface{}) {
+func (c *snapshotController) onSnapshotDataDelete(obj interface{}) {
 	// Delete snapshot: Remove the snapshot from DesiredStateOfWorld, then ask snapshotter to delete
 	// the snapshot itself
 	snapshot := obj.(*tprv1.VolumeSnapshotData)
