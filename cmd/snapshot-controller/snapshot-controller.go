@@ -71,7 +71,7 @@ func main() {
 	}
 	// start controller on instances of our TPR
 	glog.Infof("starting snapshot controller")
-	ssController := snapshotcontroller.NewSnapshotController(snapshotClient, snapshotScheme, defaultSyncDuration)
+	ssController := snapshotcontroller.NewSnapshotController(snapshotClient, snapshotScheme, clientset, defaultSyncDuration)
 	glog.Infof("starting snapshot data controller")
 	ssdataController := snapshotdatacontroller.NewSnapshotDataController(snapshotClient, snapshotScheme, defaultSyncDuration)
 	stopCh := make(chan struct{})

@@ -66,11 +66,11 @@ const (
 func NewVolumeSnapshotter(
 	restClient *rest.RESTClient,
 	scheme *runtime.Scheme,
+	clientset kubernetes.Interface,
 	asw cache.ActualStateOfWorld) VolumeSnapshotter {
-	coreClient := kubernetes.New(restClient)
 	return &volumeSnapshotter{
 		restClient:         restClient,
-		coreClient:         coreClient,
+		coreClient:         clientset,
 		scheme:             scheme,
 		actualStateOfWorld: asw,
 		runningOperation:   goroutinemap.NewGoRoutineMap(defaultExponentialBackOffOnError),
@@ -119,7 +119,8 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 		if pvcName == "" {
 			return fmt.Errorf("The PVC name is not specified in snapshot %s", snapshotName)
 		}
-		pvc, err := vs.coreClient.CoreV1().PersistentVolumeClaims(v1.NamespaceAll).Get(pvcName, metav1.GetOptions{})
+		//FIXME: get snapshot's namespace and fill into PVC's
+		pvc, err := vs.coreClient.CoreV1().PersistentVolumeClaims("default").Get(pvcName, metav1.GetOptions{})
 		if err != nil {
 			return fmt.Errorf("Failed to retrieve PVC %s from the API server: %q", pvcName, err)
 		}
@@ -162,7 +163,7 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 			Error()
 		if err != nil {
 			// FIXME: Errors writing to the API server are common: this needs to be re-tried
-			return fmt.Errorf("Error creating the VolumeSnapshotData %s", snapshotDataName)
+			glog.Warningf("Error creating the VolumeSnapshotData %s: %v", snapshotDataName, err)
 		}
 		vs.actualStateOfWorld.AddSnapshot(snapshotName, snapshotSpec)
 		// TODO: Update the VolumeSnapshot object too

@@ -22,6 +22,7 @@ import (
 	"github.com/golang/glog"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes"
 	apiv1 "k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/rest"
 	kcache "k8s.io/client-go/tools/cache"
@@ -70,6 +71,7 @@ type snapshotController struct {
 
 func NewSnapshotController(client *rest.RESTClient,
 	scheme *runtime.Scheme,
+	clientset kubernetes.Interface,
 	syncDuration time.Duration) SnapshotController {
 	sc := &snapshotController{
 		snapshotClient: client,
@@ -87,7 +89,8 @@ func NewSnapshotController(client *rest.RESTClient,
 	sc.snapshotter = snapshotter.NewVolumeSnapshotter(
 		client,
 		scheme,
-		sc.desiredStateOfWorld)
+		clientset,
+		sc.actualStateOfWorld)
 
 	sc.reconciler = reconciler.NewReconciler(
 		reconcilerLoopPeriod,

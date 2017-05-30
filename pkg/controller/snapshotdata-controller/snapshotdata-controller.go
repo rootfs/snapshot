@@ -25,12 +25,8 @@ import (
 	apiv1 "k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/rest"
 	kcache "k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
 
 	tprv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
-	"github.com/rootfs/snapshot/pkg/controller/cache"
-	"github.com/rootfs/snapshot/pkg/controller/reconciler"
-	"github.com/rootfs/snapshot/pkg/controller/snapshotter"
 )
 
 const (
@@ -44,28 +40,6 @@ type SnapshotDataController interface {
 type snapshotDataController struct {
 	snapshotClient *rest.RESTClient
 	snapshotScheme *runtime.Scheme
-
-	// desiredStateOfWorld is a data structure containing the desired state of
-	// the world according to this controller: i.e. what VolumeSnapshots need
-	// the VolumeSnapshotData to be created, what VolumeSnapshotData and their
-	// representing "on-disk" snapshots to be removed.
-	desiredStateOfWorld cache.DesiredStateOfWorld
-
-	// actualStateOfWorld is a data structure containing the actual state of
-	// the world according to this controller: i.e. which VolumeSnapshots and
-	// VolumeSnapshot data exist and to which PV/PVCs are associated.
-	actualStateOfWorld cache.ActualStateOfWorld
-
-	// reconciler is used to run an asynchronous periodic loop to create and delete
-	// VolumeSnapshotData for the user created and deleted VolumeSnapshot objects and
-	// trigger the actual snapshot creation in the volume backends.
-	reconciler reconciler.Reconciler
-
-	// Volume snapshotter is responsible for talking to the backend and creating, removing
-	// or promoting the snapshots.
-	snapshotter snapshotter.VolumeSnapshotter
-	// recorder is used to record events in the API server
-	recorder record.EventRecorder
 }
 
 func NewSnapshotDataController(client *rest.RESTClient,
@@ -75,27 +49,6 @@ func NewSnapshotDataController(client *rest.RESTClient,
 		snapshotClient: client,
 		snapshotScheme: scheme,
 	}
-
-	//eventBroadcaster := record.NewBroadcaster()
-	//eventBroadcaster.StartLogging(glog.Infof)
-	//eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: v1core.New(client).Events("")})
-	//	sc.recorder = eventBroadcaster.NewRecorder(api.Scheme, apiv1.EventSource{Component: "volume snapshotting"})
-
-	sc.desiredStateOfWorld = cache.NewDesiredStateOfWorld()
-	sc.actualStateOfWorld = cache.NewActualStateOfWorld()
-
-	sc.snapshotter = snapshotter.NewVolumeSnapshotter(
-		client,
-		scheme,
-		sc.desiredStateOfWorld)
-
-	sc.reconciler = reconciler.NewReconciler(
-		reconcilerLoopPeriod,
-		syncDuration,
-		false, /* disableReconciliationSync */
-		sc.desiredStateOfWorld,
-		sc.actualStateOfWorld,
-		sc.snapshotter)
 
 	return sc
 }
@@ -128,7 +81,6 @@ func (c *snapshotDataController) Run(ctx <-chan struct{}) {
 			UpdateFunc: c.onSnapshotDataUpdate,
 			DeleteFunc: c.onSnapshotDataDelete,
 		})
-	go c.reconciler.Run(ctx)
 	go controller.Run(ctx)
 }
 
