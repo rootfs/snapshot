@@ -143,6 +143,7 @@ func (c *snapshotController) onSnapshotAdd(obj interface{}) {
 		return
 	}
 	glog.Infof("[CONTROLLER] OnAdd %s, Spec %#v", snapshot.Metadata.SelfLink, snapshot.Spec)
+	c.desiredStateOfWorld.AddSnapshot(snapshot.Metadata.Name)
 }
 
 func (c *snapshotController) onSnapshotUpdate(oldObj, newObj interface{}) {

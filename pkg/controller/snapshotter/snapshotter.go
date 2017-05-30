@@ -31,6 +31,8 @@ import (
 
 	tprv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
 	"github.com/rootfs/snapshot/pkg/controller/cache"
+
+	"github.com/rootfs/snapshot/pkg/volume/hostpath"
 )
 
 // VolumeSnapshotter does the "heavy lifting": it spawns gouroutines that talk to the
@@ -74,6 +76,15 @@ func NewVolumeSnapshotter(
 // asking it to make a snapshot and assignig it some name that it returns to the caller.
 func (vs *volumeSnapshotter) takeSnapshot(spec *v1.PersistentVolumeSpec) (string, error) {
 	// TODO: Find a plugin to use for taking the snapshot and do so
+	if spec.HostPath != nil {
+		snap, err := hostpath.Snapshot(spec.HostPath.Path)
+		if err != nil {
+			glog.Warningf("failed to snapshot %s, err: %v", spec.HostPath.Path, err)
+		} else {
+			glog.Infof("snapshot %s to snap %s", spec.HostPath.Path, snap)
+			return snap, nil
+		}
+	}
 
 	return "", nil
 }

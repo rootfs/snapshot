@@ -142,16 +142,16 @@ func (c *snapshotDataController) onSnapshotDataAdd(obj interface{}) {
 		return
 	}
 	glog.Infof("[CONTROLLER] OnAdd %s, Spec %#v", snapshotdata.Metadata.SelfLink, snapshotdata.Spec)
-
-	if snapshotdata.Spec.HostPath != nil {
-		snap, err := hostpath.Snapshot(snapshotdata.Spec.HostPath.Path)
-		if err != nil {
-			glog.Warningf("failed to snapshot %s, err: %v", snapshotdata.Spec.HostPath.Path, err)
-		} else {
-			glog.Infof("snapshot %s to snap %s", snapshotdata.Spec.HostPath.Path, snap)
+	/*
+		if snapshotdata.Spec.HostPath != nil {
+			snap, err := hostpath.Snapshot(snapshotdata.Spec.HostPath.Path)
+			if err != nil {
+				glog.Warningf("failed to snapshot %s, err: %v", snapshotdata.Spec.HostPath.Path, err)
+			} else {
+				glog.Infof("snapshot %s to snap %s", snapshotdata.Spec.HostPath.Path, snap)
+			}
 		}
-	}
-
+	*/
 }
 
 func (c *snapshotDataController) onSnapshotDataUpdate(oldObj, newObj interface{}) {
