@@ -29,7 +29,8 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/rootfs/snapshot/pkg/client"
-	"github.com/rootfs/snapshot/pkg/controller"
+	snapshotcontroller "github.com/rootfs/snapshot/pkg/controller/snapshot-controller"
+	snapshotdatacontroller "github.com/rootfs/snapshot/pkg/controller/snapshotdata-controller"
 )
 
 const (
@@ -68,11 +69,15 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	// start a controller on instances of our TPR
-	controller := controller.NewSnapshotController(snapshotClient, snapshotScheme, defaultSyncDuration)
+	// start controller on instances of our TPR
 	glog.Infof("starting snapshot controller")
+	ssController := snapshotcontroller.NewSnapshotController(snapshotClient, snapshotScheme, defaultSyncDuration)
+	glog.Infof("starting snapshot data controller")
+	ssdataController := snapshotdatacontroller.NewSnapshotDataController(snapshotClient, snapshotScheme, defaultSyncDuration)
 	stopCh := make(chan struct{})
-	go controller.Run(stopCh)
+
+	go ssController.Run(stopCh)
+	go ssdataController.Run(stopCh)
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)

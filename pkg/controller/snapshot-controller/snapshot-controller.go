@@ -33,7 +33,6 @@ import (
 	"github.com/rootfs/snapshot/pkg/controller/cache"
 	"github.com/rootfs/snapshot/pkg/controller/reconciler"
 	"github.com/rootfs/snapshot/pkg/controller/snapshotter"
-	"github.com/rootfs/snapshot/pkg/volume/hostpath"
 )
 
 const (
@@ -110,7 +109,7 @@ func (c *snapshotController) Run(ctx <-chan struct{}) {
 	// Watch snapshot objects
 	source := kcache.NewListWatchFromClient(
 		c.snapshotClient,
-		tprv1.VolumeSnapshotDataResourcePlural,
+		tprv1.VolumeSnapshotResourcePlural,
 		apiv1.NamespaceAll,
 		fields.Everything())
 
@@ -118,7 +117,7 @@ func (c *snapshotController) Run(ctx <-chan struct{}) {
 		source,
 
 		// The object type.
-		&tprv1.VolumeSnapshotData{},
+		&tprv1.VolumeSnapshot{},
 
 		// resyncPeriod
 		// Every resyncPeriod, all resources in the kcache will retrigger events.
@@ -127,45 +126,35 @@ func (c *snapshotController) Run(ctx <-chan struct{}) {
 
 		// Your custom resource event handlers.
 		kcache.ResourceEventHandlerFuncs{
-			AddFunc:    c.onSnapshotDataAdd,
-			UpdateFunc: c.onSnapshotDataUpdate,
-			DeleteFunc: c.onSnapshotDataDelete,
+			AddFunc:    c.onSnapshotAdd,
+			UpdateFunc: c.onSnapshotUpdate,
+			DeleteFunc: c.onSnapshotDelete,
 		})
 	go c.reconciler.Run(ctx)
 	go controller.Run(ctx)
 }
 
-func (c *snapshotController) onSnapshotDataAdd(obj interface{}) {
+func (c *snapshotController) onSnapshotAdd(obj interface{}) {
 	// Add snapshot: Add snapshot to DesiredStateOfWorld, then ask snapshotter to create
 	// the actual snapshot
-	snapshotdata, ok := obj.(*tprv1.VolumeSnapshotData)
+	snapshot, ok := obj.(*tprv1.VolumeSnapshot)
 	if !ok {
-		glog.Warning("expecting type VolumeSnapshotData but received type %T", obj)
+		glog.Warning("expecting type VolumeSnapshot but received type %T", obj)
 		return
 	}
-	glog.Infof("[CONTROLLER] OnAdd %s, Spec %#v", snapshotdata.Metadata.SelfLink, snapshotdata.Spec)
-
-	if snapshotdata.Spec.HostPath != nil {
-		snap, err := hostpath.Snapshot(snapshotdata.Spec.HostPath.Path)
-		if err != nil {
-			glog.Warningf("failed to snapshot %s, err: %v", snapshotdata.Spec.HostPath.Path, err)
-		} else {
-			glog.Infof("snapshot %s to snap %s", snapshotdata.Spec.HostPath.Path, snap)
-		}
-	}
-
+	glog.Infof("[CONTROLLER] OnAdd %s, Spec %#v", snapshot.Metadata.SelfLink, snapshot.Spec)
 }
 
-func (c *snapshotController) onSnapshotDataUpdate(oldObj, newObj interface{}) {
-	oldSnapshot := oldObj.(*tprv1.VolumeSnapshotData)
-	newSnapshot := newObj.(*tprv1.VolumeSnapshotData)
+func (c *snapshotController) onSnapshotUpdate(oldObj, newObj interface{}) {
+	oldSnapshot := oldObj.(*tprv1.VolumeSnapshot)
+	newSnapshot := newObj.(*tprv1.VolumeSnapshot)
 	glog.Infof("[CONTROLLER] OnUpdate oldObj: %s\n", oldSnapshot.Metadata.SelfLink)
 	glog.Infof("[CONTROLLER] OnUpdate newObj: %s\n", newSnapshot.Metadata.SelfLink)
 }
 
-func (c *snapshotController) onSnapshotDataDelete(obj interface{}) {
+func (c *snapshotController) onSnapshotDelete(obj interface{}) {
 	// Delete snapshot: Remove the snapshot from DesiredStateOfWorld, then ask snapshotter to delete
 	// the snapshot itself
-	snapshot := obj.(*tprv1.VolumeSnapshotData)
+	snapshot := obj.(*tprv1.VolumeSnapshot)
 	glog.Infof("[CONTROLLER] OnDelete %s\n", snapshot.Metadata.SelfLink)
 }
