@@ -3,5 +3,4 @@ kind: VolumeSnapshot
 metadata:
   name: snapshot-demo
 spec:
-  persistentVolumeClaim:
-    claimName: snapshot-pvc
+  persistentVolumeClaimName: hostpath-pvc

@@ -25,19 +25,20 @@ import (
 	"sync"
 
 	"github.com/golang/glog"
+	tprv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
 )
 
 type ActualStateOfWorld interface {
 	// Adds snapshot to the list of snapshots. No-op if the snapshot
 	// is already in the list.
-	AddSnapshot(snapshotName string) error
+	AddSnapshot(string, *tprv1.VolumeSnapshotSpec) error
 
 	// Deletes the snapshot from the list of known snapshots. No-op if the snapshot
 	// does not exist.
 	DeleteSnapshot(snapshotName string) error
 
 	// Return a copy of the known snapshots
-	GetSnapshots() map[string]string
+	GetSnapshots() map[string]*tprv1.VolumeSnapshotSpec
 
 	// Check whether the specified snapshot exists
 	SnapshotExists(snapshotName string) bool
@@ -47,21 +48,25 @@ type actualStateOfWorld struct {
 	// List of snapshots that need to be created
 	// it maps [snapshotName] pvcName
 	// FIXME: This needs to be changed to something else (spec?)
-	snapshots map[string]string
+	snapshots map[string]*tprv1.VolumeSnapshotSpec
 	sync.RWMutex
 }
 
 // NewActualStateOfWorld returns a new instance of ActualStateOfWorld.
 func NewActualStateOfWorld() ActualStateOfWorld {
-	return &actualStateOfWorld{}
+	m := make(map[string]*tprv1.VolumeSnapshotSpec)
+	return &actualStateOfWorld{
+		snapshots: m,
+	}
 }
 
 // Adds a snapshot to the list of snapshots to be created.
-func (asw *actualStateOfWorld) AddSnapshot(snapshotName string) error {
+func (asw *actualStateOfWorld) AddSnapshot(snapshotName string, snapshot *tprv1.VolumeSnapshotSpec) error {
 	asw.Lock()
 	defer asw.Unlock()
 
 	glog.Infof("Adding new snapshot to actual state of world: %s", snapshotName)
+	asw.snapshots[snapshotName] = snapshot
 	return nil
 }
 
@@ -75,11 +80,11 @@ func (asw *actualStateOfWorld) DeleteSnapshot(snapshotName string) error {
 }
 
 // Returns a copy of the list of the snapshots known to the actual state of world.
-func (asw *actualStateOfWorld) GetSnapshots() map[string]string {
+func (asw *actualStateOfWorld) GetSnapshots() map[string]*tprv1.VolumeSnapshotSpec {
 	asw.RLock()
 	defer asw.RUnlock()
 
-	snapshots := make(map[string]string)
+	snapshots := make(map[string]*tprv1.VolumeSnapshotSpec)
 
 	for snapName, snapSpec := range asw.snapshots {
 		snapshots[snapName] = snapSpec

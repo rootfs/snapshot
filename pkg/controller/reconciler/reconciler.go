@@ -107,22 +107,24 @@ func (rc *reconciler) syncStates() {
 func (rc *reconciler) reconcile() {
 	//glog.Infof("Volume snapshots are being reconciled")
 	// Ensure the snapshots that should be deleted are deleted
-	for _, snapshot := range rc.actualStateOfWorld.GetSnapshots() {
-		if !rc.desiredStateOfWorld.SnapshotExists(snapshot) {
+	for name, snapshot := range rc.actualStateOfWorld.GetSnapshots() {
+		if !rc.desiredStateOfWorld.SnapshotExists(name) {
 			// Call snapshotter to start deleting the snapshot: it should
 			// use the volume plugin to actuelly remove the on-disk snapshot.
 			// It's likely that the operation exists already: it should be fired by the controller right
 			// after the event has arrived.
+			rc.snapshotter.DeleteVolumeSnapshot(name, snapshot)
 		}
 	}
 	// Ensure the snapshots that should be created are created
-	for _, snapshot := range rc.desiredStateOfWorld.GetSnapshots() {
-		if !rc.actualStateOfWorld.SnapshotExists(snapshot) {
+	for name, snapshot := range rc.desiredStateOfWorld.GetSnapshots() {
+		if !rc.actualStateOfWorld.SnapshotExists(name) {
 			// Call snapshotter to start creating the snapshot: it should use the volume
 			// plugin to create the on-disk snapshot, create the SnapshotData object for it
 			// and update adn put the Snapshot object to the actualStateOfWorld once the operation finishes.
 			// It's likely that the operation exists already: it should be fired by the controller right
 			// after the event has arrived.
+			rc.snapshotter.CreateVolumeSnapshot(name, snapshot)
 		}
 	}
 }

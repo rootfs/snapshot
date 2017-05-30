@@ -31,7 +31,6 @@ import (
 	"github.com/rootfs/snapshot/pkg/controller/cache"
 	"github.com/rootfs/snapshot/pkg/controller/reconciler"
 	"github.com/rootfs/snapshot/pkg/controller/snapshotter"
-	"github.com/rootfs/snapshot/pkg/volume/hostpath"
 )
 
 const (

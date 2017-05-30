@@ -35,6 +35,10 @@ import (
 	"github.com/rootfs/snapshot/pkg/volume/hostpath"
 )
 
+const (
+	defaultExponentialBackOffOnError = true
+)
+
 // VolumeSnapshotter does the "heavy lifting": it spawns gouroutines that talk to the
 // backend to actually perform the operations on the storage devices.
 // It creates and deletes the snapshots and promotes snapshots to volumes (PV). The create
@@ -69,6 +73,7 @@ func NewVolumeSnapshotter(
 		coreClient:         coreClient,
 		scheme:             scheme,
 		actualStateOfWorld: asw,
+		runningOperation:   goroutinemap.NewGoRoutineMap(defaultExponentialBackOffOnError),
 	}
 }
 
@@ -107,7 +112,7 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 		if snapshotSpec.SnapshotDataName != "" {
 			// This spec has the SnapshotDataName already set: this means importing admin-created snapshots
 			// TODO: Not implemented yet
-			return fmt.Errorf("Imporing snapshots is not implemented yet")
+			return fmt.Errorf("Importing snapshots is not implemented yet")
 		}
 
 		pvcName := snapshotSpec.PersistentVolumeClaimName
@@ -159,7 +164,7 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 			// FIXME: Errors writing to the API server are common: this needs to be re-tried
 			return fmt.Errorf("Error creating the VolumeSnapshotData %s", snapshotDataName)
 		}
-
+		vs.actualStateOfWorld.AddSnapshot(snapshotName, snapshotSpec)
 		// TODO: Update the VolumeSnapshot object too
 
 		return nil
@@ -189,7 +194,7 @@ func (vs *volumeSnapshotter) getSnapshotPromoteFunc(snapshotName string, snapsho
 
 func (vs *volumeSnapshotter) CreateVolumeSnapshot(snapshotName string, snapshotSpec *tprv1.VolumeSnapshotSpec) {
 	operationName := snapshotOpCreatePrefix + snapshotName + snapshotSpec.PersistentVolumeClaimName
-	glog.Infof("Snapshotter is about to create volume snapshot operation named %s", operationName)
+	glog.Infof("Snapshotter is about to create volume snapshot operation named %s, spec %#v", operationName, snapshotSpec)
 
 	err := vs.runningOperation.Run(operationName, vs.getSnapshotCreateFunc(snapshotName, snapshotSpec))
 

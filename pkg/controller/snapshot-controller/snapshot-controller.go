@@ -22,12 +22,10 @@ import (
 	"github.com/golang/glog"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
-	//v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	apiv1 "k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/rest"
 	kcache "k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
-	//"k8s.io/kubernetes/pkg/api"
 
 	tprv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
 	"github.com/rootfs/snapshot/pkg/controller/cache"
@@ -143,7 +141,7 @@ func (c *snapshotController) onSnapshotAdd(obj interface{}) {
 		return
 	}
 	glog.Infof("[CONTROLLER] OnAdd %s, Spec %#v", snapshot.Metadata.SelfLink, snapshot.Spec)
-	c.desiredStateOfWorld.AddSnapshot(snapshot.Metadata.Name)
+	c.desiredStateOfWorld.AddSnapshot(snapshot.Metadata.Name, &snapshot.Spec)
 }
 
 func (c *snapshotController) onSnapshotUpdate(oldObj, newObj interface{}) {

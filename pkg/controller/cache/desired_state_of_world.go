@@ -22,22 +22,25 @@ reference them.
 package cache
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/golang/glog"
+
+	tprv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
 )
 
 type DesiredStateOfWorld interface {
 	// Adds snapshot to the list of snapshots. No-op if the snapshot
 	// is already in the list.
-	AddSnapshot(snapshotName string) error
+	AddSnapshot(string, *tprv1.VolumeSnapshotSpec) error
 
 	// Deletes the snapshot from the list of known snapshots. No-op if the snapshot
 	// does not exist.
 	DeleteSnapshot(snapshotName string) error
 
 	// Return a copy of the known snapshots
-	GetSnapshots() map[string]string
+	GetSnapshots() map[string]*tprv1.VolumeSnapshotSpec
 
 	// Check whether the specified snapshot exists
 	SnapshotExists(snapshotName string) bool
@@ -46,22 +49,29 @@ type DesiredStateOfWorld interface {
 type desiredStateOfWorld struct {
 	// List of snapshots that exist in the desired state of world
 	// it maps [snapshotName] snapshotSpec
-	snapshots map[string]string
+	snapshots map[string]*tprv1.VolumeSnapshotSpec
 	sync.RWMutex
 }
 
 // NewDesiredStateOfWorld returns a new instance of DesiredStateOfWorld.
 func NewDesiredStateOfWorld() DesiredStateOfWorld {
-	return &desiredStateOfWorld{}
+	m := make(map[string]*tprv1.VolumeSnapshotSpec)
+	return &desiredStateOfWorld{
+		snapshots: m,
+	}
 }
 
 // Adds a snapshot to the list of snapshots to be created
-func (dsw *desiredStateOfWorld) AddSnapshot(snapshotName string) error {
+func (dsw *desiredStateOfWorld) AddSnapshot(snapshotName string, snapshot *tprv1.VolumeSnapshotSpec) error {
+	if snapshot == nil {
+		return fmt.Errorf("nil snapshot spec")
+	}
+
 	dsw.Lock()
 	defer dsw.Unlock()
 
 	glog.Infof("Adding new snapshot to desired state of world: %s", snapshotName)
-
+	dsw.snapshots[snapshotName] = snapshot
 	return nil
 }
 
@@ -76,11 +86,11 @@ func (dsw *desiredStateOfWorld) DeleteSnapshot(snapshotName string) error {
 }
 
 // Returns a copy of the list of the snapshots known to the actual state of world.
-func (dsw *desiredStateOfWorld) GetSnapshots() map[string]string {
+func (dsw *desiredStateOfWorld) GetSnapshots() map[string]*tprv1.VolumeSnapshotSpec {
 	dsw.RLock()
 	defer dsw.RUnlock()
 
-	snapshots := make(map[string]string)
+	snapshots := make(map[string]*tprv1.VolumeSnapshotSpec)
 
 	for snapName, snapSpec := range dsw.snapshots {
 		snapshots[snapName] = snapSpec
