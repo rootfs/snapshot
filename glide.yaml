@@ -3,6 +3,10 @@ import:
 - package: k8s.io/kubernetes
   version: v1.6.4
 - package: k8s.io/client-go
-  version: 0ec10d4 
+  version: 0ec10d4
 - package: k8s.io/apimachinery
   version: 28d5d92
+- package: github.com/kubernetes-incubator/external-storage
+  version: ~3.0.0-beta
+  subpackages:
+  - lib
