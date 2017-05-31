@@ -63,18 +63,7 @@ func newHostPathProvisioner(client kubernetes.Interface, tprclient *rest.RESTCli
 
 var _ controller.Provisioner = &hostPathProvisioner{}
 
-func (p *hostPathProvisioner) snapshotRestore(snapshotName string) (*v1.PersistentVolumeSource, error) {
-	// retrieve VolumeSnapshotData
-	var snapshotData tprv1.VolumeSnapshotData
-	err := p.tprclient.Get().
-		Resource(tprv1.VolumeSnapshotDataResourcePlural).
-		Namespace(v1.NamespaceDefault).
-		Name(snapshotName).
-		Do().Into(&snapshotData)
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve VolumeSnapshotData %s: %v", snapshotName, err)
-	}
+func (p *hostPathProvisioner) snapshotRestore(snapshotName string, snapshotData tprv1.VolumeSnapshotData) (*v1.PersistentVolumeSource, error) {
 	// retrieve VolumeSnapshotDataSource
 	if snapshotData.Spec.HostPath == nil {
 		return nil, fmt.Errorf("failed to retrieve HostPath spec from %s: %#v", snapshotName, snapshotData)
@@ -85,7 +74,7 @@ func (p *hostPathProvisioner) snapshotRestore(snapshotName string) (*v1.Persiste
 	dir := restorePoint + string(uuid.NewUUID())
 	os.MkdirAll(dir, 0750)
 	cmd := exec.Command("tar", "xzvf", snapId, "-C", dir)
-	err = cmd.Run()
+	err := cmd.Run()
 	if err != nil {
 		return nil, fmt.Errorf("failed to restore %s to %s: %v", snapId, dir, err)
 	}
@@ -102,13 +91,24 @@ func (p *hostPathProvisioner) Provision(options controller.VolumeOptions) (*v1.P
 	if options.PVC.Spec.Selector != nil {
 		return nil, fmt.Errorf("claim Selector is not supported")
 	}
-	snapshot, ok := options.PVC.Annotations[tprclient.SnapshotPVCAnnotation]
+	snapshotName, ok := options.PVC.Annotations[tprclient.SnapshotPVCAnnotation]
 	if !ok {
 		return nil, fmt.Errorf("snapshot annotation not found on PV")
 	}
-	pvSrc, err := p.snapshotRestore(snapshot)
+	// retrieve VolumeSnapshotData
+	var snapshotData tprv1.VolumeSnapshotData
+	err := p.tprclient.Get().
+		Resource(tprv1.VolumeSnapshotDataResourcePlural).
+		Namespace(v1.NamespaceDefault).
+		Name(snapshotName).
+		Do().Into(&snapshotData)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve VolumeSnapshotData %s: %v", snapshotName, err)
+	}
+	pvSrc, err := p.snapshotRestore(snapshotName, snapshotData)
 	if err != nil || pvSrc == nil {
-		return nil, fmt.Errorf("failed to create a PV from snapshot %s: %v", snapshot, err)
+		return nil, fmt.Errorf("failed to create a PV from snapshot %s: %v", snapshotName, err)
 	}
 	pv := &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
@@ -132,6 +132,14 @@ func (p *hostPathProvisioner) Provision(options controller.VolumeOptions) (*v1.P
 	return pv, nil
 }
 
+func (p *hostPathProvisioner) deleteHostPath(spec *v1.PersistentVolumeSpec) error {
+	if spec.HostPath == nil {
+		return fmt.Errorf("no hostpath specified")
+	}
+	path := spec.HostPath.Path
+	return os.RemoveAll(path)
+}
+
 // Delete removes the storage asset that was created by Provision represented
 // by the given PV.
 func (p *hostPathProvisioner) Delete(volume *v1.PersistentVolume) error {
@@ -143,7 +151,7 @@ func (p *hostPathProvisioner) Delete(volume *v1.PersistentVolume) error {
 		return &controller.IgnoredError{"identity annotation on PV does not match ours"}
 	}
 
-	return nil
+	return p.deleteHostPath(&volume.Spec)
 }
 
 var (
