@@ -175,6 +175,18 @@ type VolumeSnapshotDataSpec struct {
 	PersistentVolumeRef *core_v1.ObjectReference `json:"persistentVolumeRef" protobuf:"bytes,3,opt,name=persistentVolumeRef"`
 }
 
+// HostPath volume snapshot source
+type HostPathVolumeSnapshotSource struct {
+	// Path represents a tar file that stores the HostPath volume source
+	Path string `json:"snapshot"`
+}
+
+// AWS EBS volume snapshot source
+type AWSElasticBlockStoreVolumeSnapshotSource struct {
+	// Unique id of the persistent disk snapshot resource. Used to identify the disk snapshot in AWS
+	SnapshotID string `json:"snapshotId"`
+}
+
 // Represents the actual location and type of the snapshot. Only one of its members may be specified.
 type VolumeSnapshotDataSource struct {
 	// HostPath represents a directory on the host.
@@ -183,7 +195,12 @@ type VolumeSnapshotDataSource struct {
 	// On-host storage is not supported in any way and WILL NOT WORK in a multi-node cluster.
 	// More info: https://kubernetes.io/docs/concepts/storage/volumes#hostpath
 	// +optional
-	HostPath *core_v1.HostPathVolumeSource `json:"hostPath" protobuf:"bytes,3,opt,name=hostPath"`
+	HostPath *HostPathVolumeSnapshotSource `json:"hostPath,omitempty"`
+	// AWSElasticBlockStore represents an AWS Disk resource that is attached to a
+	// kubelet's host machine and then exposed to the pod.
+	// More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
+	// +optional
+	AWSElasticBlockStore *AWSElasticBlockStoreVolumeSnapshotSource `json:"awsElasticBlockStore,omitempty"`
 }
 
 // Required to satisfy Object interface

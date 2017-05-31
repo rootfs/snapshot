@@ -21,16 +21,15 @@ import (
 	"os/exec"
 
 	tprv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
-	core_v1 "k8s.io/client-go/pkg/api/v1"
 )
 
 const depot = "/tmp/"
 
 func Snapshot(path string) (*tprv1.VolumeSnapshotDataSource, error) {
-	file := depot + string(uuid.NewUUID())
-	cmd := exec.Command("cp", "-r", path, file)
+	file := depot + string(uuid.NewUUID()) + ".tgz"
+	cmd := exec.Command("tar", "czvf", file, path)
 	res := &tprv1.VolumeSnapshotDataSource{
-		HostPath: &core_v1.HostPathVolumeSource{
+		HostPath: &tprv1.HostPathVolumeSnapshotSource{
 			Path: file,
 		},
 	}

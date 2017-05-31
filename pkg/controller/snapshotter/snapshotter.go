@@ -80,13 +80,13 @@ func NewVolumeSnapshotter(
 // This is the function responsible for determining the correct volume plugin to use,
 // asking it to make a snapshot and assignig it some name that it returns to the caller.
 func (vs *volumeSnapshotter) takeSnapshot(spec *v1.PersistentVolumeSpec) (*tprv1.VolumeSnapshotDataSource, error) {
-	// TODO: Find a plugin to use for taking the snapshot and do so
+	// TODO: Find a volume snapshot plugin to use for taking the snapshot and do so
 	if spec.HostPath != nil {
 		snap, err := hostpath.Snapshot(spec.HostPath.Path)
 		if err != nil {
 			glog.Warningf("failed to snapshot %s, err: %v", spec.HostPath.Path, err)
 		} else {
-			glog.Infof("snapshot %s to snap %s", spec.HostPath.Path, snap)
+			glog.Infof("snapshot %#v to snap %#v", spec.HostPath, snap.HostPath)
 			return snap, nil
 		}
 	}
