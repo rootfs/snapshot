@@ -79,7 +79,7 @@ func NewVolumeSnapshotter(
 
 // This is the function responsible for determining the correct volume plugin to use,
 // asking it to make a snapshot and assignig it some name that it returns to the caller.
-func (vs *volumeSnapshotter) takeSnapshot(spec *v1.PersistentVolumeSpec) (string, error) {
+func (vs *volumeSnapshotter) takeSnapshot(spec *v1.PersistentVolumeSpec) (*tprv1.VolumeSnapshotDataSource, error) {
 	// TODO: Find a plugin to use for taking the snapshot and do so
 	if spec.HostPath != nil {
 		snap, err := hostpath.Snapshot(spec.HostPath.Path)
@@ -91,7 +91,7 @@ func (vs *volumeSnapshotter) takeSnapshot(spec *v1.PersistentVolumeSpec) (string
 		}
 	}
 
-	return "", nil
+	return nil, nil
 }
 
 // Below are the closures meant to build the functions for the GoRoutineMap operations.
@@ -134,8 +134,8 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 			return fmt.Errorf("Failed to retrieve PV %s from the API server: %q", pvName, err)
 		}
 
-		snapshotDataName, err := vs.takeSnapshot(&pv.Spec)
-		if err != nil {
+		snapshotDataSource, err := vs.takeSnapshot(&pv.Spec)
+		if err != nil || snapshotDataSource == nil {
 			return fmt.Errorf("Failed to take snapshot of the volume %s: %q", pvName, err)
 		}
 		// Snapshot has been created, made an object for it
@@ -152,6 +152,7 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 					Kind: "PersistentVolume",
 					Name: pvName,
 				},
+				VolumeSnapshotDataSource: *snapshotDataSource,
 			},
 		}
 		var result tprv1.VolumeSnapshotData
@@ -163,7 +164,7 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 
 		if err != nil {
 			//FIXME: Errors writing to the API server are common: this needs to be re-tried
-			glog.Warningf("Error creating the VolumeSnapshotData %s: %v", snapshotDataName, err)
+			glog.Warningf("Error creating the VolumeSnapshotData %s: %v", snapshotName, err)
 		}
 		vs.actualStateOfWorld.AddSnapshot(snapshotName, snapshotSpec)
 		// TODO: Update the VolumeSnapshot object too

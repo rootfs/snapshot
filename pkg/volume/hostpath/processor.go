@@ -19,12 +19,20 @@ package hostpath
 import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"os/exec"
+
+	tprv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
+	core_v1 "k8s.io/client-go/pkg/api/v1"
 )
 
 const depot = "/tmp/"
 
-func Snapshot(path string) (string, error) {
-	file := depot + string(uuid.NewUUID()) + ".tgz"
-	cmd := exec.Command("tar", "czvf", file, path)
-	return file, cmd.Run()
+func Snapshot(path string) (*tprv1.VolumeSnapshotDataSource, error) {
+	file := depot + string(uuid.NewUUID())
+	cmd := exec.Command("cp", "-r", path, file)
+	res := &tprv1.VolumeSnapshotDataSource{
+		HostPath: &core_v1.HostPathVolumeSource{
+			Path: file,
+		},
+	}
+	return res, cmd.Run()
 }
