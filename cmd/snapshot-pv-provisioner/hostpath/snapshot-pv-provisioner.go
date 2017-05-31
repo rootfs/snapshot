@@ -20,6 +20,8 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"os"
+	"os/exec"
 
 	"github.com/golang/glog"
 	"github.com/kubernetes-incubator/external-storage/lib/controller"
@@ -30,36 +32,84 @@ import (
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+
+	tprv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
+	tprclient "github.com/rootfs/snapshot/pkg/client"
 )
 
 const (
 	provisionerName  = "volumesnapshot.external-storage.k8s.io/hostpath"
 	provisionerIDAnn = "hostPathProvisionerIdentity"
+	restorePoint     = "/restore/"
 )
 
 type hostPathProvisioner struct {
 	// Kubernetes Client.
 	client kubernetes.Interface
+	// TPR client
+	tprclient *rest.RESTClient
 	// Identity of this hostPathProvisioner, generated. Used to identify "this"
 	// provisioner's PVs.
 	identity string
 }
 
-func newHostPathProvisioner(client kubernetes.Interface, id string) controller.Provisioner {
+func newHostPathProvisioner(client kubernetes.Interface, tprclient *rest.RESTClient, id string) controller.Provisioner {
 	return &hostPathProvisioner{
-		client:   client,
-		identity: id,
+		client:    client,
+		tprclient: tprclient,
+		identity:  id,
 	}
 }
 
 var _ controller.Provisioner = &hostPathProvisioner{}
+
+func (p *hostPathProvisioner) snapshotRestore(snapshotName string) (*v1.PersistentVolumeSource, error) {
+	// retrieve VolumeSnapshotData
+	var snapshotData tprv1.VolumeSnapshotData
+	err := p.tprclient.Get().
+		Resource(tprv1.VolumeSnapshotDataResourcePlural).
+		Namespace(v1.NamespaceDefault).
+		Name(snapshotName).
+		Do().Into(&snapshotData)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve VolumeSnapshotData %s: %v", snapshotName, err)
+	}
+	// retrieve VolumeSnapshotDataSource
+	if snapshotData.Spec.HostPath == nil {
+		return nil, fmt.Errorf("failed to retrieve HostPath spec from %s: %#v", snapshotName, snapshotData)
+	}
+
+	// restore snapshot to a PV
+	snapId := snapshotData.Spec.HostPath.Path
+	dir := restorePoint + string(uuid.NewUUID())
+	os.MkdirAll(dir, 0750)
+	cmd := exec.Command("tar", "xzvf", snapId, "-C", dir)
+	err = cmd.Run()
+	if err != nil {
+		return nil, fmt.Errorf("failed to restore %s to %s: %v", snapId, dir, err)
+	}
+	pv := &v1.PersistentVolumeSource{
+		HostPath: &v1.HostPathVolumeSource{
+			Path: dir,
+		},
+	}
+	return pv, nil
+}
 
 // Provision creates a storage asset and returns a PV object representing it.
 func (p *hostPathProvisioner) Provision(options controller.VolumeOptions) (*v1.PersistentVolume, error) {
 	if options.PVC.Spec.Selector != nil {
 		return nil, fmt.Errorf("claim Selector is not supported")
 	}
-
+	snapshot, ok := options.PVC.Annotations[tprclient.SnapshotPVCAnnotation]
+	if !ok {
+		return nil, fmt.Errorf("snapshot annotation not found on PV")
+	}
+	pvSrc, err := p.snapshotRestore(snapshot)
+	if err != nil || pvSrc == nil {
+		return nil, fmt.Errorf("failed to create a PV from snapshot %s: %v", snapshot, err)
+	}
 	pv := &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: options.PVName,
@@ -73,11 +123,7 @@ func (p *hostPathProvisioner) Provision(options controller.VolumeOptions) (*v1.P
 			Capacity: v1.ResourceList{
 				v1.ResourceName(v1.ResourceStorage): options.PVC.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)],
 			},
-			PersistentVolumeSource: v1.PersistentVolumeSource{
-				HostPath: &v1.HostPathVolumeSource{
-					Path: "/",
-				},
-			},
+			PersistentVolumeSource: *pvSrc,
 		},
 	}
 
@@ -136,9 +182,15 @@ func main() {
 		glog.Fatalf("Error getting server version: %v", err)
 	}
 
+	// make a tpr client to list VolumeSnapshot
+	snapshotClient, _, err := tprclient.NewClient(config)
+	if err != nil || snapshotClient == nil {
+		glog.Fatalf("Failed to make TPR client: %v", err)
+	}
+
 	// Create the provisioner: it implements the Provisioner interface expected by
 	// the controller
-	hostPathProvisioner := newHostPathProvisioner(clientset, prId)
+	hostPathProvisioner := newHostPathProvisioner(clientset, snapshotClient, prId)
 
 	// Start the provision controller which will dynamically provision hostPath
 	// PVs

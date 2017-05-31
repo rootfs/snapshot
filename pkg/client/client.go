@@ -32,6 +32,10 @@ import (
 	"k8s.io/client-go/rest"
 )
 
+const (
+	SnapshotPVCAnnotation = "snapshot.alpha.kubernetes.io/snapshot"
+)
+
 func NewClient(cfg *rest.Config) (*rest.RESTClient, *runtime.Scheme, error) {
 	scheme := runtime.NewScheme()
 	if err := tprv1.AddToScheme(scheme); err != nil {
