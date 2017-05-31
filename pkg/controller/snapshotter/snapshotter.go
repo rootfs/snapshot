@@ -141,7 +141,7 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 		// Snapshot has been created, made an object for it
 		snapshotData := &tprv1.VolumeSnapshotData{
 			Metadata: metav1.ObjectMeta{
-				Name: snapshotDataName,
+				Name: snapshotName,
 			},
 			Spec: tprv1.VolumeSnapshotDataSpec{
 				VolumeSnapshotRef: &v1.ObjectReference{
@@ -154,15 +154,15 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 				},
 			},
 		}
-
-		err = vs.restClient.Put().
-			Name(snapshotData.Metadata.Name).
+		var result tprv1.VolumeSnapshotData
+		err = vs.restClient.Post().
 			Resource(tprv1.VolumeSnapshotDataResourcePlural).
+			Namespace(v1.NamespaceDefault).
 			Body(snapshotData).
-			Do().
-			Error()
+			Do().Into(&result)
+
 		if err != nil {
-			// FIXME: Errors writing to the API server are common: this needs to be re-tried
+			//FIXME: Errors writing to the API server are common: this needs to be re-tried
 			glog.Warningf("Error creating the VolumeSnapshotData %s: %v", snapshotDataName, err)
 		}
 		vs.actualStateOfWorld.AddSnapshot(snapshotName, snapshotSpec)
