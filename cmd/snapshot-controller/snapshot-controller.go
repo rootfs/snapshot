@@ -30,7 +30,6 @@ import (
 
 	"github.com/rootfs/snapshot/pkg/client"
 	snapshotcontroller "github.com/rootfs/snapshot/pkg/controller/snapshot-controller"
-	snapshotdatacontroller "github.com/rootfs/snapshot/pkg/controller/snapshotdata-controller"
 )
 
 const (
@@ -72,12 +71,9 @@ func main() {
 	// start controller on instances of our TPR
 	glog.Infof("starting snapshot controller")
 	ssController := snapshotcontroller.NewSnapshotController(snapshotClient, snapshotScheme, clientset, defaultSyncDuration)
-	glog.Infof("starting snapshot data controller")
-	ssdataController := snapshotdatacontroller.NewSnapshotDataController(snapshotClient, snapshotScheme, defaultSyncDuration)
 	stopCh := make(chan struct{})
 
 	go ssController.Run(stopCh)
-	go ssdataController.Run(stopCh)
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
