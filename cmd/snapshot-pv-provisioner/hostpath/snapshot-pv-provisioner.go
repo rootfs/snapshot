@@ -95,7 +95,8 @@ func (p *hostPathProvisioner) Provision(options controller.VolumeOptions) (*v1.P
 	if !ok {
 		return nil, fmt.Errorf("snapshot annotation not found on PV")
 	}
-	// retrieve VolumeSnapshotData
+	// FIXME: should retrieve VolumeSnapshot rather than directly accessing VolumeSnapshotData
+	// wait for bi-directional pointer
 	var snapshotData tprv1.VolumeSnapshotData
 	err := p.tprclient.Get().
 		Resource(tprv1.VolumeSnapshotDataResourcePlural).

@@ -30,6 +30,8 @@ import (
 
 	"github.com/rootfs/snapshot/pkg/client"
 	snapshotcontroller "github.com/rootfs/snapshot/pkg/controller/snapshot-controller"
+	"github.com/rootfs/snapshot/pkg/volume"
+	"github.com/rootfs/snapshot/pkg/volume/hostpath"
 )
 
 const (
@@ -68,9 +70,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	// build volume plugins map
+	volumePlugins := make(map[string]volume.VolumePlugin)
+	volumePlugins[hostpath.GetPluginName()] = hostpath.RegisterPlugin()
 	// start controller on instances of our TPR
 	glog.Infof("starting snapshot controller")
-	ssController := snapshotcontroller.NewSnapshotController(snapshotClient, snapshotScheme, clientset, defaultSyncDuration)
+	ssController := snapshotcontroller.NewSnapshotController(snapshotClient, snapshotScheme, clientset, &volumePlugins, defaultSyncDuration)
 	stopCh := make(chan struct{})
 
 	go ssController.Run(stopCh)

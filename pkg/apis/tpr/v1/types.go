@@ -203,6 +203,16 @@ type VolumeSnapshotDataSource struct {
 	AWSElasticBlockStore *AWSElasticBlockStoreVolumeSnapshotSource `json:"awsElasticBlockStore,omitempty"`
 }
 
+func GetSupportedVolumeFromPVC(spec *core_v1.PersistentVolumeSpec) string {
+	if spec.HostPath != nil {
+		return "hostPath"
+	}
+	if spec.AWSElasticBlockStore != nil {
+		return "aws_ebs"
+	}
+	return ""
+}
+
 // Required to satisfy Object interface
 func (v *VolumeSnapshotData) GetObjectKind() schema.ObjectKind {
 	return &v.TypeMeta

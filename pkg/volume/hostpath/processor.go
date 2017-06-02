@@ -17,15 +17,40 @@ limitations under the License.
 package hostpath
 
 import (
-	"k8s.io/apimachinery/pkg/util/uuid"
+	"fmt"
+	"os"
 	"os/exec"
 
+	"k8s.io/apimachinery/pkg/util/uuid"
+	"k8s.io/client-go/pkg/api/v1"
+
 	tprv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
+	"github.com/rootfs/snapshot/pkg/volume"
 )
 
 const depot = "/tmp/"
 
-func Snapshot(path string) (*tprv1.VolumeSnapshotDataSource, error) {
+type hostPathPlugin struct {
+}
+
+var _ volume.VolumePlugin = &hostPathPlugin{}
+
+func RegisterPlugin() volume.VolumePlugin {
+	return &hostPathPlugin{}
+}
+
+func GetPluginName() string {
+	return "hostPath"
+}
+
+func (h *hostPathPlugin) Init(_ interface{}) {
+}
+
+func (h *hostPathPlugin) SnapshotCreate(spec *v1.PersistentVolumeSpec) (*tprv1.VolumeSnapshotDataSource, error) {
+	if spec == nil || spec.HostPath == nil {
+		return nil, fmt.Errorf("invalid PV spec %v", spec)
+	}
+	path := spec.HostPath.Path
 	file := depot + string(uuid.NewUUID()) + ".tgz"
 	cmd := exec.Command("tar", "czvf", file, path)
 	res := &tprv1.VolumeSnapshotDataSource{
@@ -34,4 +59,12 @@ func Snapshot(path string) (*tprv1.VolumeSnapshotDataSource, error) {
 		},
 	}
 	return res, cmd.Run()
+}
+
+func (h *hostPathPlugin) SnapshotDelete(src *tprv1.VolumeSnapshotDataSource, _ *v1.PersistentVolume) error {
+	if src == nil || src.HostPath == nil {
+		return fmt.Errorf("invalid VolumeSnapshotDataSource: %v", src)
+	}
+	path := src.HostPath.Path
+	return os.Remove(path)
 }

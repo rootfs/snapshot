@@ -36,6 +36,7 @@ import (
 	"github.com/rootfs/snapshot/pkg/controller/cache"
 	"github.com/rootfs/snapshot/pkg/controller/reconciler"
 	"github.com/rootfs/snapshot/pkg/controller/snapshotter"
+	"github.com/rootfs/snapshot/pkg/volume"
 )
 
 const (
@@ -76,6 +77,7 @@ type snapshotController struct {
 func NewSnapshotController(client *rest.RESTClient,
 	scheme *runtime.Scheme,
 	clientset kubernetes.Interface,
+	volumePlugins *map[string]volume.VolumePlugin,
 	syncDuration time.Duration) SnapshotController {
 	sc := &snapshotController{
 		snapshotClient: client,
@@ -94,7 +96,8 @@ func NewSnapshotController(client *rest.RESTClient,
 		client,
 		scheme,
 		clientset,
-		sc.actualStateOfWorld)
+		sc.actualStateOfWorld,
+		volumePlugins)
 
 	sc.reconciler = reconciler.NewReconciler(
 		reconcilerLoopPeriod,

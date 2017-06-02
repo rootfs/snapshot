@@ -23,6 +23,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/client-go/kubernetes"
 	v1 "k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/rest"
@@ -31,8 +32,7 @@ import (
 
 	tprv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
 	"github.com/rootfs/snapshot/pkg/controller/cache"
-
-	"github.com/rootfs/snapshot/pkg/volume/hostpath"
+	"github.com/rootfs/snapshot/pkg/volume"
 )
 
 const (
@@ -55,6 +55,7 @@ type volumeSnapshotter struct {
 	scheme             *runtime.Scheme
 	actualStateOfWorld cache.ActualStateOfWorld
 	runningOperation   goroutinemap.GoRoutineMap
+	volumePlugins      *map[string]volume.VolumePlugin
 }
 
 const (
@@ -67,30 +68,62 @@ func NewVolumeSnapshotter(
 	restClient *rest.RESTClient,
 	scheme *runtime.Scheme,
 	clientset kubernetes.Interface,
-	asw cache.ActualStateOfWorld) VolumeSnapshotter {
+	asw cache.ActualStateOfWorld,
+	volumePlugins *map[string]volume.VolumePlugin) VolumeSnapshotter {
 	return &volumeSnapshotter{
 		restClient:         restClient,
 		coreClient:         clientset,
 		scheme:             scheme,
 		actualStateOfWorld: asw,
 		runningOperation:   goroutinemap.NewGoRoutineMap(defaultExponentialBackOffOnError),
+		volumePlugins:      volumePlugins,
 	}
+}
+
+// Helper function to get PV from VolumeSnapshot
+func (vs *volumeSnapshotter) getPVFromVolumeSnapshot(snapshotName string, snapshotSpec *tprv1.VolumeSnapshotSpec) (*v1.PersistentVolume, error) {
+	pvcName := snapshotSpec.PersistentVolumeClaimName
+	if pvcName == "" {
+		return nil, fmt.Errorf("The PVC name is not specified in snapshot %s", snapshotName)
+	}
+	snapNameSpace, _, err := cache.GetNameAndNameSpaceFromSnapshotName(snapshotName)
+	if err != nil {
+		return nil, fmt.Errorf("Snapshot %s is malformed", snapshotName)
+	}
+	pvc, err := vs.coreClient.CoreV1().PersistentVolumeClaims(snapNameSpace).Get(pvcName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("Failed to retrieve PVC %s from the API server: %q", pvcName, err)
+	}
+	if pvc.Status.Phase != v1.ClaimBound {
+		return nil, fmt.Errorf("The PVC %s not yet bound to a PV, will not attempt to take a snapshot yet.")
+	}
+
+	pvName := pvc.Spec.VolumeName
+	pv, err := vs.coreClient.CoreV1().PersistentVolumes().Get(pvName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("Failed to retrieve PV %s from the API server: %q", pvName, err)
+	}
+	return pv, nil
 }
 
 // This is the function responsible for determining the correct volume plugin to use,
 // asking it to make a snapshot and assignig it some name that it returns to the caller.
 func (vs *volumeSnapshotter) takeSnapshot(spec *v1.PersistentVolumeSpec) (*tprv1.VolumeSnapshotDataSource, error) {
-	// TODO: Find a volume snapshot plugin to use for taking the snapshot and do so
-	if spec.HostPath != nil {
-		snap, err := hostpath.Snapshot(spec.HostPath.Path)
-		if err != nil {
-			glog.Warningf("failed to snapshot %s, err: %v", spec.HostPath.Path, err)
-		} else {
-			glog.Infof("snapshot %#v to snap %#v", spec.HostPath, snap.HostPath)
-			return snap, nil
-		}
+	volumeType := tprv1.GetSupportedVolumeFromPVC(spec)
+	if len(volumeType) == 0 {
+		return nil, fmt.Errorf("unsupported volume type found in PVC %#v", spec)
 	}
-
+	plugin, ok := (*vs.volumePlugins)[volumeType]
+	if !ok {
+		return nil, fmt.Errorf("%s is not supported volume for %#v", volumeType, spec)
+	}
+	snap, err := plugin.SnapshotCreate(spec)
+	if err != nil {
+		glog.Warningf("failed to snapshot %#v, err: %v", spec, err)
+	} else {
+		glog.Infof("snapshot %#v to snap %#v", spec, snap)
+		return snap, nil
+	}
 	return nil, nil
 }
 
@@ -115,29 +148,11 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 			// TODO: Not implemented yet
 			return fmt.Errorf("Importing snapshots is not implemented yet")
 		}
-
-		pvcName := snapshotSpec.PersistentVolumeClaimName
-		if pvcName == "" {
-			return fmt.Errorf("The PVC name is not specified in snapshot %s", snapshotName)
-		}
-		snapNameSpace, snapName, err := cache.GetNameAndNameSpaceFromSnapshotName(snapshotName)
+		pv, err := vs.getPVFromVolumeSnapshot(snapshotName, snapshotSpec)
 		if err != nil {
-			return fmt.Errorf("Snapshot %s is malformed", snapshotName)
+			return err
 		}
-		pvc, err := vs.coreClient.CoreV1().PersistentVolumeClaims(snapNameSpace).Get(pvcName, metav1.GetOptions{})
-		if err != nil {
-			return fmt.Errorf("Failed to retrieve PVC %s from the API server: %q", pvcName, err)
-		}
-		if pvc.Status.Phase != v1.ClaimBound {
-			return fmt.Errorf("The PVC %s not yet bound to a PV, will not attempt to take a snapshot yet.")
-		}
-
-		pvName := pvc.Spec.VolumeName
-		pv, err := vs.coreClient.CoreV1().PersistentVolumes().Get(pvName, metav1.GetOptions{})
-		if err != nil {
-			return fmt.Errorf("Failed to retrieve PV %s from the API server: %q", pvName, err)
-		}
-
+		pvName := pv.Name
 		snapshotDataSource, err := vs.takeSnapshot(&pv.Spec)
 		if err != nil || snapshotDataSource == nil {
 			return fmt.Errorf("Failed to take snapshot of the volume %s: %q", pvName, err)
@@ -148,9 +163,17 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 			Status:  v1.ConditionTrue,
 			Message: "Snapsot created succsessfully",
 		}
+		snapName := "k8s-volume-snapshot-" + string(uuid.NewUUID())
+
+		// FIXME: temporarily use the snapshot name for snapshotdata,
+		// remove the following reassignment once bi-directional pointers are implemented
+		_, snapName, err = cache.GetNameAndNameSpaceFromSnapshotName(snapshotName)
+		if err != nil {
+			return err
+		}
+
 		snapshotData := &tprv1.VolumeSnapshotData{
 			Metadata: metav1.ObjectMeta{
-				// FIXME: make a unique ID
 				Name: snapName,
 			},
 			Spec: tprv1.VolumeSnapshotDataSpec{
@@ -221,6 +244,13 @@ func (vs *volumeSnapshotter) getSnapshotDeleteFunc(snapshotName string, snapshot
 	// 4. Remove the Snapshot from ActualStateOfWorld
 	// 5. Finish
 	return func() error {
+		pv, err := vs.getPVFromVolumeSnapshot(snapshotName, snapshotSpec)
+		if err != nil || pv == nil {
+			return err
+		}
+		// TODO: get VolumeSnapshotDataSource from associated VolumeSnapshotData
+		// then call volume delete snapshot method to delete the snapshot
+
 		vs.actualStateOfWorld.DeleteSnapshot(snapshotName)
 
 		return nil
