@@ -18,7 +18,6 @@ _output/bin/snapshot-controller  -kubeconfig=${HOME}/.kube/config
 ####  Create a snapshot
  * Create a hostpath PV and PVC
 ```bash
-kubectl create namespace myns
 kubectl -f example/hostpath/pv.yaml
 kubectl -f example/hostpath/pvc.yaml
 ```

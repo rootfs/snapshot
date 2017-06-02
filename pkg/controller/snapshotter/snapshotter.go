@@ -119,11 +119,8 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 		if pvcName == "" {
 			return fmt.Errorf("The PVC name is not specified in snapshot %s", snapshotName)
 		}
-		snapNameSpace, snapName, err := cache.GetNameAndNameSpaceFromSnapshotName(snapshotName)
-		if err != nil {
-			return fmt.Errorf("Snapshot %s is malformed", snapshotName)
-		}
-		pvc, err := vs.coreClient.CoreV1().PersistentVolumeClaims(snapNameSpace).Get(pvcName, metav1.GetOptions{})
+		//FIXME: get snapshot's namespace and fill into PVC's
+		pvc, err := vs.coreClient.CoreV1().PersistentVolumeClaims("default").Get(pvcName, metav1.GetOptions{})
 		if err != nil {
 			return fmt.Errorf("Failed to retrieve PVC %s from the API server: %q", pvcName, err)
 		}
@@ -149,8 +146,7 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 		}
 		snapshotData := &tprv1.VolumeSnapshotData{
 			Metadata: metav1.ObjectMeta{
-				// FIXME: make a unique ID
-				Name: snapName,
+				Name: snapshotName,
 			},
 			Spec: tprv1.VolumeSnapshotDataSpec{
 				VolumeSnapshotRef: &v1.ObjectReference{
