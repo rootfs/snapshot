@@ -20,17 +20,13 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
-
 	"k8s.io/client-go/kubernetes"
 	apiv1 "k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/rest"
 	kcache "k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
-
-	"k8s.io/kubernetes/pkg/api"
 
 	tprv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
 	"github.com/rootfs/snapshot/pkg/controller/cache"
@@ -142,15 +138,9 @@ func (c *snapshotController) Run(ctx <-chan struct{}) {
 func (c *snapshotController) onSnapshotAdd(obj interface{}) {
 	// Add snapshot: Add snapshot to DesiredStateOfWorld, then ask snapshotter to create
 	// the actual snapshot
-	objCopy, err := api.Scheme.DeepCopy(obj)
-	if err != nil {
-		glog.Warning("failed to copy obj %#v: %v", obj, err)
-		return
-	}
-
-	snapshot, ok := objCopy.(*tprv1.VolumeSnapshot)
+	snapshot, ok := obj.(*tprv1.VolumeSnapshot)
 	if !ok {
-		glog.Warning("expecting type VolumeSnapshot but received type %T", objCopy)
+		glog.Warning("expecting type VolumeSnapshot but received type %T", obj)
 		return
 	}
 	glog.Infof("[CONTROLLER] OnAdd %s, Spec %#v", snapshot.Metadata.SelfLink, snapshot.Spec)
@@ -167,14 +157,6 @@ func (c *snapshotController) onSnapshotUpdate(oldObj, newObj interface{}) {
 func (c *snapshotController) onSnapshotDelete(obj interface{}) {
 	// Delete snapshot: Remove the snapshot from DesiredStateOfWorld, then ask snapshotter to delete
 	// the snapshot itself
-	objCopy, err := api.Scheme.DeepCopy(obj)
-	if err != nil {
-		glog.Warning("failed to copy obj %#v: %v", obj, err)
-		return
-	}
-
-	snapshot := objCopy.(*tprv1.VolumeSnapshot)
+	snapshot := obj.(*tprv1.VolumeSnapshot)
 	glog.Infof("[CONTROLLER] OnDelete %s\n", snapshot.Metadata.SelfLink)
-	c.desiredStateOfWorld.DeleteSnapshot(cache.MakeSnapshotName(snapshot.Metadata.Namespace, snapshot.Metadata.Name))
-
 }

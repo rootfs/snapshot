@@ -109,7 +109,6 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 	// 5. Add the Snapshot to the ActualStateOfWorld
 	// 6. Finish (we have created snapshot for an user)
 	return func() error {
-		// TODO: return if VolumeSnapshotData is already created
 		if snapshotSpec.SnapshotDataName != "" {
 			// This spec has the SnapshotDataName already set: this means importing admin-created snapshots
 			// TODO: Not implemented yet
@@ -220,11 +219,7 @@ func (vs *volumeSnapshotter) getSnapshotDeleteFunc(snapshotName string, snapshot
 	// 3. Delete the SnapshotData object
 	// 4. Remove the Snapshot from ActualStateOfWorld
 	// 5. Finish
-	return func() error {
-		vs.actualStateOfWorld.DeleteSnapshot(snapshotName)
-
-		return nil
-	}
+	return func() error { return nil }
 }
 
 func (vs *volumeSnapshotter) getSnapshotPromoteFunc(snapshotName string, snapshotSpec *tprv1.VolumeSnapshotSpec) func() error {
