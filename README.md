@@ -30,7 +30,7 @@ kubectl -f example/hostpath/snapshot.yaml
 #### Check VolumeSnapshot and VolumeSnapshotData are created
 
 ```bash
-kubectl get volumesnapshot,volumesnapshotdata -o yaml
+kubectl get volumesnapshot,volumesnapshotdata -o yaml --namespace=myns
 ```
 
 #### Start PV Provisioner and Storage Class to restore a snapshot to a PV
