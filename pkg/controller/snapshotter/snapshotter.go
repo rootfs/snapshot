@@ -143,6 +143,11 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 			return fmt.Errorf("Failed to take snapshot of the volume %s: %q", pvName, err)
 		}
 		// Snapshot has been created, made an object for it
+		readyCondition := tprv1.VolumeSnapshotDataCondition{
+			Type:    tprv1.VolumeSnapshotDataConditionReady,
+			Status:  v1.ConditionTrue,
+			Message: "Snapsot created succsessfully",
+		}
 		snapshotData := &tprv1.VolumeSnapshotData{
 			Metadata: metav1.ObjectMeta{
 				// FIXME: make a unique ID
@@ -159,6 +164,11 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 				},
 				VolumeSnapshotDataSource: *snapshotDataSource,
 			},
+			Status: tprv1.VolumeSnapshotDataStatus{
+				Conditions: []tprv1.VolumeSnapshotDataCondition{
+					readyCondition,
+				},
+			},
 		}
 		var result tprv1.VolumeSnapshotData
 		err = vs.restClient.Post().
@@ -169,11 +179,35 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 
 		if err != nil {
 			//FIXME: Errors writing to the API server are common: this needs to be re-tried
-			glog.Warningf("Error creating the VolumeSnapshotData %s: %v", snapshotName, err)
+			glog.Errorf("Error creating the VolumeSnapshotData %s: %v", snapshotName, err)
 		}
 		vs.actualStateOfWorld.AddSnapshot(snapshotName, snapshotSpec)
 		// TODO: Update the VolumeSnapshot object too
 
+		var snapshotObj tprv1.VolumeSnapshot
+		err = vs.restClient.Get().
+			Name(snapName).
+			Resource(tprv1.VolumeSnapshotResourcePlural).
+			Namespace(v1.NamespaceDefault).
+			Do().Into(&snapshotObj)
+
+		objCopy, err := vs.scheme.DeepCopy(&snapshotObj)
+		if err != nil {
+			glog.Errorf("Error copying snapshot object %s object from API server", snapName)
+		}
+		snapshotCopy, ok := objCopy.(*tprv1.VolumeSnapshot)
+		if !ok {
+			glog.Warning("expecting type VolumeSnapshot but received type %T", objCopy)
+		}
+		snapshotCopy.Spec.SnapshotDataName = snapName
+		snapshotCopy.Status.Conditions = []tprv1.VolumeSnapshotCondition{
+			{
+				Type:    tprv1.VolumeSnapshotConditionReady,
+				Status:  v1.ConditionTrue,
+				Message: "Snapsot created succsessfully",
+			},
+		}
+		// TODO: Make diff of the two objects and then use restClient.Patch to update it
 		return nil
 	}
 }
