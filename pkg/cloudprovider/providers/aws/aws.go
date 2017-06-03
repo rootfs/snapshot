@@ -215,6 +215,12 @@ type EC2 interface {
 	CreateVolume(request *ec2.CreateVolumeInput) (resp *ec2.Volume, err error)
 	// Delete an EBS volume
 	DeleteVolume(*ec2.DeleteVolumeInput) (*ec2.DeleteVolumeOutput, error)
+	// Create an EBS volume snapshot
+	CreateSnapshot(*ec2.CreateSnapshotInput) (*ec2.Snapshot, error)
+	// Delete an EBS volume snapshot
+	DeleteSnapshot(*ec2.DeleteSnapshotInput) (*ec2.DeleteSnapshotOutput, error)
+	// Lists snapshots
+	DescribeSnapshots(*ec2.DescribeSnapshotsInput) ([]*ec2.Snapshot, error)
 
 	DescribeSecurityGroups(request *ec2.DescribeSecurityGroupsInput) ([]*ec2.SecurityGroup, error)
 
@@ -669,6 +675,38 @@ func (s *awsSdkEC2) DeleteVolume(request *ec2.DeleteVolumeInput) (*ec2.DeleteVol
 	timeTaken := time.Since(requestTime).Seconds()
 	recordAwsMetric("delete_volume", timeTaken, err)
 	return resp, err
+}
+
+func (s *awsSdkEC2) CreateSnapshot(request *ec2.CreateSnapshotInput) (*ec2.Snapshot, error) {
+	resp, err := s.ec2.CreateSnapshot(request)
+	return resp, err
+}
+
+func (s *awsSdkEC2) DeleteSnapshot(request *ec2.DeleteSnapshotInput) (*ec2.DeleteSnapshotOutput, error) {
+	resp, err := s.ec2.DeleteSnapshot(request)
+	return resp, err
+}
+
+func (s *awsSdkEC2) DescribeSnapshots(request *ec2.DescribeSnapshotsInput) ([]*ec2.Snapshot, error) {
+	results := []*ec2.Snapshots{}
+	var nextToken *string
+	for {
+		response, err := s.ec2.DescribeSnapshots(request)
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to describe ec2 snapshots: %v", err)
+		}
+
+		results = append(results, response.Snapshots...)
+
+		nextToken = response.NextToken
+		if isNilOrEmpty(nextToken) {
+			break
+		}
+		request.NextToken = nextToken
+	}
+	return results, nil
+
 }
 
 func (s *awsSdkEC2) DescribeSubnets(request *ec2.DescribeSubnetsInput) ([]*ec2.Subnet, error) {
