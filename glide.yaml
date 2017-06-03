@@ -11,3 +11,4 @@ import:
   subpackages:
   - lib
 - package: k8s.io/apiserver
+- package: github.com/aws/aws-sdk-go
