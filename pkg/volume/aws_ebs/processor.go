@@ -41,20 +41,38 @@ func GetPluginName() string {
 	return "aws_ebs"
 }
 
-func (h *awsEBSPlugin) Init(cloud cloudprovider.Interface) {
-	h.cloud = cloud.(*aws.Cloud)
+func (a *awsEBSPlugin) Init(cloud cloudprovider.Interface) {
+	a.cloud = cloud.(*aws.Cloud)
 }
 
-func (h *awsEBSPlugin) SnapshotCreate(spec *v1.PersistentVolumeSpec) (*tprv1.VolumeSnapshotDataSource, error) {
+func (a *awsEBSPlugin) SnapshotCreate(spec *v1.PersistentVolumeSpec) (*tprv1.VolumeSnapshotDataSource, error) {
 	if spec == nil || spec.AWSElasticBlockStore == nil {
 		return nil, fmt.Errorf("invalid PV spec %v", spec)
 	}
-	return nil, nil
+	volumeId := spec.AWSElasticBlockStore.VolumeID
+	snapshotOpt := &aws.SnapshotOptions{
+		VolumeId: volumeId,
+	}
+	snapshotId, err := a.cloud.CreateSnapshot(snapshotOpt)
+	if err != nil {
+		return nil, err
+	}
+	return &tprv1.VolumeSnapshotDataSource{
+		AWSElasticBlockStore: &tprv1.AWSElasticBlockStoreVolumeSnapshotSource{
+			SnapshotID: snapshotId,
+		},
+	}, nil
 }
 
-func (h *awsEBSPlugin) SnapshotDelete(src *tprv1.VolumeSnapshotDataSource, _ *v1.PersistentVolume) error {
+func (a *awsEBSPlugin) SnapshotDelete(src *tprv1.VolumeSnapshotDataSource, _ *v1.PersistentVolume) error {
 	if src == nil || src.AWSElasticBlockStore == nil {
 		return fmt.Errorf("invalid VolumeSnapshotDataSource: %v", src)
 	}
+	snapshotId := src.AWSElasticBlockStore.SnapshotID
+	_, err := a.cloud.DeleteSnapshot(snapshotId)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
