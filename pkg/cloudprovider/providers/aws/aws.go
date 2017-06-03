@@ -209,6 +209,12 @@ type EC2 interface {
 	CreateVolume(request *ec2.CreateVolumeInput) (resp *ec2.Volume, err error)
 	// Delete an EBS volume
 	DeleteVolume(*ec2.DeleteVolumeInput) (*ec2.DeleteVolumeOutput, error)
+	// Create an EBS volume snapshot
+	CreateSnapshot(*ec2.CreateSnapshotInput) (*ec2.Snapshot, error)
+	// Delete an EBS volume snapshot
+	DeleteSnapshot(*ec2.DeleteSnapshotInput) (*ec2.DeleteSnapshotOutput, error)
+	// Lists snapshots
+	DescribeSnapshots(*ec2.DescribeSnapshotsInput) ([]*ec2.Snapshot, error)
 
 	DescribeSecurityGroups(request *ec2.DescribeSecurityGroupsInput) ([]*ec2.SecurityGroup, error)
 
@@ -301,6 +307,11 @@ type VolumeOptions struct {
 	KmsKeyId string
 }
 
+// VolumeOptions specifies volume snapshot options.
+type SnapshotOptions struct {
+	VolumeId string
+}
+
 // Volumes is an interface for managing cloud-provisioned volumes
 // TODO: Allow other clouds to implement this
 type Volumes interface {
@@ -332,6 +343,12 @@ type Volumes interface {
 
 	// Check if disks specified in argument map are still attached to their respective nodes.
 	DisksAreAttached(map[types.NodeName][]KubernetesVolumeID) (map[types.NodeName]map[KubernetesVolumeID]bool, error)
+
+	// Create an EBS volume snapshot
+	CreateSnapshot(snapshotOptions *SnapshotOptions) (snapshotId string, err error)
+
+	// Delete an EBS volume snapshot
+	DeleteSnapshot(snapshotId string) (bool, error)
 }
 
 // InstanceGroups is an interface for managing cloud-managed instance groups / autoscaling instance groups
@@ -640,6 +657,38 @@ func (s *awsSdkEC2) CreateVolume(request *ec2.CreateVolumeInput) (resp *ec2.Volu
 
 func (s *awsSdkEC2) DeleteVolume(request *ec2.DeleteVolumeInput) (*ec2.DeleteVolumeOutput, error) {
 	return s.ec2.DeleteVolume(request)
+}
+
+func (s *awsSdkEC2) CreateSnapshot(request *ec2.CreateSnapshotInput) (*ec2.Snapshot, error) {
+	resp, err := s.ec2.CreateSnapshot(request)
+	return resp, err
+}
+
+func (s *awsSdkEC2) DeleteSnapshot(request *ec2.DeleteSnapshotInput) (*ec2.DeleteSnapshotOutput, error) {
+	resp, err := s.ec2.DeleteSnapshot(request)
+	return resp, err
+}
+
+func (s *awsSdkEC2) DescribeSnapshots(request *ec2.DescribeSnapshotsInput) ([]*ec2.Snapshot, error) {
+	results := []*ec2.Snapshot{}
+	var nextToken *string
+	for {
+		response, err := s.ec2.DescribeSnapshots(request)
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to describe ec2 snapshots: %v", err)
+		}
+
+		results = append(results, response.Snapshots...)
+
+		nextToken = response.NextToken
+		if isNilOrEmpty(nextToken) {
+			break
+		}
+		request.NextToken = nextToken
+	}
+	return results, nil
+
 }
 
 func (s *awsSdkEC2) DescribeSubnets(request *ec2.DescribeSubnetsInput) ([]*ec2.Subnet, error) {
@@ -1846,6 +1895,34 @@ func (c *Cloud) DisksAreAttached(nodeDisks map[types.NodeName][]KubernetesVolume
 	}
 
 	return attached, nil
+}
+
+// CreateSnapshot creates an EBS volume snapshot
+func (c *Cloud) CreateSnapshot(snapshotOptions *SnapshotOptions) (snapshotId string, err error) {
+	request := &ec2.CreateSnapshotInput{}
+	request.VolumeId = aws.String(snapshotOptions.VolumeId)
+	request.DryRun = aws.Bool(false)
+	res, err := c.ec2.CreateSnapshot(request)
+	if err != nil {
+		return "", err
+	}
+	if res == nil {
+		return "", fmt.Errorf("nil CreateSnapshotResponse")
+	}
+	return *res.SnapshotId, nil
+
+}
+
+// DeleteSnapshot deletes an EBS volume snapshot
+func (c *Cloud) DeleteSnapshot(snapshotId string) (bool, error) {
+	request := &ec2.DeleteSnapshotInput{}
+	request.SnapshotId = aws.String(snapshotId)
+	_, err := c.ec2.DeleteSnapshot(request)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 // Gets the current load balancer state
