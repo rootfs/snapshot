@@ -144,33 +144,6 @@
         "shape" : "TooManyRequestsException"
       } ]
     },
-    "DeleteEventStream" : {
-      "name" : "DeleteEventStream",
-      "http" : {
-        "method" : "DELETE",
-        "requestUri" : "/v1/apps/{application-id}/eventstream",
-        "responseCode" : 200
-      },
-      "input" : {
-        "shape" : "DeleteEventStreamRequest"
-      },
-      "output" : {
-        "shape" : "DeleteEventStreamResponse"
-      },
-      "errors" : [ {
-        "shape" : "BadRequestException"
-      }, {
-        "shape" : "InternalServerErrorException"
-      }, {
-        "shape" : "ForbiddenException"
-      }, {
-        "shape" : "NotFoundException"
-      }, {
-        "shape" : "MethodNotAllowedException"
-      }, {
-        "shape" : "TooManyRequestsException"
-      } ]
-    },
     "DeleteGcmChannel" : {
       "name" : "DeleteGcmChannel",
       "http" : {
@@ -441,33 +414,6 @@
         "shape" : "TooManyRequestsException"
       } ]
     },
-    "GetEventStream" : {
-      "name" : "GetEventStream",
-      "http" : {
-        "method" : "GET",
-        "requestUri" : "/v1/apps/{application-id}/eventstream",
-        "responseCode" : 200
-      },
-      "input" : {
-        "shape" : "GetEventStreamRequest"
-      },
-      "output" : {
-        "shape" : "GetEventStreamResponse"
-      },
-      "errors" : [ {
-        "shape" : "BadRequestException"
-      }, {
-        "shape" : "InternalServerErrorException"
-      }, {
-        "shape" : "ForbiddenException"
-      }, {
-        "shape" : "NotFoundException"
-      }, {
-        "shape" : "MethodNotAllowedException"
-      }, {
-        "shape" : "TooManyRequestsException"
-      } ]
-    },
     "GetGcmChannel" : {
       "name" : "GetGcmChannel",
       "http" : {
@@ -669,33 +615,6 @@
       },
       "output" : {
         "shape" : "GetSegmentsResponse"
-      },
-      "errors" : [ {
-        "shape" : "BadRequestException"
-      }, {
-        "shape" : "InternalServerErrorException"
-      }, {
-        "shape" : "ForbiddenException"
-      }, {
-        "shape" : "NotFoundException"
-      }, {
-        "shape" : "MethodNotAllowedException"
-      }, {
-        "shape" : "TooManyRequestsException"
-      } ]
-    },
-    "PutEventStream" : {
-      "name" : "PutEventStream",
-      "http" : {
-        "method" : "POST",
-        "requestUri" : "/v1/apps/{application-id}/eventstream",
-        "responseCode" : 200
-      },
-      "input" : {
-        "shape" : "PutEventStreamRequest"
-      },
-      "output" : {
-        "shape" : "PutEventStreamResponse"
       },
       "errors" : [ {
         "shape" : "BadRequestException"
@@ -984,12 +903,6 @@
         "SuccessfulEndpointCount" : {
           "shape" : "__integer"
         },
-        "TimezonesCompletedCount" : {
-          "shape" : "__integer"
-        },
-        "TimezonesTotalCount" : {
-          "shape" : "__integer"
-        },
         "TotalEndpointCount" : {
           "shape" : "__integer"
         },
@@ -1034,9 +947,6 @@
       "type" : "structure",
       "members" : {
         "Message" : {
-          "shape" : "__string"
-        },
-        "RequestID" : {
           "shape" : "__string"
         }
       },
@@ -1266,27 +1176,6 @@
       },
       "required" : [ "CampaignResponse" ],
       "payload" : "CampaignResponse"
-    },
-    "DeleteEventStreamRequest" : {
-      "type" : "structure",
-      "members" : {
-        "ApplicationId" : {
-          "shape" : "__string",
-          "location" : "uri",
-          "locationName" : "application-id"
-        }
-      },
-      "required" : [ "ApplicationId" ]
-    },
-    "DeleteEventStreamResponse" : {
-      "type" : "structure",
-      "members" : {
-        "EventStream" : {
-          "shape" : "EventStream"
-        }
-      },
-      "required" : [ "EventStream" ],
-      "payload" : "EventStream"
     },
     "DeleteGcmChannelRequest" : {
       "type" : "structure",
@@ -1527,11 +1416,11 @@
         "RequestId" : {
           "shape" : "__string"
         },
-        "User" : {
-          "shape" : "EndpointUser"
-        },
         "ShardId" : {
           "shape" : "__string"
+        },
+        "User" : {
+          "shape" : "EndpointUser"
         }
       }
     },
@@ -1546,36 +1435,10 @@
         }
       }
     },
-    "EventStream" : {
-      "type" : "structure",
-      "members" : {
-        "ApplicationId" : {
-          "shape" : "__string"
-        },
-        "DestinationStreamArn" : {
-          "shape" : "__string"
-        },
-        "ExternalId" : {
-          "shape" : "__string"
-        },
-        "LastModifiedDate" : {
-          "shape" : "__string"
-        },
-        "LastUpdatedBy" : {
-          "shape" : "__string"
-        },
-        "RoleArn" : {
-          "shape" : "__string"
-        }
-      }
-    },
     "ForbiddenException" : {
       "type" : "structure",
       "members" : {
         "Message" : {
-          "shape" : "__string"
-        },
-        "RequestID" : {
           "shape" : "__string"
         }
       },
@@ -1859,27 +1722,6 @@
       },
       "required" : [ "EndpointResponse" ],
       "payload" : "EndpointResponse"
-    },
-    "GetEventStreamRequest" : {
-      "type" : "structure",
-      "members" : {
-        "ApplicationId" : {
-          "shape" : "__string",
-          "location" : "uri",
-          "locationName" : "application-id"
-        }
-      },
-      "required" : [ "ApplicationId" ]
-    },
-    "GetEventStreamResponse" : {
-      "type" : "structure",
-      "members" : {
-        "EventStream" : {
-          "shape" : "EventStream"
-        }
-      },
-      "required" : [ "EventStream" ],
-      "payload" : "EventStream"
     },
     "GetGcmChannelRequest" : {
       "type" : "structure",
@@ -2237,9 +2079,6 @@
       "members" : {
         "Message" : {
           "shape" : "__string"
-        },
-        "RequestID" : {
-          "shape" : "__string"
         }
       },
       "exception" : true,
@@ -2388,9 +2227,6 @@
       "members" : {
         "Message" : {
           "shape" : "__string"
-        },
-        "RequestID" : {
-          "shape" : "__string"
         }
       },
       "exception" : true,
@@ -2403,40 +2239,12 @@
       "members" : {
         "Message" : {
           "shape" : "__string"
-        },
-        "RequestID" : {
-          "shape" : "__string"
         }
       },
       "exception" : true,
       "error" : {
         "httpStatusCode" : 404
       }
-    },
-    "PutEventStreamRequest" : {
-      "type" : "structure",
-      "members" : {
-        "ApplicationId" : {
-          "shape" : "__string",
-          "location" : "uri",
-          "locationName" : "application-id"
-        },
-        "WriteEventStream" : {
-          "shape" : "WriteEventStream"
-        }
-      },
-      "required" : [ "ApplicationId", "WriteEventStream" ],
-      "payload" : "WriteEventStream"
-    },
-    "PutEventStreamResponse" : {
-      "type" : "structure",
-      "members" : {
-        "EventStream" : {
-          "shape" : "EventStream"
-        }
-      },
-      "required" : [ "EventStream" ],
-      "payload" : "EventStream"
     },
     "QuietTime" : {
       "type" : "structure",
@@ -2529,9 +2337,6 @@
         },
         "Location" : {
           "shape" : "SegmentLocation"
-        },
-        "UserAttributes" : {
-          "shape" : "MapOfAttributeDimension"
         }
       }
     },
@@ -2625,9 +2430,6 @@
       "type" : "structure",
       "members" : {
         "Message" : {
-          "shape" : "__string"
-        },
-        "RequestID" : {
           "shape" : "__string"
         }
       },
@@ -2904,20 +2706,6 @@
         }
       }
     },
-    "WriteEventStream" : {
-      "type" : "structure",
-      "members" : {
-        "DestinationStreamArn" : {
-          "shape" : "__string"
-        },
-        "ExternalId" : {
-          "shape" : "__string"
-        },
-        "RoleArn" : {
-          "shape" : "__string"
-        }
-      }
-    },
     "WriteSegmentRequest" : {
       "type" : "structure",
       "members" : {
@@ -2960,9 +2748,6 @@
     },
     "__string" : {
       "type" : "string"
-    },
-    "__timestamp" : {
-      "type" : "timestamp"
     }
   }
 }

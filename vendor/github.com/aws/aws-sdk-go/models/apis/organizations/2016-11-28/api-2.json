@@ -742,7 +742,6 @@
       "members":{
         "Id":{"shape":"AccountId"},
         "Arn":{"shape":"AccountArn"},
-        "Email":{"shape":"Email"},
         "Name":{"shape":"AccountName"},
         "Status":{"shape":"AccountStatus"},
         "JoinedMethod":{"shape":"AccountJoinedMethod"},
@@ -884,9 +883,7 @@
         "MIN_POLICY_TYPE_ATTACHMENT_LIMIT_EXCEEDED",
         "ACCOUNT_CANNOT_LEAVE_ORGANIZATION",
         "MASTER_ACCOUNT_PAYMENT_INSTRUMENT_REQUIRED",
-        "MEMBER_ACCOUNT_PAYMENT_INSTRUMENT_REQUIRED",
-        "ACCOUNT_CREATION_RATE_LIMIT_EXCEEDED",
-        "MASTER_ACCOUNT_ADDRESS_DOES_NOT_MATCH_MARKETPLACE"
+        "ACCOUNT_CREATION_RATE_LIMIT_EXCEEDED"
       ]
     },
     "CreateAccountFailureReason":{
@@ -895,7 +892,6 @@
         "ACCOUNT_LIMIT_EXCEEDED",
         "EMAIL_ALREADY_EXISTS",
         "INVALID_ADDRESS",
-        "INVALID_EMAIL",
         "INTERNAL_FAILURE"
       ]
     },
@@ -1179,7 +1175,7 @@
       "type":"string",
       "max":64,
       "min":6,
-      "pattern":"[^\\s@]+@[^\\s@]+\\.[^\\s@]+",
+      "pattern":"[\\w+=,.-]+@[\\w.-]+\\.[\\w]+",
       "sensitive":true
     },
     "EnableAllFeaturesRequest":{

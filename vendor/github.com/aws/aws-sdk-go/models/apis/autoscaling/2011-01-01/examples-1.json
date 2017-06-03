@@ -410,8 +410,7 @@
                   "HealthStatus": "Healthy",
                   "InstanceId": "i-4ba0837f",
                   "LaunchConfigurationName": "my-launch-config",
-                  "LifecycleState": "InService",
-                  "ProtectedFromScaleIn": false
+                  "LifecycleState": "InService"
                 }
               ],
               "LaunchConfigurationName": "my-launch-config",

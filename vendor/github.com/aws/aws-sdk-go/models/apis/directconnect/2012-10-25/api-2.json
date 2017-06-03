@@ -22,8 +22,7 @@
       "errors":[
         {"shape":"DirectConnectServerException"},
         {"shape":"DirectConnectClientException"}
-      ],
-      "deprecated":true
+      ]
     },
     "AllocateHostedConnection":{
       "name":"AllocateHostedConnection",
@@ -296,8 +295,7 @@
       "errors":[
         {"shape":"DirectConnectServerException"},
         {"shape":"DirectConnectClientException"}
-      ],
-      "deprecated":true
+      ]
     },
     "DescribeConnections":{
       "name":"DescribeConnections",
@@ -323,8 +321,7 @@
       "errors":[
         {"shape":"DirectConnectServerException"},
         {"shape":"DirectConnectClientException"}
-      ],
-      "deprecated":true
+      ]
     },
     "DescribeHostedConnections":{
       "name":"DescribeHostedConnections",
@@ -350,8 +347,7 @@
       "errors":[
         {"shape":"DirectConnectServerException"},
         {"shape":"DirectConnectClientException"}
-      ],
-      "deprecated":true
+      ]
     },
     "DescribeInterconnects":{
       "name":"DescribeInterconnects",

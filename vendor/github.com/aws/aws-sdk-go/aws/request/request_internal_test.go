@@ -2,6 +2,8 @@ package request
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCopy(t *testing.T) {
@@ -13,15 +15,6 @@ func TestCopy(t *testing.T) {
 	req.Handlers = handlers
 
 	r := req.copy()
-
-	if r == req {
-		t.Fatal("expect request pointer copy to be different")
-	}
-	if r.Operation == req.Operation {
-		t.Errorf("expect request operation pointer to be different")
-	}
-
-	if e, a := req.Operation.HTTPMethod, r.Operation.HTTPMethod; e != a {
-		t.Errorf("expect %q http method, got %q", e, a)
-	}
+	assert.NotEqual(t, req, r)
+	assert.Equal(t, req.Operation.HTTPMethod, r.Operation.HTTPMethod)
 }

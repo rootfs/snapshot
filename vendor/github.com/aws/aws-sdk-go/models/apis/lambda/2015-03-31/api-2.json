@@ -311,21 +311,6 @@
         {"shape":"TooManyRequestsException"}
       ]
     },
-    "ListTags":{
-      "name":"ListTags",
-      "http":{
-        "method":"GET",
-        "requestUri":"/2017-03-31/tags/{ARN}"
-      },
-      "input":{"shape":"ListTagsRequest"},
-      "output":{"shape":"ListTagsResponse"},
-      "errors":[
-        {"shape":"ServiceException"},
-        {"shape":"ResourceNotFoundException"},
-        {"shape":"InvalidParameterValueException"},
-        {"shape":"TooManyRequestsException"}
-      ]
-    },
     "ListVersionsByFunction":{
       "name":"ListVersionsByFunction",
       "http":{
@@ -367,36 +352,6 @@
         "responseCode":204
       },
       "input":{"shape":"RemovePermissionRequest"},
-      "errors":[
-        {"shape":"ServiceException"},
-        {"shape":"ResourceNotFoundException"},
-        {"shape":"InvalidParameterValueException"},
-        {"shape":"TooManyRequestsException"}
-      ]
-    },
-    "TagResource":{
-      "name":"TagResource",
-      "http":{
-        "method":"POST",
-        "requestUri":"/2017-03-31/tags/{ARN}",
-        "responseCode":204
-      },
-      "input":{"shape":"TagResourceRequest"},
-      "errors":[
-        {"shape":"ServiceException"},
-        {"shape":"ResourceNotFoundException"},
-        {"shape":"InvalidParameterValueException"},
-        {"shape":"TooManyRequestsException"}
-      ]
-    },
-    "UntagResource":{
-      "name":"UntagResource",
-      "http":{
-        "method":"DELETE",
-        "requestUri":"/2017-03-31/tags/{ARN}",
-        "responseCode":204
-      },
-      "input":{"shape":"UntagResourceRequest"},
       "errors":[
         {"shape":"ServiceException"},
         {"shape":"ResourceNotFoundException"},
@@ -627,9 +582,7 @@
         "VpcConfig":{"shape":"VpcConfig"},
         "DeadLetterConfig":{"shape":"DeadLetterConfig"},
         "Environment":{"shape":"Environment"},
-        "KMSKeyArn":{"shape":"KMSKeyArn"},
-        "TracingConfig":{"shape":"TracingConfig"},
-        "Tags":{"shape":"Tags"}
+        "KMSKeyArn":{"shape":"KMSKeyArn"}
       }
     },
     "Date":{"type":"timestamp"},
@@ -755,6 +708,7 @@
     },
     "EnvironmentVariableValue":{
       "type":"string",
+      "pattern":"[^,]*",
       "sensitive":true
     },
     "EnvironmentVariables":{
@@ -832,8 +786,7 @@
         "VpcConfig":{"shape":"VpcConfigResponse"},
         "DeadLetterConfig":{"shape":"DeadLetterConfig"},
         "Environment":{"shape":"EnvironmentResponse"},
-        "KMSKeyArn":{"shape":"KMSKeyArn"},
-        "TracingConfig":{"shape":"TracingConfigResponse"}
+        "KMSKeyArn":{"shape":"KMSKeyArn"}
       }
     },
     "FunctionList":{
@@ -924,8 +877,7 @@
       "type":"structure",
       "members":{
         "Configuration":{"shape":"FunctionConfiguration"},
-        "Code":{"shape":"FunctionCodeLocation"},
-        "Tags":{"shape":"Tags"}
+        "Code":{"shape":"FunctionCodeLocation"}
       }
     },
     "GetPolicyRequest":{
@@ -1218,23 +1170,6 @@
         "Functions":{"shape":"FunctionList"}
       }
     },
-    "ListTagsRequest":{
-      "type":"structure",
-      "required":["Resource"],
-      "members":{
-        "Resource":{
-          "shape":"FunctionArn",
-          "location":"uri",
-          "locationName":"ARN"
-        }
-      }
-    },
-    "ListTagsResponse":{
-      "type":"structure",
-      "members":{
-        "Tags":{"shape":"Tags"}
-      }
-    },
     "ListVersionsByFunctionRequest":{
       "type":"structure",
       "required":["FunctionName"],
@@ -1377,10 +1312,8 @@
       "enum":[
         "nodejs",
         "nodejs4.3",
-        "nodejs6.10",
         "java8",
         "python2.7",
-        "python3.6",
         "dotnetcore1.0",
         "nodejs4.3-edge"
       ]
@@ -1446,32 +1379,6 @@
       "member":{"shape":"SubnetId"},
       "max":16
     },
-    "TagKey":{"type":"string"},
-    "TagKeyList":{
-      "type":"list",
-      "member":{"shape":"TagKey"}
-    },
-    "TagResourceRequest":{
-      "type":"structure",
-      "required":[
-        "Resource",
-        "Tags"
-      ],
-      "members":{
-        "Resource":{
-          "shape":"FunctionArn",
-          "location":"uri",
-          "locationName":"ARN"
-        },
-        "Tags":{"shape":"Tags"}
-      }
-    },
-    "TagValue":{"type":"string"},
-    "Tags":{
-      "type":"map",
-      "key":{"shape":"TagKey"},
-      "value":{"shape":"TagValue"}
-    },
     "ThrottleReason":{
       "type":"string",
       "enum":[
@@ -1500,25 +1407,6 @@
       "error":{"httpStatusCode":429},
       "exception":true
     },
-    "TracingConfig":{
-      "type":"structure",
-      "members":{
-        "Mode":{"shape":"TracingMode"}
-      }
-    },
-    "TracingConfigResponse":{
-      "type":"structure",
-      "members":{
-        "Mode":{"shape":"TracingMode"}
-      }
-    },
-    "TracingMode":{
-      "type":"string",
-      "enum":[
-        "Active",
-        "PassThrough"
-      ]
-    },
     "UnsupportedMediaTypeException":{
       "type":"structure",
       "members":{
@@ -1527,25 +1415,6 @@
       },
       "error":{"httpStatusCode":415},
       "exception":true
-    },
-    "UntagResourceRequest":{
-      "type":"structure",
-      "required":[
-        "Resource",
-        "TagKeys"
-      ],
-      "members":{
-        "Resource":{
-          "shape":"FunctionArn",
-          "location":"uri",
-          "locationName":"ARN"
-        },
-        "TagKeys":{
-          "shape":"TagKeyList",
-          "location":"querystring",
-          "locationName":"tagKeys"
-        }
-      }
     },
     "UpdateAliasRequest":{
       "type":"structure",
@@ -1595,8 +1464,7 @@
         "S3Bucket":{"shape":"S3Bucket"},
         "S3Key":{"shape":"S3Key"},
         "S3ObjectVersion":{"shape":"S3ObjectVersion"},
-        "Publish":{"shape":"Boolean"},
-        "DryRun":{"shape":"Boolean"}
+        "Publish":{"shape":"Boolean"}
       }
     },
     "UpdateFunctionConfigurationRequest":{
@@ -1617,8 +1485,7 @@
         "Environment":{"shape":"Environment"},
         "Runtime":{"shape":"Runtime"},
         "DeadLetterConfig":{"shape":"DeadLetterConfig"},
-        "KMSKeyArn":{"shape":"KMSKeyArn"},
-        "TracingConfig":{"shape":"TracingConfig"}
+        "KMSKeyArn":{"shape":"KMSKeyArn"}
       }
     },
     "Version":{

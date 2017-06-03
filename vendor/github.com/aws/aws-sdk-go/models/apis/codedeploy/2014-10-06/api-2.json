@@ -178,8 +178,7 @@
         {"shape":"DeploymentLimitExceededException"},
         {"shape":"InvalidTargetInstancesException"},
         {"shape":"InvalidAutoRollbackConfigException"},
-        {"shape":"InvalidLoadBalancerInfoException"},
-        {"shape":"InvalidFileExistsBehaviorException"}
+        {"shape":"InvalidLoadBalancerInfoException"}
       ]
     },
     "CreateDeploymentConfig":{
@@ -468,8 +467,7 @@
         {"shape":"InvalidNextTokenException"},
         {"shape":"InvalidDeploymentIdException"},
         {"shape":"InvalidInstanceStatusException"},
-        {"shape":"InvalidInstanceTypeException"},
-        {"shape":"InvalidDeploymentInstanceTypeException"}
+        {"shape":"InvalidInstanceTypeException"}
       ]
     },
     "ListDeployments":{
@@ -490,19 +488,6 @@
         {"shape":"InvalidTimeRangeException"},
         {"shape":"InvalidDeploymentStatusException"},
         {"shape":"InvalidNextTokenException"}
-      ]
-    },
-    "ListGitHubAccountTokenNames":{
-      "name":"ListGitHubAccountTokenNames",
-      "http":{
-        "method":"POST",
-        "requestUri":"/"
-      },
-      "input":{"shape":"ListGitHubAccountTokenNamesInput"},
-      "output":{"shape":"ListGitHubAccountTokenNamesOutput"},
-      "errors":[
-        {"shape":"InvalidNextTokenException"},
-        {"shape":"ResourceValidationException"}
       ]
     },
     "ListOnPremisesInstances":{
@@ -707,8 +692,7 @@
         "applicationId":{"shape":"ApplicationId"},
         "applicationName":{"shape":"ApplicationName"},
         "createTime":{"shape":"Timestamp"},
-        "linkedToGitHub":{"shape":"Boolean"},
-        "gitHubAccountName":{"shape":"GitHubAccountTokenName"}
+        "linkedToGitHub":{"shape":"Boolean"}
       }
     },
     "ApplicationLimitExceededException":{
@@ -982,8 +966,7 @@
         "ignoreApplicationStopFailures":{"shape":"Boolean"},
         "targetInstances":{"shape":"TargetInstances"},
         "autoRollbackConfiguration":{"shape":"AutoRollbackConfiguration"},
-        "updateOutdatedInstancesOnly":{"shape":"Boolean"},
-        "fileExistsBehavior":{"shape":"FileExistsBehavior"}
+        "updateOutdatedInstancesOnly":{"shape":"Boolean"}
       }
     },
     "CreateDeploymentOutput":{
@@ -1122,9 +1105,7 @@
         "autoRollbackConfiguration":{"shape":"AutoRollbackConfiguration"},
         "deploymentStyle":{"shape":"DeploymentStyle"},
         "blueGreenDeploymentConfiguration":{"shape":"BlueGreenDeploymentConfiguration"},
-        "loadBalancerInfo":{"shape":"LoadBalancerInfo"},
-        "lastSuccessfulDeployment":{"shape":"LastDeploymentInfo"},
-        "lastAttemptedDeployment":{"shape":"LastDeploymentInfo"}
+        "loadBalancerInfo":{"shape":"LoadBalancerInfo"}
       }
     },
     "DeploymentGroupInfoList":{
@@ -1166,7 +1147,6 @@
         "deploymentGroupName":{"shape":"DeploymentGroupName"},
         "deploymentConfigName":{"shape":"DeploymentConfigName"},
         "deploymentId":{"shape":"DeploymentId"},
-        "previousRevision":{"shape":"RevisionLocation"},
         "revision":{"shape":"RevisionLocation"},
         "status":{"shape":"DeploymentStatus"},
         "errorInformation":{"shape":"ErrorInformation"},
@@ -1185,8 +1165,7 @@
         "instanceTerminationWaitTimeStarted":{"shape":"Boolean"},
         "blueGreenDeploymentConfiguration":{"shape":"BlueGreenDeploymentConfiguration"},
         "loadBalancerInfo":{"shape":"LoadBalancerInfo"},
-        "additionalDeploymentStatusInfo":{"shape":"AdditionalDeploymentStatusInfo"},
-        "fileExistsBehavior":{"shape":"FileExistsBehavior"}
+        "additionalDeploymentStatusInfo":{"shape":"AdditionalDeploymentStatusInfo"}
       }
     },
     "DeploymentIsNotInReadyStateException":{
@@ -1364,14 +1343,6 @@
       }
     },
     "ErrorMessage":{"type":"string"},
-    "FileExistsBehavior":{
-      "type":"string",
-      "enum":[
-        "DISALLOW",
-        "OVERWRITE",
-        "RETAIN"
-      ]
-    },
     "GenericRevisionInfo":{
       "type":"structure",
       "members":{
@@ -1486,17 +1457,6 @@
       "members":{
         "instanceInfo":{"shape":"InstanceInfo"}
       }
-    },
-    "GitHubAccountTokenDoesNotExistException":{
-      "type":"structure",
-      "members":{
-      },
-      "exception":true
-    },
-    "GitHubAccountTokenName":{"type":"string"},
-    "GitHubAccountTokenNameList":{
-      "type":"list",
-      "member":{"shape":"GitHubAccountTokenName"}
     },
     "GitHubLocation":{
       "type":"structure",
@@ -1717,12 +1677,6 @@
       },
       "exception":true
     },
-    "InvalidDeploymentInstanceTypeException":{
-      "type":"structure",
-      "members":{
-      },
-      "exception":true
-    },
     "InvalidDeploymentStatusException":{
       "type":"structure",
       "members":{
@@ -1736,12 +1690,6 @@
       "exception":true
     },
     "InvalidEC2TagException":{
-      "type":"structure",
-      "members":{
-      },
-      "exception":true
-    },
-    "InvalidFileExistsBehaviorException":{
       "type":"structure",
       "members":{
       },
@@ -1868,15 +1816,6 @@
       "exception":true
     },
     "Key":{"type":"string"},
-    "LastDeploymentInfo":{
-      "type":"structure",
-      "members":{
-        "deploymentId":{"shape":"DeploymentId"},
-        "status":{"shape":"DeploymentStatus"},
-        "endTime":{"shape":"Timestamp"},
-        "createTime":{"shape":"Timestamp"}
-      }
-    },
     "LifecycleErrorCode":{
       "type":"string",
       "enum":[
@@ -2017,19 +1956,6 @@
         "nextToken":{"shape":"NextToken"}
       }
     },
-    "ListGitHubAccountTokenNamesInput":{
-      "type":"structure",
-      "members":{
-        "nextToken":{"shape":"NextToken"}
-      }
-    },
-    "ListGitHubAccountTokenNamesOutput":{
-      "type":"structure",
-      "members":{
-        "tokenNameList":{"shape":"GitHubAccountTokenNameList"},
-        "nextToken":{"shape":"NextToken"}
-      }
-    },
     "ListOnPremisesInstancesInput":{
       "type":"structure",
       "members":{
@@ -2124,12 +2050,6 @@
       }
     },
     "Repository":{"type":"string"},
-    "ResourceValidationException":{
-      "type":"structure",
-      "members":{
-      },
-      "exception":true
-    },
     "RevisionDoesNotExistException":{
       "type":"structure",
       "members":{

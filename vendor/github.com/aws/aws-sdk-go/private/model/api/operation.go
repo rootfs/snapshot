@@ -44,26 +44,6 @@ func (o *Operation) HasOutput() bool {
 	return o.OutputRef.ShapeName != ""
 }
 
-func (o *Operation) GetSigner() string {
-	if o.AuthType == "v4-unsigned-body" {
-		o.API.imports["github.com/aws/aws-sdk-go/aws/signer/v4"] = true
-	}
-
-	buf := bytes.NewBuffer(nil)
-
-	switch o.AuthType {
-	case "none":
-		buf.WriteString("req.Config.Credentials = credentials.AnonymousCredentials")
-	case "v4-unsigned-body":
-		buf.WriteString("req.Handlers.Sign.Remove(v4.SignRequestHandler)\n")
-		buf.WriteString("handler := v4.BuildNamedHandler(\"v4.CustomSignerHandler\", v4.WithUnsignedPayload)\n")
-		buf.WriteString("req.Handlers.Sign.PushFrontNamed(handler)")
-	}
-
-	buf.WriteString("\n")
-	return buf.String()
-}
-
 // tplOperation defines a template for rendering an API Operation
 var tplOperation = template.Must(template.New("operation").Funcs(template.FuncMap{
 	"GetCrosslinkURL": GetCrosslinkURL,
@@ -124,7 +104,8 @@ func (c *{{ .API.StructName }}) {{ .ExportedName }}Request(` +
 	req = c.newRequest(op, input, output){{ if eq .OutputRef.Shape.Placeholder true }}
 	req.Handlers.Unmarshal.Remove({{ .API.ProtocolPackage }}.UnmarshalHandler)
 	req.Handlers.Unmarshal.PushBackNamed(protocol.UnmarshalDiscardBodyHandler){{ end }}
-	{{ if ne .AuthType "" }}{{ .GetSigner }}{{ end -}}
+	{{ if eq .AuthType "none" }}req.Config.Credentials = credentials.AnonymousCredentials
+	{{ end -}}
 	return
 }
 
@@ -158,25 +139,8 @@ func (c *{{ .API.StructName }}) {{ .ExportedName }}Request(` +
 func (c *{{ .API.StructName }}) {{ .ExportedName }}(` +
 	`input {{ .InputRef.GoType }}) ({{ .OutputRef.GoType }}, error) {
 	req, out := c.{{ .ExportedName }}Request(input)
-	return out, req.Send()
-}
-
-// {{ .ExportedName }}WithContext is the same as {{ .ExportedName }} with the addition of
-// the ability to pass a context and additional request options.
-//
-// See {{ .ExportedName }} for details on how to use this API operation.
-//
-// The context must be non-nil and will be used for request cancellation. If
-// the context is nil a panic will occur. In the future the SDK may create
-// sub-contexts for http.Requests. See https://golang.org/pkg/context/
-// for more information on using Contexts.
-func (c *{{ .API.StructName }}) {{ .ExportedName }}WithContext(` +
-	`ctx aws.Context, input {{ .InputRef.GoType }}, opts ...request.Option) ` +
-	`({{ .OutputRef.GoType }}, error) {
-	req, out := c.{{ .ExportedName }}Request(input)
-	req.SetContext(ctx)
-	req.ApplyOptions(opts...)
-	return out, req.Send()
+	err := req.Send()
+	return out, err
 }
 
 {{ if .Paginator }}
@@ -198,41 +162,12 @@ func (c *{{ .API.StructName }}) {{ .ExportedName }}WithContext(` +
 //        })
 //
 func (c *{{ .API.StructName }}) {{ .ExportedName }}Pages(` +
-	`input {{ .InputRef.GoType }}, fn func({{ .OutputRef.GoType }}, bool) bool) error {
-	return c.{{ .ExportedName }}PagesWithContext(aws.BackgroundContext(), input, fn)
-}
-
-// {{ .ExportedName }}PagesWithContext same as {{ .ExportedName }}Pages except
-// it takes a Context and allows setting request options on the pages.
-//
-// The context must be non-nil and will be used for request cancellation. If
-// the context is nil a panic will occur. In the future the SDK may create
-// sub-contexts for http.Requests. See https://golang.org/pkg/context/
-// for more information on using Contexts.
-func (c *{{ .API.StructName }}) {{ .ExportedName }}PagesWithContext(` +
-	`ctx aws.Context, ` +
-	`input {{ .InputRef.GoType }}, ` +
-	`fn func({{ .OutputRef.GoType }}, bool) bool, ` +
-	`opts ...request.Option) error {
-	p := request.Pagination {
-		NewRequest: func() (*request.Request, error) {
-			var inCpy {{ .InputRef.GoType }}
-			if input != nil  {
-				tmp := *input
-				inCpy = &tmp
-			}
-			req, _ := c.{{ .ExportedName }}Request(inCpy)
-			req.SetContext(ctx)
-			req.ApplyOptions(opts...)
-			return req, nil
-		},
-	}
-
-	cont := true
-	for p.Next() && cont {
-		cont = fn(p.Page().({{ .OutputRef.GoType }}), !p.HasNextPage())
-	}
-	return p.Err()
+	`input {{ .InputRef.GoType }}, fn func(p {{ .OutputRef.GoType }}, lastPage bool) (shouldContinue bool)) error {
+	page, _ := c.{{ .ExportedName }}Request(input)
+	page.Handlers.Build.PushBack(request.MakeAddToUserAgentFreeFormHandler("Paginator"))
+	return page.EachPage(func(p interface{}, lastPage bool) bool {
+		return fn(p.({{ .OutputRef.GoType }}), lastPage)
+	})
 }
 {{ end }}
 `))
@@ -250,13 +185,12 @@ func (o *Operation) GoCode() string {
 
 // tplInfSig defines the template for rendering an Operation's signature within an Interface definition.
 var tplInfSig = template.Must(template.New("opsig").Parse(`
-{{ .ExportedName }}({{ .InputRef.GoTypeWithPkgName }}) ({{ .OutputRef.GoTypeWithPkgName }}, error)
-{{ .ExportedName }}WithContext(aws.Context, {{ .InputRef.GoTypeWithPkgName }}, ...request.Option) ({{ .OutputRef.GoTypeWithPkgName }}, error)
 {{ .ExportedName }}Request({{ .InputRef.GoTypeWithPkgName }}) (*request.Request, {{ .OutputRef.GoTypeWithPkgName }})
+
+{{ .ExportedName }}({{ .InputRef.GoTypeWithPkgName }}) ({{ .OutputRef.GoTypeWithPkgName }}, error)
 
 {{ if .Paginator -}}
 {{ .ExportedName }}Pages({{ .InputRef.GoTypeWithPkgName }}, func({{ .OutputRef.GoTypeWithPkgName }}, bool) bool) error
-{{ .ExportedName }}PagesWithContext(aws.Context, {{ .InputRef.GoTypeWithPkgName }}, func({{ .OutputRef.GoTypeWithPkgName }}, bool) bool, ...request.Option) error
 {{- end }}
 `))
 
@@ -337,11 +271,6 @@ func (e *example) traverseAny(s *Shape, required, payload bool) string {
 		str = e.traverseList(s, required, payload)
 	case "map":
 		str = e.traverseMap(s, required, payload)
-	case "jsonvalue":
-		str = "aws.JSONValue{\"key\": \"value\"}"
-		if required {
-			str += " // Required"
-		}
 	default:
 		str = e.traverseScalar(s, required, payload)
 	}

@@ -55,8 +55,7 @@
         {"shape":"InternalErrorException"},
         {"shape":"InvalidParameterException"},
         {"shape":"CreationLimitExceededException"},
-        {"shape":"DuplicateRecordException"},
-        {"shape":"NotFoundException"}
+        {"shape":"DuplicateRecordException"}
       ]
     },
     "DeleteBudget":{
@@ -546,7 +545,7 @@
     },
     "NotificationThreshold":{
       "type":"double",
-      "max":300,
+      "max":100,
       "min":0.1
     },
     "NotificationType":{
@@ -578,7 +577,7 @@
     },
     "NumericValue":{
       "type":"string",
-      "pattern":"[0-9]*(\\.)?[0-9]+"
+      "pattern":"[0-9]+(\\.)?[0-9]*"
     },
     "Spend":{
       "type":"structure",

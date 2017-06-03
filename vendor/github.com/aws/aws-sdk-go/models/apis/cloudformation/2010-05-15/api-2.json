@@ -16,10 +16,7 @@
         "method":"POST",
         "requestUri":"/"
       },
-      "input":{"shape":"CancelUpdateStackInput"},
-      "errors":[
-        {"shape":"TokenAlreadyExistsException"}
-      ]
+      "input":{"shape":"CancelUpdateStackInput"}
     },
     "ContinueUpdateRollback":{
       "name":"ContinueUpdateRollback",
@@ -31,10 +28,7 @@
       "output":{
         "shape":"ContinueUpdateRollbackOutput",
         "resultWrapper":"ContinueUpdateRollbackResult"
-      },
-      "errors":[
-        {"shape":"TokenAlreadyExistsException"}
-      ]
+      }
     },
     "CreateChangeSet":{
       "name":"CreateChangeSet",
@@ -67,7 +61,6 @@
       "errors":[
         {"shape":"LimitExceededException"},
         {"shape":"AlreadyExistsException"},
-        {"shape":"TokenAlreadyExistsException"},
         {"shape":"InsufficientCapabilitiesException"}
       ]
     },
@@ -92,10 +85,7 @@
         "method":"POST",
         "requestUri":"/"
       },
-      "input":{"shape":"DeleteStackInput"},
-      "errors":[
-        {"shape":"TokenAlreadyExistsException"}
-      ]
+      "input":{"shape":"DeleteStackInput"}
     },
     "DescribeAccountLimits":{
       "name":"DescribeAccountLimits",
@@ -198,8 +188,7 @@
       "errors":[
         {"shape":"InvalidChangeSetStatusException"},
         {"shape":"ChangeSetNotFoundException"},
-        {"shape":"InsufficientCapabilitiesException"},
-        {"shape":"TokenAlreadyExistsException"}
+        {"shape":"InsufficientCapabilitiesException"}
       ]
     },
     "GetStackPolicy":{
@@ -329,8 +318,7 @@
         "resultWrapper":"UpdateStackResult"
       },
       "errors":[
-        {"shape":"InsufficientCapabilitiesException"},
-        {"shape":"TokenAlreadyExistsException"}
+        {"shape":"InsufficientCapabilitiesException"}
       ]
     },
     "ValidateTemplate":{
@@ -378,8 +366,7 @@
       "type":"structure",
       "required":["StackName"],
       "members":{
-        "StackName":{"shape":"StackName"},
-        "ClientRequestToken":{"shape":"ClientRequestToken"}
+        "StackName":{"shape":"StackName"}
       }
     },
     "Capabilities":{
@@ -492,12 +479,6 @@
       "type":"list",
       "member":{"shape":"Change"}
     },
-    "ClientRequestToken":{
-      "type":"string",
-      "max":128,
-      "min":1,
-      "pattern":"[a-zA-Z][-a-zA-Z0-9]*"
-    },
     "ClientToken":{
       "type":"string",
       "max":128,
@@ -509,8 +490,7 @@
       "members":{
         "StackName":{"shape":"StackNameOrId"},
         "RoleARN":{"shape":"RoleARN"},
-        "ResourcesToSkip":{"shape":"ResourcesToSkip"},
-        "ClientRequestToken":{"shape":"ClientRequestToken"}
+        "ResourcesToSkip":{"shape":"ResourcesToSkip"}
       }
     },
     "ContinueUpdateRollbackOutput":{
@@ -565,8 +545,7 @@
         "OnFailure":{"shape":"OnFailure"},
         "StackPolicyBody":{"shape":"StackPolicyBody"},
         "StackPolicyURL":{"shape":"StackPolicyURL"},
-        "Tags":{"shape":"Tags"},
-        "ClientRequestToken":{"shape":"ClientRequestToken"}
+        "Tags":{"shape":"Tags"}
       }
     },
     "CreateStackOutput":{
@@ -595,8 +574,7 @@
       "members":{
         "StackName":{"shape":"StackName"},
         "RetainResources":{"shape":"RetainResources"},
-        "RoleARN":{"shape":"RoleARN"},
-        "ClientRequestToken":{"shape":"ClientRequestToken"}
+        "RoleARN":{"shape":"RoleARN"}
       }
     },
     "DeletionTime":{"type":"timestamp"},
@@ -734,8 +712,7 @@
       "required":["ChangeSetName"],
       "members":{
         "ChangeSetName":{"shape":"ChangeSetNameOrId"},
-        "StackName":{"shape":"StackNameOrId"},
-        "ClientRequestToken":{"shape":"ClientRequestToken"}
+        "StackName":{"shape":"StackNameOrId"}
       }
     },
     "ExecuteChangeSetOutput":{
@@ -1190,8 +1167,7 @@
         "Timestamp":{"shape":"Timestamp"},
         "ResourceStatus":{"shape":"ResourceStatus"},
         "ResourceStatusReason":{"shape":"ResourceStatusReason"},
-        "ResourceProperties":{"shape":"ResourceProperties"},
-        "ClientRequestToken":{"shape":"ClientRequestToken"}
+        "ResourceProperties":{"shape":"ResourceProperties"}
       }
     },
     "StackEvents":{
@@ -1396,17 +1372,6 @@
       "min":1
     },
     "Timestamp":{"type":"timestamp"},
-    "TokenAlreadyExistsException":{
-      "type":"structure",
-      "members":{
-      },
-      "error":{
-        "code":"TokenAlreadyExistsException",
-        "httpStatusCode":400,
-        "senderFault":true
-      },
-      "exception":true
-    },
     "TransformName":{"type":"string"},
     "TransformsList":{
       "type":"list",
@@ -1429,8 +1394,7 @@
         "StackPolicyBody":{"shape":"StackPolicyBody"},
         "StackPolicyURL":{"shape":"StackPolicyURL"},
         "NotificationARNs":{"shape":"NotificationARNs"},
-        "Tags":{"shape":"Tags"},
-        "ClientRequestToken":{"shape":"ClientRequestToken"}
+        "Tags":{"shape":"Tags"}
       }
     },
     "UpdateStackOutput":{

@@ -414,7 +414,6 @@
     },
     "GetEventSelectorsRequest":{
       "type":"structure",
-      "required":["TrailName"],
       "members":{
         "TrailName":{"shape":"String"}
       }
@@ -694,10 +693,6 @@
     },
     "PutEventSelectorsRequest":{
       "type":"structure",
-      "required":[
-        "TrailName",
-        "EventSelectors"
-      ],
       "members":{
         "TrailName":{"shape":"String"},
         "EventSelectors":{"shape":"EventSelectors"}

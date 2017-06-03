@@ -91,8 +91,7 @@
       "errors":[
         {"shape":"InternalServiceException"},
         {"shape":"InvalidRequestException"},
-        {"shape":"UnauthorizedException"},
-        {"shape":"LimitExceededException"}
+        {"shape":"UnauthorizedException"}
       ]
     },
     "CreatePlayerSession":{
@@ -875,8 +874,7 @@
         "EC2InboundPermissions":{"shape":"IpPermissionsList"},
         "NewGameSessionProtectionPolicy":{"shape":"ProtectionPolicy"},
         "RuntimeConfiguration":{"shape":"RuntimeConfiguration"},
-        "ResourceCreationLimitPolicy":{"shape":"ResourceCreationLimitPolicy"},
-        "MetricGroups":{"shape":"MetricGroupList"}
+        "ResourceCreationLimitPolicy":{"shape":"ResourceCreationLimitPolicy"}
       }
     },
     "CreateFleetOutput":{
@@ -895,8 +893,7 @@
         "Name":{"shape":"NonZeroAndMaxString"},
         "GameProperties":{"shape":"GamePropertyList"},
         "CreatorId":{"shape":"NonZeroAndMaxString"},
-        "GameSessionId":{"shape":"IdStringModel"},
-        "IdempotencyToken":{"shape":"IdStringModel"}
+        "GameSessionId":{"shape":"IdStringModel"}
       }
     },
     "CreateGameSessionOutput":{
@@ -911,7 +908,6 @@
       "members":{
         "Name":{"shape":"GameSessionQueueName"},
         "TimeoutInSeconds":{"shape":"WholeNumber"},
-        "PlayerLatencyPolicies":{"shape":"PlayerLatencyPolicyList"},
         "Destinations":{"shape":"GameSessionQueueDestinationList"}
       }
     },
@@ -1374,8 +1370,7 @@
         "LogPaths":{"shape":"StringList"},
         "NewGameSessionProtectionPolicy":{"shape":"ProtectionPolicy"},
         "OperatingSystem":{"shape":"OperatingSystem"},
-        "ResourceCreationLimitPolicy":{"shape":"ResourceCreationLimitPolicy"},
-        "MetricGroups":{"shape":"MetricGroupList"}
+        "ResourceCreationLimitPolicy":{"shape":"ResourceCreationLimitPolicy"}
       }
     },
     "FleetAttributesList":{
@@ -1482,11 +1477,6 @@
         "CreatorId":{"shape":"NonZeroAndMaxString"}
       }
     },
-    "GameSessionActivationTimeoutSeconds":{
-      "type":"integer",
-      "max":600,
-      "min":1
-    },
     "GameSessionDetail":{
       "type":"structure",
       "members":{
@@ -1518,15 +1508,11 @@
         "GameProperties":{"shape":"GamePropertyList"},
         "MaximumPlayerSessionCount":{"shape":"WholeNumber"},
         "GameSessionName":{"shape":"NonZeroAndMaxString"},
-        "GameSessionId":{"shape":"NonZeroAndMaxString"},
         "GameSessionArn":{"shape":"NonZeroAndMaxString"},
         "GameSessionRegion":{"shape":"NonZeroAndMaxString"},
         "PlayerLatencies":{"shape":"PlayerLatencyList"},
         "StartTime":{"shape":"Timestamp"},
-        "EndTime":{"shape":"Timestamp"},
-        "IpAddress":{"shape":"IpAddress"},
-        "Port":{"shape":"PortNumber"},
-        "PlacedPlayerSessions":{"shape":"PlacedPlayerSessionList"}
+        "EndTime":{"shape":"Timestamp"}
       }
     },
     "GameSessionPlacementState":{
@@ -1542,9 +1528,7 @@
       "type":"structure",
       "members":{
         "Name":{"shape":"GameSessionQueueName"},
-        "GameSessionQueueArn":{"shape":"ArnStringModel"},
         "TimeoutInSeconds":{"shape":"WholeNumber"},
-        "PlayerLatencyPolicies":{"shape":"PlayerLatencyPolicyList"},
         "Destinations":{"shape":"GameSessionQueueDestinationList"}
       }
     },
@@ -1782,33 +1766,15 @@
         "NextToken":{"shape":"NonZeroAndMaxString"}
       }
     },
-    "MaxConcurrentGameSessionActivations":{
-      "type":"integer",
-      "max":2147483647,
-      "min":1
-    },
-    "MetricGroup":{
-      "type":"string",
-      "max":255,
-      "min":1
-    },
-    "MetricGroupList":{
-      "type":"list",
-      "member":{"shape":"MetricGroup"},
-      "max":1
-    },
     "MetricName":{
       "type":"string",
       "enum":[
         "ActivatingGameSessions",
         "ActiveGameSessions",
         "ActiveInstances",
-        "AvailableGameSessions",
         "AvailablePlayerSessions",
         "CurrentPlayerSessions",
         "IdleInstances",
-        "PercentAvailableGameSessions",
-        "PercentIdleInstances",
         "QueueDepth",
         "WaitTime"
       ]
@@ -1846,17 +1812,6 @@
         "AMAZON_LINUX"
       ]
     },
-    "PlacedPlayerSession":{
-      "type":"structure",
-      "members":{
-        "PlayerId":{"shape":"NonZeroAndMaxString"},
-        "PlayerSessionId":{"shape":"PlayerSessionId"}
-      }
-    },
-    "PlacedPlayerSessionList":{
-      "type":"list",
-      "member":{"shape":"PlacedPlayerSession"}
-    },
     "PlayerData":{
       "type":"string",
       "max":2048,
@@ -1884,17 +1839,6 @@
     "PlayerLatencyList":{
       "type":"list",
       "member":{"shape":"PlayerLatency"}
-    },
-    "PlayerLatencyPolicy":{
-      "type":"structure",
-      "members":{
-        "MaximumIndividualPlayerLatencyMilliseconds":{"shape":"WholeNumber"},
-        "PolicyDurationSeconds":{"shape":"WholeNumber"}
-      }
-    },
-    "PlayerLatencyPolicyList":{
-      "type":"list",
-      "member":{"shape":"PlayerLatencyPolicy"}
     },
     "PlayerSession":{
       "type":"structure",
@@ -2036,9 +1980,7 @@
     "RuntimeConfiguration":{
       "type":"structure",
       "members":{
-        "ServerProcesses":{"shape":"ServerProcessList"},
-        "MaxConcurrentGameSessionActivations":{"shape":"MaxConcurrentGameSessionActivations"},
-        "GameSessionActivationTimeoutSeconds":{"shape":"GameSessionActivationTimeoutSeconds"}
+        "ServerProcesses":{"shape":"ServerProcessList"}
       }
     },
     "S3Location":{
@@ -2217,8 +2159,7 @@
         "Name":{"shape":"NonZeroAndMaxString"},
         "Description":{"shape":"NonZeroAndMaxString"},
         "NewGameSessionProtectionPolicy":{"shape":"ProtectionPolicy"},
-        "ResourceCreationLimitPolicy":{"shape":"ResourceCreationLimitPolicy"},
-        "MetricGroups":{"shape":"MetricGroupList"}
+        "ResourceCreationLimitPolicy":{"shape":"ResourceCreationLimitPolicy"}
       }
     },
     "UpdateFleetAttributesOutput":{
@@ -2281,7 +2222,6 @@
       "members":{
         "Name":{"shape":"GameSessionQueueName"},
         "TimeoutInSeconds":{"shape":"WholeNumber"},
-        "PlayerLatencyPolicies":{"shape":"PlayerLatencyPolicyList"},
         "Destinations":{"shape":"GameSessionQueueDestinationList"}
       }
     },

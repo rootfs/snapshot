@@ -119,25 +119,6 @@
         {"shape":"InvalidImageFormatException"}
       ]
     },
-    "DetectModerationLabels":{
-      "name":"DetectModerationLabels",
-      "http":{
-        "method":"POST",
-        "requestUri":"/"
-      },
-      "input":{"shape":"DetectModerationLabelsRequest"},
-      "output":{"shape":"DetectModerationLabelsResponse"},
-      "errors":[
-        {"shape":"InvalidS3ObjectException"},
-        {"shape":"InvalidParameterException"},
-        {"shape":"ImageTooLargeException"},
-        {"shape":"AccessDeniedException"},
-        {"shape":"InternalServerError"},
-        {"shape":"ThrottlingException"},
-        {"shape":"ProvisionedThroughputExceededException"},
-        {"shape":"InvalidImageFormatException"}
-      ]
-    },
     "IndexFaces":{
       "name":"IndexFaces",
       "http":{
@@ -311,24 +292,14 @@
       "type":"structure",
       "members":{
         "SourceImageFace":{"shape":"ComparedSourceImageFace"},
-        "FaceMatches":{"shape":"CompareFacesMatchList"},
-        "UnmatchedFaces":{"shape":"CompareFacesUnmatchList"},
-        "SourceImageOrientationCorrection":{"shape":"OrientationCorrection"},
-        "TargetImageOrientationCorrection":{"shape":"OrientationCorrection"}
+        "FaceMatches":{"shape":"CompareFacesMatchList"}
       }
-    },
-    "CompareFacesUnmatchList":{
-      "type":"list",
-      "member":{"shape":"ComparedFace"}
     },
     "ComparedFace":{
       "type":"structure",
       "members":{
         "BoundingBox":{"shape":"BoundingBox"},
-        "Confidence":{"shape":"Percent"},
-        "Landmarks":{"shape":"Landmarks"},
-        "Pose":{"shape":"Pose"},
-        "Quality":{"shape":"ImageQuality"}
+        "Confidence":{"shape":"Percent"}
       }
     },
     "ComparedSourceImageFace":{
@@ -416,20 +387,6 @@
       "members":{
         "Labels":{"shape":"Labels"},
         "OrientationCorrection":{"shape":"OrientationCorrection"}
-      }
-    },
-    "DetectModerationLabelsRequest":{
-      "type":"structure",
-      "required":["Image"],
-      "members":{
-        "Image":{"shape":"Image"},
-        "MinConfidence":{"shape":"Percent"}
-      }
-    },
-    "DetectModerationLabelsResponse":{
-      "type":"structure",
-      "members":{
-        "ModerationLabels":{"shape":"ModerationLabels"}
       }
     },
     "Emotion":{
@@ -728,18 +685,6 @@
       "type":"integer",
       "max":4096,
       "min":1
-    },
-    "ModerationLabel":{
-      "type":"structure",
-      "members":{
-        "Confidence":{"shape":"Percent"},
-        "Name":{"shape":"String"},
-        "ParentName":{"shape":"String"}
-      }
-    },
-    "ModerationLabels":{
-      "type":"list",
-      "member":{"shape":"ModerationLabel"}
     },
     "MouthOpen":{
       "type":"structure",

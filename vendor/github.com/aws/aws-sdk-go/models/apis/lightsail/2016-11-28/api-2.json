@@ -749,24 +749,6 @@
         {"shape":"UnauthenticatedException"}
       ]
     },
-    "PutInstancePublicPorts":{
-      "name":"PutInstancePublicPorts",
-      "http":{
-        "method":"POST",
-        "requestUri":"/"
-      },
-      "input":{"shape":"PutInstancePublicPortsRequest"},
-      "output":{"shape":"PutInstancePublicPortsResult"},
-      "errors":[
-        {"shape":"ServiceException"},
-        {"shape":"InvalidInputException"},
-        {"shape":"NotFoundException"},
-        {"shape":"OperationFailureException"},
-        {"shape":"AccessDeniedException"},
-        {"shape":"AccountSetupInProgressException"},
-        {"shape":"UnauthenticatedException"}
-      ]
-    },
     "RebootInstance":{
       "name":"RebootInstance",
       "http":{
@@ -1393,7 +1375,7 @@
     "GetInstancePortStatesResult":{
       "type":"structure",
       "members":{
-        "portStates":{"shape":"InstancePortStateList"}
+        "portStates":{"shape":"PortStateList"}
       }
     },
     "GetInstanceRequest":{
@@ -1672,19 +1654,6 @@
       "type":"list",
       "member":{"shape":"InstancePortInfo"}
     },
-    "InstancePortState":{
-      "type":"structure",
-      "members":{
-        "fromPort":{"shape":"Port"},
-        "toPort":{"shape":"Port"},
-        "protocol":{"shape":"NetworkProtocol"},
-        "state":{"shape":"PortState"}
-      }
-    },
-    "InstancePortStateList":{
-      "type":"list",
-      "member":{"shape":"InstancePortState"}
-    },
     "InstanceSnapshot":{
       "type":"structure",
       "members":{
@@ -1929,7 +1898,6 @@
         "StartInstance",
         "RebootInstance",
         "OpenInstancePublicPorts",
-        "PutInstancePublicPorts",
         "CloseInstancePublicPorts",
         "AllocateStaticIp",
         "ReleaseStaticIp",
@@ -1975,10 +1943,6 @@
         "protocol":{"shape":"NetworkProtocol"}
       }
     },
-    "PortInfoList":{
-      "type":"list",
-      "member":{"shape":"PortInfo"}
-    },
     "PortState":{
       "type":"string",
       "enum":[
@@ -1986,22 +1950,9 @@
         "closed"
       ]
     },
-    "PutInstancePublicPortsRequest":{
-      "type":"structure",
-      "required":[
-        "portInfos",
-        "instanceName"
-      ],
-      "members":{
-        "portInfos":{"shape":"PortInfoList"},
-        "instanceName":{"shape":"ResourceName"}
-      }
-    },
-    "PutInstancePublicPortsResult":{
-      "type":"structure",
-      "members":{
-        "operation":{"shape":"Operation"}
-      }
+    "PortStateList":{
+      "type":"list",
+      "member":{"shape":"PortState"}
     },
     "RebootInstanceRequest":{
       "type":"structure",
@@ -2088,8 +2039,7 @@
         "message":{"shape":"string"},
         "tip":{"shape":"string"}
       },
-      "exception":true,
-      "fault":true
+      "exception":true
     },
     "StartInstanceRequest":{
       "type":"structure",

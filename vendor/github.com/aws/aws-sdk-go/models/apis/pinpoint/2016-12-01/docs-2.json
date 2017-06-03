@@ -7,18 +7,16 @@
     "CreateSegment" : "Used to create or update a segment.",
     "DeleteApnsChannel" : "Deletes the APNs channel for an app.",
     "DeleteCampaign" : "Deletes a campaign.",
-    "DeleteEventStream" : "Deletes the event stream for an app.",
     "DeleteGcmChannel" : "Deletes the GCM channel for an app.",
     "DeleteSegment" : "Deletes a segment.",
     "GetApnsChannel" : "Returns information about the APNs channel for an app.",
     "GetApplicationSettings" : "Used to request the settings for an app.",
     "GetCampaign" : "Returns information about a campaign.",
     "GetCampaignActivities" : "Returns information about the activity performed by a campaign.",
-    "GetCampaignVersion" : "Returns information about a specific version of a campaign.",
+    "GetCampaignVersion" : "Returns information about your campaign versions.",
     "GetCampaignVersions" : "Returns information about your campaign versions.",
     "GetCampaigns" : "Returns information about your campaigns.",
     "GetEndpoint" : "Returns information about an endpoint.",
-    "GetEventStream" : "Returns the event stream for an app.",
     "GetGcmChannel" : "Returns information about the GCM channel for an app.",
     "GetImportJob" : "Returns information about an import job.",
     "GetImportJobs" : "Returns information about your import jobs.",
@@ -27,63 +25,57 @@
     "GetSegmentVersion" : "Returns information about a segment version.",
     "GetSegmentVersions" : "Returns information about your segment versions.",
     "GetSegments" : "Used to get information about your segments.",
-    "PutEventStream" : "Use to create or update the event stream for an app.",
     "UpdateApnsChannel" : "Use to update the APNs channel for an app.",
     "UpdateApplicationSettings" : "Used to update the settings for an app.",
     "UpdateCampaign" : "Use to update a campaign.",
     "UpdateEndpoint" : "Use to update an endpoint.",
-    "UpdateEndpointsBatch" : "Use to update a batch of endpoints.",
+    "UpdateEndpointsBatch" : "Use to update your endpoints.",
     "UpdateGcmChannel" : "Use to update the GCM channel for an app.",
     "UpdateSegment" : "Use to update a segment."
   },
   "shapes" : {
     "APNSChannelRequest" : {
-      "base" : "Apple Push Notification Service channel definition.",
+      "base" : null,
       "refs" : { }
     },
     "APNSChannelResponse" : {
-      "base" : "Apple Distribution Push Notification Service channel definition.",
+      "base" : null,
       "refs" : { }
     },
     "Action" : {
       "base" : null,
-      "refs" : {
-        "Message$Action" : "The action that occurs if the user taps a push notification delivered by the campaign:\nOPEN_APP – Your app launches, or it becomes the foreground app if it has been sent to the background. This is the default action.\n\nDEEP_LINK – Uses deep linking features in iOS and Android to open your app and display a designated user interface within the app.\n\nURL – The default mobile browser on the user's device launches and opens a web page at the URL you specify."
-      }
+      "refs" : { }
     },
     "ActivitiesResponse" : {
-      "base" : "Activities for campaign.",
+      "base" : null,
       "refs" : { }
     },
     "ActivityResponse" : {
-      "base" : "Activity definition",
+      "base" : null,
       "refs" : {
         "ActivitiesResponse$Item" : "List of campaign activities"
       }
     },
     "ApplicationSettingsResource" : {
-      "base" : "Application settings.",
+      "base" : null,
       "refs" : { }
     },
     "AttributeDimension" : {
-      "base" : "Custom attibute dimension",
+      "base" : null,
       "refs" : {
-        "SegmentDimensions$Attributes" : "Custom segment attributes.",
-        "SegmentDimensions$UserAttributes" : "Custom segment user attributes."
+        "SegmentDimensions$Attributes" : "Custom segment attributes."
       }
     },
     "AttributeType" : {
       "base" : null,
-      "refs" : {
-        "AttributeDimension$AttributeType" : "The type of dimension:\nINCLUSIVE – Endpoints that match the criteria are included in the segment.\nEXCLUSIVE – Endpoints that match the criteria are excluded from the segment."
-      }
+      "refs" : { }
     },
     "BadRequestException" : {
       "base" : "400 response",
       "refs" : { }
     },
     "CampaignLimits" : {
-      "base" : "Campaign Limits are used to limit the number of messages that can be sent to a user.",
+      "base" : null,
       "refs" : {
         "ApplicationSettingsResource$Limits" : "The default campaign limits for the app. These limits apply to each campaign for the app, unless the campaign overrides the default with limits of its own.",
         "CampaignResponse$Limits" : "The campaign limits settings.",
@@ -92,13 +84,13 @@
       }
     },
     "CampaignResponse" : {
-      "base" : "Campaign definition",
+      "base" : null,
       "refs" : {
         "CampaignsResponse$Item" : "A list of campaigns."
       }
     },
     "CampaignState" : {
-      "base" : "State of the Campaign",
+      "base" : null,
       "refs" : {
         "CampaignResponse$DefaultState" : "The status of the campaign's default treatment. Only present for A/B test campaigns.",
         "CampaignResponse$State" : "The campaign status.\n\nAn A/B test campaign will have a status of COMPLETED only when all treatments have a status of COMPLETED.",
@@ -107,46 +99,36 @@
     },
     "CampaignStatus" : {
       "base" : null,
-      "refs" : {
-        "CampaignState$CampaignStatus" : "The status of the campaign, or the status of a treatment that belongs to an A/B test campaign.\n\nValid values: SCHEDULED, EXECUTING, PENDING_NEXT_RUN, COMPLETED, PAUSED"
-      }
+      "refs" : { }
     },
     "CampaignsResponse" : {
-      "base" : "List of available campaigns.",
+      "base" : null,
       "refs" : { }
     },
     "ChannelType" : {
       "base" : null,
-      "refs" : {
-        "EndpointBatchItem$ChannelType" : "The channel type.\n\nValid values: APNS, GCM",
-        "EndpointRequest$ChannelType" : "The channel type.\n\nValid values: APNS, GCM",
-        "EndpointResponse$ChannelType" : "The channel type.\n\nValid values: APNS, GCM"
-      }
+      "refs" : { }
     },
     "DimensionType" : {
       "base" : null,
-      "refs" : {
-        "SetDimension$DimensionType" : "The type of dimension:\nINCLUSIVE – Endpoints that match the criteria are included in the segment.\nEXCLUSIVE – Endpoints that match the criteria are excluded from the segment."
-      }
+      "refs" : { }
     },
     "Duration" : {
       "base" : null,
-      "refs" : {
-        "RecencyDimension$Duration" : "The length of time during which users have been active or inactive with your app.\nValid values: HR_24, DAY_7, DAY_14, DAY_30"
-      }
+      "refs" : { }
     },
     "EndpointBatchItem" : {
-      "base" : "Endpoint update request",
+      "base" : null,
       "refs" : {
         "EndpointBatchRequest$Item" : "List of items to update. Maximum 100 items"
       }
     },
     "EndpointBatchRequest" : {
-      "base" : "Endpoint batch update request.",
+      "base" : null,
       "refs" : { }
     },
     "EndpointDemographic" : {
-      "base" : "Endpoint demographic data",
+      "base" : null,
       "refs" : {
         "EndpointBatchItem$Demographic" : "The endpoint demographic attributes.",
         "EndpointRequest$Demographic" : "The endpoint demographic attributes.",
@@ -154,7 +136,7 @@
       }
     },
     "EndpointLocation" : {
-      "base" : "Endpoint location data",
+      "base" : null,
       "refs" : {
         "EndpointBatchItem$Location" : "The endpoint location attributes.",
         "EndpointRequest$Location" : "The endpoint location attributes.",
@@ -162,24 +144,20 @@
       }
     },
     "EndpointRequest" : {
-      "base" : "Endpoint update request",
+      "base" : null,
       "refs" : { }
     },
     "EndpointResponse" : {
-      "base" : "Endpoint response",
+      "base" : null,
       "refs" : { }
     },
     "EndpointUser" : {
-      "base" : "Endpoint user specific custom userAttributes",
+      "base" : null,
       "refs" : {
         "EndpointBatchItem$User" : "Custom user-specific attributes that your app reports to Amazon Pinpoint.",
         "EndpointRequest$User" : "Custom user-specific attributes that your app reports to Amazon Pinpoint.",
         "EndpointResponse$User" : "Custom user-specific attributes that your app reports to Amazon Pinpoint."
       }
-    },
-    "EventStream" : {
-      "base" : "Model for an event publishing subscription export.",
-      "refs" : { }
     },
     "ForbiddenException" : {
       "base" : "403 response",
@@ -187,24 +165,18 @@
     },
     "Format" : {
       "base" : null,
-      "refs" : {
-        "ImportJobRequest$Format" : "The format of the files that contain the endpoint definitions.\nValid values: CSV, JSON",
-        "ImportJobResource$Format" : "The format of the files that contain the endpoint definitions.\nValid values: CSV, JSON",
-        "SegmentImportResource$Format" : "The format of the endpoint files that were imported to create this segment.\nValid values: CSV, JSON"
-      }
+      "refs" : { }
     },
     "Frequency" : {
       "base" : null,
-      "refs" : {
-        "Schedule$Frequency" : "How often the campaign delivers messages.\n\nValid values: ONCE, HOURLY, DAILY, WEEKLY, MONTHLY"
-      }
+      "refs" : { }
     },
     "GCMChannelRequest" : {
-      "base" : "Google Cloud Messaging credentials",
+      "base" : null,
       "refs" : { }
     },
     "GCMChannelResponse" : {
-      "base" : "Google Cloud Messaging channel definition",
+      "base" : null,
       "refs" : { }
     },
     "ImportJobRequest" : {
@@ -224,7 +196,7 @@
       }
     },
     "ImportJobsResponse" : {
-      "base" : "Import job list.",
+      "base" : null,
       "refs" : { }
     },
     "InternalServerErrorException" : {
@@ -233,9 +205,7 @@
     },
     "JobStatus" : {
       "base" : null,
-      "refs" : {
-        "ImportJobResponse$JobStatus" : "The status of the import job.\nValid values: CREATED, INITIALIZING, PROCESSING, COMPLETING, COMPLETED, FAILING, FAILED\n\nThe job status is FAILED if one or more pieces failed to import."
-      }
+      "refs" : { }
     },
     "ListOfActivityResponse" : {
       "base" : null,
@@ -290,11 +260,11 @@
       }
     },
     "MessageBody" : {
-      "base" : "Simple message object.",
+      "base" : null,
       "refs" : { }
     },
     "MessageConfiguration" : {
-      "base" : "Message configuration for a campaign.",
+      "base" : null,
       "refs" : {
         "CampaignResponse$MessageConfiguration" : "The message configuration settings.",
         "TreatmentResource$MessageConfiguration" : "The message configuration settings.",
@@ -311,7 +281,7 @@
       "refs" : { }
     },
     "QuietTime" : {
-      "base" : "Quiet Time",
+      "base" : null,
       "refs" : {
         "ApplicationSettingsResource$QuietTime" : "The default quiet time for the app. Each campaign for this app sends no messages during this time unless the campaign overrides the default with a quiet time of its own.",
         "Schedule$QuietTime" : "The time during which the campaign sends no messages.",
@@ -319,19 +289,17 @@
       }
     },
     "RecencyDimension" : {
-      "base" : "Define how a segment based on recency of use.",
+      "base" : null,
       "refs" : {
         "SegmentBehaviors$Recency" : "The recency of use."
       }
     },
     "RecencyType" : {
       "base" : null,
-      "refs" : {
-        "RecencyDimension$RecencyType" : "The recency dimension type:\nACTIVE – Users who have used your app within the specified duration are included in the segment.\nINACTIVE – Users who have not used your app within the specified duration are included in the segment."
-      }
+      "refs" : { }
     },
     "Schedule" : {
-      "base" : "Shcedule that defines when a campaign is run.",
+      "base" : null,
       "refs" : {
         "CampaignResponse$Schedule" : "The campaign schedule.",
         "TreatmentResource$Schedule" : "The campaign schedule.",
@@ -340,54 +308,52 @@
       }
     },
     "SegmentBehaviors" : {
-      "base" : "Segment behavior dimensions",
+      "base" : null,
       "refs" : {
         "SegmentDimensions$Behavior" : "The segment behaviors attributes."
       }
     },
     "SegmentDemographics" : {
-      "base" : "Segment demographic dimensions",
+      "base" : null,
       "refs" : {
         "SegmentDimensions$Demographic" : "The segment demographics attributes."
       }
     },
     "SegmentDimensions" : {
-      "base" : "Segment dimensions",
+      "base" : null,
       "refs" : {
         "SegmentResponse$Dimensions" : "The segment dimensions attributes.",
         "WriteSegmentRequest$Dimensions" : "The segment dimensions attributes."
       }
     },
     "SegmentImportResource" : {
-      "base" : "Segment import definition.",
+      "base" : null,
       "refs" : {
         "SegmentResponse$ImportDefinition" : "The import job settings."
       }
     },
     "SegmentLocation" : {
-      "base" : "Segment location dimensions",
+      "base" : null,
       "refs" : {
-        "SegmentDimensions$Location" : "The segment location attributes."
+        "SegmentDimensions$Location" : "The segment location attributes.\n"
       }
     },
     "SegmentResponse" : {
-      "base" : "Segment definition.",
+      "base" : null,
       "refs" : {
         "SegmentsResponse$Item" : "The list of segments."
       }
     },
     "SegmentType" : {
       "base" : null,
-      "refs" : {
-        "SegmentResponse$SegmentType" : "The segment type:\nDIMENSIONAL – A dynamic segment built from selection criteria based on endpoint data reported by your app. You create this type of segment by using the segment builder in the Amazon Pinpoint console or by making a POST request to the segments resource.\nIMPORT – A static segment built from an imported set of endpoint definitions. You create this type of segment by importing a segment in the Amazon Pinpoint console or by making a POST request to the jobs/import resource."
-      }
+      "refs" : { }
     },
     "SegmentsResponse" : {
-      "base" : "Segments in your account.",
+      "base" : null,
       "refs" : { }
     },
     "SetDimension" : {
-      "base" : "Dimension specification of a segment.",
+      "base" : null,
       "refs" : {
         "SegmentDemographics$AppVersion" : "The app version criteria for the segment.",
         "SegmentDemographics$DeviceType" : "The device type criteria for the segment.",
@@ -402,29 +368,25 @@
       "refs" : { }
     },
     "TreatmentResource" : {
-      "base" : "Treatment resource",
+      "base" : null,
       "refs" : {
         "CampaignResponse$AdditionalTreatments" : "Treatments that are defined in addition to the default treatment."
       }
     },
     "WriteApplicationSettingsRequest" : {
-      "base" : "Creating application setting request",
+      "base" : null,
       "refs" : { }
     },
     "WriteCampaignRequest" : {
-      "base" : "Used to create a campaign.",
-      "refs" : { }
-    },
-    "WriteEventStream" : {
-      "base" : "Request to save an EventStream.",
+      "base" : null,
       "refs" : { }
     },
     "WriteSegmentRequest" : {
-      "base" : "Segment definition.",
+      "base" : null,
       "refs" : { }
     },
     "WriteTreatmentResource" : {
-      "base" : "Used to create a campaign treatment.",
+      "base" : null,
       "refs" : {
         "WriteCampaignRequest$AdditionalTreatments" : "Treatments that are defined in addition to the default treatment."
       }
@@ -456,8 +418,6 @@
       "refs" : {
         "APNSChannelResponse$Version" : "Version of channel",
         "ActivityResponse$SuccessfulEndpointCount" : "The total number of endpoints to which the campaign successfully delivered messages.",
-        "ActivityResponse$TimezonesCompletedCount" : "The total number of timezones completed.",
-        "ActivityResponse$TimezonesTotalCount" : "The total number of unique timezones present in the segment.",
         "ActivityResponse$TotalEndpointCount" : "The total number of endpoints to which the campaign attempts to deliver messages.",
         "CampaignLimits$Daily" : "The maximum number of messages that the campaign can send daily.",
         "CampaignLimits$Total" : "The maximum total number of messages that the campaign can send.",
@@ -483,9 +443,9 @@
       "refs" : {
         "APNSChannelRequest$Certificate" : "The distribution certificate from Apple.",
         "APNSChannelRequest$PrivateKey" : "The certificate private key.",
-        "APNSChannelResponse$ApplicationId" : "The ID of the application to which the channel applies.",
+        "APNSChannelResponse$ApplicationId" : null,
         "APNSChannelResponse$CreationDate" : "When was this segment created",
-        "APNSChannelResponse$Id" : "The unique channel ID.",
+        "APNSChannelResponse$Id" : null,
         "APNSChannelResponse$LastModifiedBy" : "Who last updated this entry",
         "APNSChannelResponse$LastModifiedDate" : "Last date this was updated",
         "APNSChannelResponse$Platform" : "The platform type. Will be APNS.",
@@ -510,10 +470,10 @@
         "CampaignResponse$TreatmentDescription" : "A custom description for the treatment.",
         "CampaignResponse$TreatmentName" : "The custom name of a variation of the campaign used for A/B testing.",
         "CampaignsResponse$NextToken" : "The string that you use in a subsequent request to get the next page of results in a paginated response.",
-        "EndpointBatchItem$Address" : "The address or token of the endpoint as provided by your push provider (e.g. DeviceToken or RegistrationId).",
+        "EndpointBatchItem$Address" : "The address or token of the endpoint.",
         "EndpointBatchItem$EffectiveDate" : "The last time the endpoint was updated. Provided in ISO 8601 format.",
         "EndpointBatchItem$EndpointStatus" : "The endpoint status. Can be either ACTIVE or INACTIVE. Will be set to INACTIVE if a delivery fails. Will be set to ACTIVE if the address is updated.",
-        "EndpointBatchItem$Id" : "The unique Id for the Endpoint in the batch.",
+        "EndpointBatchItem$Id" : null,
         "EndpointBatchItem$OptOut" : "Indicates whether a user has opted out of receiving messages with one of the following values:\n\nALL – User receives all messages.\nNONE – User receives no messages.",
         "EndpointBatchItem$RequestId" : "The unique ID for the most recent request to update the endpoint.",
         "EndpointDemographic$AppVersion" : "The version of the application associated with the endpoint.",
@@ -528,12 +488,12 @@
         "EndpointLocation$Country" : "Country according to ISO 3166-1 Alpha-2 codes. For example, US.",
         "EndpointLocation$PostalCode" : "The postal code or zip code of the endpoint.",
         "EndpointLocation$Region" : "The region of the endpoint location. For example, corresponds to a state in US.",
-        "EndpointRequest$Address" : "The address or token of the endpoint as provided by your push provider (e.g. DeviceToken or RegistrationId).",
+        "EndpointRequest$Address" : "The address or token of the endpoint.",
         "EndpointRequest$EffectiveDate" : "The last time the endpoint was updated. Provided in ISO 8601 format.",
         "EndpointRequest$EndpointStatus" : "The endpoint status. Can be either ACTIVE or INACTIVE. Will be set to INACTIVE if a delivery fails. Will be set to ACTIVE if the address is updated.",
         "EndpointRequest$OptOut" : "Indicates whether a user has opted out of receiving messages with one of the following values:\n\nALL – User receives all messages.\nNONE – User receives no messages.",
         "EndpointRequest$RequestId" : "The unique ID for the most recent request to update the endpoint.",
-        "EndpointResponse$Address" : "The address or token of the endpoint as provided by your push provider (e.g. DeviceToken or RegistrationId).",
+        "EndpointResponse$Address" : "The address or token of the endpoint.",
         "EndpointResponse$ApplicationId" : "The ID of the application associated with the endpoint.",
         "EndpointResponse$CohortId" : "A number from 0 - 99 that represents the cohort the endpoint is assigned to. Endpoints are grouped into cohorts randomly, and each cohort contains approximately 1 percent of the endpoints for an app. Amazon Pinpoint assigns cohorts to the holdout or treatment allocations for a campaign.",
         "EndpointResponse$CreationDate" : "The last time the endpoint was created. Provided in ISO 8601 format.",
@@ -544,17 +504,11 @@
         "EndpointResponse$RequestId" : "The unique ID for the most recent request to update the endpoint.",
         "EndpointResponse$ShardId" : "The ShardId of endpoint",
         "EndpointUser$UserId" : "The unique ID of the user.",
-        "EventStream$ApplicationId" : "The ID of the application from which events should be published.",
-        "EventStream$DestinationStreamArn" : "The Amazon Resource Name (ARN) of the Amazon Kinesis stream or Firehose delivery stream to which you want to publish events.\n Firehose ARN: arn:aws:firehose:REGION:ACCOUNT_ID:deliverystream/STREAM_NAME\n Kinesis ARN: arn:aws:kinesis:REGION:ACCOUNT_ID:stream/STREAM_NAME",
-        "EventStream$ExternalId" : "The external ID assigned the IAM role that authorizes Amazon Pinpoint to publish to the stream.",
-        "EventStream$LastModifiedDate" : "The date the event stream was last updated in ISO 8601 format.",
-        "EventStream$LastUpdatedBy" : "The IAM user who last modified the event stream.",
-        "EventStream$RoleArn" : "The IAM role that authorizes Amazon Pinpoint to publish events to the stream in your account.",
         "GCMChannelRequest$ApiKey" : "Platform credential API key from Google.",
-        "GCMChannelResponse$ApplicationId" : "The ID of the application to which the channel applies.",
+        "GCMChannelResponse$ApplicationId" : null,
         "GCMChannelResponse$CreationDate" : "When was this segment created",
         "GCMChannelResponse$Credential" : "The GCM API key from Google.",
-        "GCMChannelResponse$Id" : "The unique channel ID.",
+        "GCMChannelResponse$Id" : null,
         "GCMChannelResponse$LastModifiedBy" : "Who last updated this entry",
         "GCMChannelResponse$LastModifiedDate" : "Last date this was updated",
         "GCMChannelResponse$Platform" : "The platform type. Will be GCM",
@@ -581,8 +535,8 @@
         "Message$MediaUrl" : "The URL that points to the media resource, for example a .mp4 or .gif file.",
         "Message$Title" : "The message title that displays above the message on the user's device.",
         "Message$Url" : "The URL to open in the user's mobile browser. Used if the value for Action is URL.",
-        "MessageBody$Message" : "The error message returned from the API.",
-        "MessageBody$RequestID" : "The unique message body ID.",
+        "MessageBody$Message" : null,
+        "MessageBody$RequestID" : null,
         "QuietTime$End" : "The default end time for quiet time in ISO 8601 format.",
         "QuietTime$Start" : "The default start time for quiet time in ISO 8601 format.",
         "Schedule$EndTime" : "The scheduled time that the campaign ends in ISO 8601 format.",
@@ -605,16 +559,9 @@
         "WriteCampaignRequest$SegmentId" : "The ID of the segment to which the campaign sends messages.",
         "WriteCampaignRequest$TreatmentDescription" : "A custom description for the treatment.",
         "WriteCampaignRequest$TreatmentName" : "The custom name of a variation of the campaign used for A/B testing.",
-        "WriteEventStream$DestinationStreamArn" : "The Amazon Resource Name (ARN) of the Amazon Kinesis stream or Firehose delivery stream to which you want to publish events.\n Firehose ARN: arn:aws:firehose:REGION:ACCOUNT_ID:deliverystream/STREAM_NAME\n Kinesis ARN: arn:aws:kinesis:REGION:ACCOUNT_ID:stream/STREAM_NAME",
-        "WriteEventStream$ExternalId" : "The external ID assigned the IAM role that authorizes Amazon Pinpoint to publish to the stream.",
-        "WriteEventStream$RoleArn" : "The IAM role that authorizes Amazon Pinpoint to publish events to the stream in your account.",
         "WriteSegmentRequest$Name" : "The name of segment",
         "WriteTreatmentResource$TreatmentDescription" : "A custom description for the treatment.",
-        "WriteTreatmentResource$TreatmentName" : "The custom name of a variation of the campaign used for A/B testing.",
-        "PutEventStreamRequest$ApplicationId": "Application Id.",
-        "PutEventStreamRequest$WriteEventStream": "Write event stream wrapper.",
-        "GetEventStreamRequest$ApplicationId": "Application Id.",
-        "DeleteEventStreamRequest$ApplicationId": "Application Id."
+        "WriteTreatmentResource$TreatmentName" : "The custom name of a variation of the campaign used for A/B testing."
       }
     }
   }

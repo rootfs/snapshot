@@ -412,7 +412,7 @@
     "SubjectType":{"type":"string"},
     "accessKeyIdType":{
       "type":"string",
-      "max":128,
+      "max":32,
       "min":16,
       "pattern":"[\\w]*"
     },
@@ -426,7 +426,7 @@
     },
     "assumedRoleIdType":{
       "type":"string",
-      "max":193,
+      "max":96,
       "min":2,
       "pattern":"[\\w+=,.@:-]*"
     },
@@ -456,7 +456,7 @@
     },
     "federatedIdType":{
       "type":"string",
-      "max":193,
+      "max":96,
       "min":2,
       "pattern":"[\\w+=,.@\\:-]*"
     },

@@ -1,9 +1,6 @@
 package s3crypto
 
 import (
-	"strings"
-
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/client"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/kms"
@@ -17,14 +14,10 @@ type WrapEntry func(Envelope) (CipherDataDecrypter, error)
 // CEKEntry is a builder thatn returns a proper content decrypter and error
 type CEKEntry func(CipherData) (ContentCipher, error)
 
-// DecryptionClient is an S3 crypto client. The decryption client
-// will handle all get object requests from Amazon S3.
-// Supported key wrapping algorithms:
-//	*AWS KMS
-//
-// Supported content ciphers:
-//	* AES/GCM
-//	* AES/CBC
+// DecryptionClient is an S3 crypto client. By default the SDK will use Authentication mode which
+// will use KMS for key wrapping and AES GCM for content encryption.
+// AES GCM will load all data into memory. However, the rest of the content algorithms
+// do not load the entire contents into memory.
 type DecryptionClient struct {
 	S3Client s3iface.S3API
 	// LoadStrategy is used to load the metadata either from the metadata of the object
@@ -33,9 +26,8 @@ type DecryptionClient struct {
 	// Defaults to our default load strategy.
 	LoadStrategy LoadStrategy
 
-	WrapRegistry   map[string]WrapEntry
-	CEKRegistry    map[string]CEKEntry
-	PadderRegistry map[string]Padder
+	WrapRegistry map[string]WrapEntry
+	CEKRegistry  map[string]CEKEntry
 }
 
 // NewDecryptionClient instantiates a new S3 crypto client
@@ -58,12 +50,7 @@ func NewDecryptionClient(prov client.ConfigProvider, options ...func(*Decryption
 			}).decryptHandler,
 		},
 		CEKRegistry: map[string]CEKEntry{
-			AESGCMNoPadding:                                          newAESGCMContentCipher,
-			strings.Join([]string{AESCBC, AESCBCPadder.Name()}, "/"): newAESCBCContentCipher,
-		},
-		PadderRegistry: map[string]Padder{
-			strings.Join([]string{AESCBC, AESCBCPadder.Name()}, "/"): AESCBCPadder,
-			"NoPadding": NoPadder,
+			AESGCMNoPadding: newAESGCMContentCipher,
 		},
 	}
 	for _, option := range options {
@@ -117,19 +104,5 @@ func (c *DecryptionClient) GetObjectRequest(input *s3.GetObjectInput) (*request.
 // GetObject is a wrapper for GetObjectRequest
 func (c *DecryptionClient) GetObject(input *s3.GetObjectInput) (*s3.GetObjectOutput, error) {
 	req, out := c.GetObjectRequest(input)
-	return out, req.Send()
-}
-
-// GetObjectWithContext is a wrapper for GetObjectRequest with the additional
-// context, and request options support.
-//
-// GetObjectWithContext is the same as GetObject with the additional support for
-// Context input parameters. The Context must not be nil. A nil Context will
-// cause a panic. Use the Context to add deadlining, timeouts, ect. In the future
-// this may create sub-contexts for individual underlying requests.
-func (c *DecryptionClient) GetObjectWithContext(ctx aws.Context, input *s3.GetObjectInput, opts ...request.Option) (*s3.GetObjectOutput, error) {
-	req, out := c.GetObjectRequest(input)
-	req.SetContext(ctx)
-	req.ApplyOptions(opts...)
 	return out, req.Send()
 }

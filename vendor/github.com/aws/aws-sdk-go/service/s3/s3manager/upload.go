@@ -202,20 +202,13 @@ type UploadOutput struct {
 	UploadID string
 }
 
-// WithUploaderRequestOptions appends to the Uploader's API request options.
-func WithUploaderRequestOptions(opts ...request.Option) func(*Uploader) {
-	return func(u *Uploader) {
-		u.RequestOptions = append(u.RequestOptions, opts...)
-	}
-}
-
 // The Uploader structure that calls Upload(). It is safe to call Upload()
 // on this structure for multiple objects and across concurrent goroutines.
 // Mutating the Uploader's properties is not safe to be done concurrently.
 type Uploader struct {
 	// The buffer size (in bytes) to use when buffering data into chunks and
 	// sending them as parts to S3. The minimum allowed part size is 5MB, and
-	// if this value is set to zero, the DefaultUploadPartSize value will be used.
+	// if this value is set to zero, the DefaultPartSize value will be used.
 	PartSize int64
 
 	// The number of goroutines to spin up in parallel when sending parts.
@@ -239,10 +232,6 @@ type Uploader struct {
 
 	// The client to use when uploading to S3.
 	S3 s3iface.S3API
-
-	// List of request options that will be passed down to individual API
-	// operation requests made by the uploader.
-	RequestOptions []request.Option
 }
 
 // NewUploader creates a new Uploader instance to upload objects to S3. Pass In
@@ -319,9 +308,6 @@ func NewUploaderWithClient(svc s3iface.S3API, options ...func(*Uploader)) *Uploa
 // upload. These options are copies of the Uploader instance Upload is called from.
 // Modifying the options will not impact the original Uploader instance.
 //
-// Use the WithUploaderRequestOptions helper function to pass in request
-// options that will be applied to all API operations made with this uploader.
-//
 // It is safe to call this method concurrently across goroutines.
 //
 // Example:
@@ -341,42 +327,18 @@ func NewUploaderWithClient(svc s3iface.S3API, options ...func(*Uploader)) *Uploa
 //          u.LeavePartsOnError = true    // Don't delete the parts if the upload fails.
 //     })
 func (u Uploader) Upload(input *UploadInput, options ...func(*Uploader)) (*UploadOutput, error) {
-	return u.UploadWithContext(aws.BackgroundContext(), input, options...)
-}
+	i := uploader{in: input, ctx: u}
 
-// UploadWithContext uploads an object to S3, intelligently buffering large
-// files into smaller chunks and sending them in parallel across multiple
-// goroutines. You can configure the buffer size and concurrency through the
-// Uploader's parameters.
-//
-// UploadWithContext is the same as Upload with the additional support for
-// Context input parameters. The Context must not be nil. A nil Context will
-// cause a panic. Use the context to add deadlining, timeouts, ect. The
-// UploadWithContext may create sub-contexts for individual underlying requests.
-//
-// Additional functional options can be provided to configure the individual
-// upload. These options are copies of the Uploader instance Upload is called from.
-// Modifying the options will not impact the original Uploader instance.
-//
-// Use the WithUploaderRequestOptions helper function to pass in request
-// options that will be applied to all API operations made with this uploader.
-//
-// It is safe to call this method concurrently across goroutines.
-func (u Uploader) UploadWithContext(ctx aws.Context, input *UploadInput, opts ...func(*Uploader)) (*UploadOutput, error) {
-	i := uploader{in: input, cfg: u, ctx: ctx}
-
-	for _, opt := range opts {
-		opt(&i.cfg)
+	for _, option := range options {
+		option(&i.ctx)
 	}
-	i.cfg.RequestOptions = append(i.cfg.RequestOptions, request.WithAppendUserAgent("S3Manager"))
 
 	return i.upload()
 }
 
 // internal structure to manage an upload to S3.
 type uploader struct {
-	ctx aws.Context
-	cfg Uploader
+	ctx Uploader
 
 	in *UploadInput
 
@@ -389,7 +351,7 @@ type uploader struct {
 func (u *uploader) upload() (*UploadOutput, error) {
 	u.init()
 
-	if u.cfg.PartSize < MinUploadPartSize {
+	if u.ctx.PartSize < MinUploadPartSize {
 		msg := fmt.Sprintf("part size must be at least %d bytes", MinUploadPartSize)
 		return nil, awserr.New("ConfigError", msg, nil)
 	}
@@ -408,11 +370,11 @@ func (u *uploader) upload() (*UploadOutput, error) {
 
 // init will initialize all default options.
 func (u *uploader) init() {
-	if u.cfg.Concurrency == 0 {
-		u.cfg.Concurrency = DefaultUploadConcurrency
+	if u.ctx.Concurrency == 0 {
+		u.ctx.Concurrency = DefaultUploadConcurrency
 	}
-	if u.cfg.PartSize == 0 {
-		u.cfg.PartSize = DefaultUploadPartSize
+	if u.ctx.PartSize == 0 {
+		u.ctx.PartSize = DefaultUploadPartSize
 	}
 
 	// Try to get the total size for some optimizations
@@ -437,10 +399,10 @@ func (u *uploader) initSize() {
 
 		// Try to adjust partSize if it is too small and account for
 		// integer division truncation.
-		if u.totalSize/u.cfg.PartSize >= int64(u.cfg.MaxUploadParts) {
+		if u.totalSize/u.ctx.PartSize >= int64(u.ctx.MaxUploadParts) {
 			// Add one to the part size to account for remainders
 			// during the size calculation. e.g odd number of bytes.
-			u.cfg.PartSize = (u.totalSize / int64(u.cfg.MaxUploadParts)) + 1
+			u.ctx.PartSize = (u.totalSize / int64(u.ctx.MaxUploadParts)) + 1
 		}
 	}
 }
@@ -458,11 +420,11 @@ func (u *uploader) nextReader() (io.ReadSeeker, int, error) {
 	case readerAtSeeker:
 		var err error
 
-		n := u.cfg.PartSize
+		n := u.ctx.PartSize
 		if u.totalSize >= 0 {
 			bytesLeft := u.totalSize - u.readerPos
 
-			if bytesLeft <= u.cfg.PartSize {
+			if bytesLeft <= u.ctx.PartSize {
 				err = io.EOF
 				n = bytesLeft
 			}
@@ -474,7 +436,7 @@ func (u *uploader) nextReader() (io.ReadSeeker, int, error) {
 		return reader, int(n), err
 
 	default:
-		part := make([]byte, u.cfg.PartSize)
+		part := make([]byte, u.ctx.PartSize)
 		n, err := readFillBuf(r, part)
 		u.readerPos += int64(n)
 
@@ -500,11 +462,8 @@ func (u *uploader) singlePart(buf io.ReadSeeker) (*UploadOutput, error) {
 	awsutil.Copy(params, u.in)
 	params.Body = buf
 
-	// Need to use request form because URL generated in request is
-	// used in return.
-	req, out := u.cfg.S3.PutObjectRequest(params)
-	req.SetContext(u.ctx)
-	req.ApplyOptions(u.cfg.RequestOptions...)
+	req, out := u.ctx.S3.PutObjectRequest(params)
+	req.Handlers.Build.PushBack(request.MakeAddToUserAgentFreeFormHandler("S3Manager"))
 	if err := req.Send(); err != nil {
 		return nil, err
 	}
@@ -547,15 +506,16 @@ func (u *multiuploader) upload(firstBuf io.ReadSeeker) (*UploadOutput, error) {
 	awsutil.Copy(params, u.in)
 
 	// Create the multipart
-	resp, err := u.cfg.S3.CreateMultipartUploadWithContext(u.ctx, params, u.cfg.RequestOptions...)
-	if err != nil {
+	req, resp := u.ctx.S3.CreateMultipartUploadRequest(params)
+	req.Handlers.Build.PushBack(request.MakeAddToUserAgentFreeFormHandler("S3Manager"))
+	if err := req.Send(); err != nil {
 		return nil, err
 	}
 	u.uploadID = *resp.UploadId
 
 	// Create the workers
-	ch := make(chan chunk, u.cfg.Concurrency)
-	for i := 0; i < u.cfg.Concurrency; i++ {
+	ch := make(chan chunk, u.ctx.Concurrency)
+	for i := 0; i < u.ctx.Concurrency; i++ {
 		u.wg.Add(1)
 		go u.readChunk(ch)
 	}
@@ -565,14 +525,15 @@ func (u *multiuploader) upload(firstBuf io.ReadSeeker) (*UploadOutput, error) {
 	ch <- chunk{buf: firstBuf, num: num}
 
 	// Read and queue the rest of the parts
+	var err error
 	for u.geterr() == nil && err == nil {
 		num++
 		// This upload exceeded maximum number of supported parts, error now.
-		if num > int64(u.cfg.MaxUploadParts) || num > int64(MaxUploadParts) {
+		if num > int64(u.ctx.MaxUploadParts) || num > int64(MaxUploadParts) {
 			var msg string
-			if num > int64(u.cfg.MaxUploadParts) {
+			if num > int64(u.ctx.MaxUploadParts) {
 				msg = fmt.Sprintf("exceeded total allowed configured MaxUploadParts (%d). Adjust PartSize to fit in this limit",
-					u.cfg.MaxUploadParts)
+					u.ctx.MaxUploadParts)
 			} else {
 				msg = fmt.Sprintf("exceeded total allowed S3 limit MaxUploadParts (%d). Adjust PartSize to fit in this limit",
 					MaxUploadParts)
@@ -646,7 +607,7 @@ func (u *multiuploader) readChunk(ch chan chunk) {
 // send performs an UploadPart request and keeps track of the completed
 // part information.
 func (u *multiuploader) send(c chunk) error {
-	params := &s3.UploadPartInput{
+	req, resp := u.ctx.S3.UploadPartRequest(&s3.UploadPartInput{
 		Bucket:               u.in.Bucket,
 		Key:                  u.in.Key,
 		Body:                 c.buf,
@@ -654,9 +615,9 @@ func (u *multiuploader) send(c chunk) error {
 		SSECustomerAlgorithm: u.in.SSECustomerAlgorithm,
 		SSECustomerKey:       u.in.SSECustomerKey,
 		PartNumber:           &c.num,
-	}
-	resp, err := u.cfg.S3.UploadPartWithContext(u.ctx, params, u.cfg.RequestOptions...)
-	if err != nil {
+	})
+	req.Handlers.Build.PushBack(request.MakeAddToUserAgentFreeFormHandler("S3Manager"))
+	if err := req.Send(); err != nil {
 		return err
 	}
 
@@ -688,19 +649,17 @@ func (u *multiuploader) seterr(e error) {
 
 // fail will abort the multipart unless LeavePartsOnError is set to true.
 func (u *multiuploader) fail() {
-	if u.cfg.LeavePartsOnError {
+	if u.ctx.LeavePartsOnError {
 		return
 	}
 
-	params := &s3.AbortMultipartUploadInput{
+	req, _ := u.ctx.S3.AbortMultipartUploadRequest(&s3.AbortMultipartUploadInput{
 		Bucket:   u.in.Bucket,
 		Key:      u.in.Key,
 		UploadId: &u.uploadID,
-	}
-	_, err := u.cfg.S3.AbortMultipartUploadWithContext(u.ctx, params, u.cfg.RequestOptions...)
-	if err != nil {
-		logMessage(u.cfg.S3, aws.LogDebug, fmt.Sprintf("failed to abort multipart upload, %v", err))
-	}
+	})
+	req.Handlers.Build.PushBack(request.MakeAddToUserAgentFreeFormHandler("S3Manager"))
+	req.Send()
 }
 
 // complete successfully completes a multipart upload and returns the response.
@@ -713,14 +672,14 @@ func (u *multiuploader) complete() *s3.CompleteMultipartUploadOutput {
 	// Parts must be sorted in PartNumber order.
 	sort.Sort(u.parts)
 
-	params := &s3.CompleteMultipartUploadInput{
+	req, resp := u.ctx.S3.CompleteMultipartUploadRequest(&s3.CompleteMultipartUploadInput{
 		Bucket:          u.in.Bucket,
 		Key:             u.in.Key,
 		UploadId:        &u.uploadID,
 		MultipartUpload: &s3.CompletedMultipartUpload{Parts: u.parts},
-	}
-	resp, err := u.cfg.S3.CompleteMultipartUploadWithContext(u.ctx, params, u.cfg.RequestOptions...)
-	if err != nil {
+	})
+	req.Handlers.Build.PushBack(request.MakeAddToUserAgentFreeFormHandler("S3Manager"))
+	if err := req.Send(); err != nil {
 		u.seterr(err)
 		u.fail()
 	}

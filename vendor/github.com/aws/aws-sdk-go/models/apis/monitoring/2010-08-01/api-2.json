@@ -1,13 +1,13 @@
 {
   "version":"2.0",
   "metadata":{
+    "uid":"monitoring-2010-08-01",
     "apiVersion":"2010-08-01",
     "endpointPrefix":"monitoring",
     "protocol":"query",
     "serviceAbbreviation":"CloudWatch",
     "serviceFullName":"Amazon CloudWatch",
     "signatureVersion":"v4",
-    "uid":"monitoring-2010-08-01",
     "xmlNamespace":"http://monitoring.amazonaws.com/doc/2010-08-01/"
   },
   "operations":{
@@ -368,11 +368,6 @@
       "max":255,
       "min":1
     },
-    "EvaluateLowSampleCountPercentile":{
-      "type":"string",
-      "max":255,
-      "min":1
-    },
     "EvaluationPeriods":{
       "type":"integer",
       "min":1
@@ -568,9 +563,7 @@
         "Unit":{"shape":"StandardUnit"},
         "EvaluationPeriods":{"shape":"EvaluationPeriods"},
         "Threshold":{"shape":"Threshold"},
-        "ComparisonOperator":{"shape":"ComparisonOperator"},
-        "TreatMissingData":{"shape":"TreatMissingData"},
-        "EvaluateLowSampleCountPercentile":{"shape":"EvaluateLowSampleCountPercentile"}
+        "ComparisonOperator":{"shape":"ComparisonOperator"}
       },
       "xmlOrder":[
         "AlarmName",
@@ -594,9 +587,7 @@
         "EvaluationPeriods",
         "Threshold",
         "ComparisonOperator",
-        "ExtendedStatistic",
-        "TreatMissingData",
-        "EvaluateLowSampleCountPercentile"
+        "ExtendedStatistic"
       ]
     },
     "MetricAlarms":{
@@ -683,9 +674,7 @@
         "Unit":{"shape":"StandardUnit"},
         "EvaluationPeriods":{"shape":"EvaluationPeriods"},
         "Threshold":{"shape":"Threshold"},
-        "ComparisonOperator":{"shape":"ComparisonOperator"},
-        "TreatMissingData":{"shape":"TreatMissingData"},
-        "EvaluateLowSampleCountPercentile":{"shape":"EvaluateLowSampleCountPercentile"}
+        "ComparisonOperator":{"shape":"ComparisonOperator"}
       }
     },
     "PutMetricDataInput":{
@@ -817,11 +806,6 @@
       "min":1
     },
     "Threshold":{"type":"double"},
-    "Timestamp":{"type":"timestamp"},
-    "TreatMissingData":{
-      "type":"string",
-      "max":255,
-      "min":1
-    }
+    "Timestamp":{"type":"timestamp"}
   }
 }

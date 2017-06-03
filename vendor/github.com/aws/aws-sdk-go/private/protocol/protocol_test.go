@@ -1,6 +1,7 @@
 package protocol_test
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"testing"
@@ -20,13 +21,11 @@ import (
 )
 
 func xmlData(set bool, b []byte, size, delta int) {
-	const openingTags = "<B><A>"
-	const closingTags = "</A></B>"
 	if !set {
-		copy(b, []byte(openingTags))
+		copy(b, []byte("<B><A>"))
 	}
 	if size == 0 {
-		copy(b[delta-len(closingTags):], []byte(closingTags))
+		copy(b[delta-len("</B></A>"):], []byte("</B></A>"))
 	}
 }
 
@@ -119,6 +118,7 @@ func checkForLeak(data interface{}, build, fn func(*request.Request), t *testing
 	if result.errExists {
 		assert.NotNil(t, req.Error)
 	} else {
+		fmt.Println(req.Error)
 		assert.Nil(t, req.Error)
 	}
 

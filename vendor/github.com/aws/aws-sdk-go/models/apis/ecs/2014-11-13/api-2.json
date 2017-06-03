@@ -611,8 +611,7 @@
         "runningTasksCount":{"shape":"Integer"},
         "pendingTasksCount":{"shape":"Integer"},
         "agentUpdateStatus":{"shape":"AgentUpdateStatus"},
-        "attributes":{"shape":"Attributes"},
-        "registeredAt":{"shape":"Timestamp"}
+        "attributes":{"shape":"Attributes"}
       }
     },
     "ContainerInstanceStatus":{

@@ -194,18 +194,6 @@
         {"shape":"InvalidTargetException"}
       ]
     },
-    "DescribeAccountLimits":{
-      "name":"DescribeAccountLimits",
-      "http":{
-        "method":"POST",
-        "requestUri":"/"
-      },
-      "input":{"shape":"DescribeAccountLimitsInput"},
-      "output":{
-        "shape":"DescribeAccountLimitsOutput",
-        "resultWrapper":"DescribeAccountLimitsResult"
-      }
-    },
     "DescribeListeners":{
       "name":"DescribeListeners",
       "http":{
@@ -406,9 +394,7 @@
         {"shape":"TargetGroupAssociationLimitException"},
         {"shape":"RuleNotFoundException"},
         {"shape":"OperationNotPermittedException"},
-        {"shape":"TooManyRegistrationsForTargetIdException"},
-        {"shape":"TooManyTargetsException"},
-        {"shape":"TargetGroupNotFoundException"}
+        {"shape":"TooManyRegistrationsForTargetIdException"}
       ]
     },
     "ModifyTargetGroup":{
@@ -795,20 +781,6 @@
       "members":{
       }
     },
-    "DescribeAccountLimitsInput":{
-      "type":"structure",
-      "members":{
-        "Marker":{"shape":"Marker"},
-        "PageSize":{"shape":"PageSize"}
-      }
-    },
-    "DescribeAccountLimitsOutput":{
-      "type":"structure",
-      "members":{
-        "Limits":{"shape":"Limits"},
-        "NextMarker":{"shape":"Marker"}
-      }
-    },
     "DescribeListenersInput":{
       "type":"structure",
       "members":{
@@ -858,16 +830,13 @@
       "type":"structure",
       "members":{
         "ListenerArn":{"shape":"ListenerArn"},
-        "RuleArns":{"shape":"RuleArns"},
-        "Marker":{"shape":"Marker"},
-        "PageSize":{"shape":"PageSize"}
+        "RuleArns":{"shape":"RuleArns"}
       }
     },
     "DescribeRulesOutput":{
       "type":"structure",
       "members":{
-        "Rules":{"shape":"Rules"},
-        "NextMarker":{"shape":"Marker"}
+        "Rules":{"shape":"Rules"}
       }
     },
     "DescribeSSLPoliciesInput":{
@@ -1088,17 +1057,6 @@
       ]
     },
     "IsDefault":{"type":"boolean"},
-    "Limit":{
-      "type":"structure",
-      "members":{
-        "Name":{"shape":"Name"},
-        "Max":{"shape":"Max"}
-      }
-    },
-    "Limits":{
-      "type":"list",
-      "member":{"shape":"Limit"}
-    },
     "ListOfString":{
       "type":"list",
       "member":{"shape":"StringValue"}
@@ -1232,7 +1190,6 @@
         "HttpCode":{"shape":"HttpCode"}
       }
     },
-    "Max":{"type":"string"},
     "ModifyListenerInput":{
       "type":"structure",
       "required":["ListenerArn"],
@@ -1321,7 +1278,6 @@
         "TargetGroups":{"shape":"TargetGroups"}
       }
     },
-    "Name":{"type":"string"},
     "OperationNotPermittedException":{
       "type":"structure",
       "members":{

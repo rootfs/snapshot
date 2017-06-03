@@ -22,9 +22,7 @@
       "output":{"shape":"AssociateFleetResult"},
       "errors":[
         {"shape":"LimitExceededException"},
-        {"shape":"ResourceNotFoundException"},
-        {"shape":"ConcurrentModificationException"},
-        {"shape":"IncompatibleImageException"}
+        {"shape":"ResourceNotFoundException"}
       ]
     },
     "CreateFleet":{
@@ -40,8 +38,7 @@
         {"shape":"ResourceNotAvailableException"},
         {"shape":"ResourceNotFoundException"},
         {"shape":"LimitExceededException"},
-        {"shape":"InvalidRoleException"},
-        {"shape":"ConcurrentModificationException"}
+        {"shape":"InvalidRoleException"}
       ]
     },
     "CreateStack":{
@@ -54,11 +51,7 @@
       "output":{"shape":"CreateStackResult"},
       "errors":[
         {"shape":"LimitExceededException"},
-        {"shape":"ResourceAlreadyExistsException"},
-        {"shape":"ConcurrentModificationException"},
-        {"shape":"InvalidRoleException"},
-        {"shape":"ResourceNotFoundException"},
-        {"shape":"InvalidParameterCombinationException"}
+        {"shape":"ResourceAlreadyExistsException"}
       ]
     },
     "CreateStreamingURL":{
@@ -72,8 +65,7 @@
       "errors":[
         {"shape":"ResourceNotFoundException"},
         {"shape":"ResourceNotAvailableException"},
-        {"shape":"OperationNotPermittedException"},
-        {"shape":"InvalidParameterCombinationException"}
+        {"shape":"OperationNotPermittedException"}
       ]
     },
     "DeleteFleet":{
@@ -86,8 +78,7 @@
       "output":{"shape":"DeleteFleetResult"},
       "errors":[
         {"shape":"ResourceInUseException"},
-        {"shape":"ResourceNotFoundException"},
-        {"shape":"ConcurrentModificationException"}
+        {"shape":"ResourceNotFoundException"}
       ]
     },
     "DeleteStack":{
@@ -100,8 +91,7 @@
       "output":{"shape":"DeleteStackResult"},
       "errors":[
         {"shape":"ResourceInUseException"},
-        {"shape":"ResourceNotFoundException"},
-        {"shape":"ConcurrentModificationException"}
+        {"shape":"ResourceNotFoundException"}
       ]
     },
     "DescribeFleets":{
@@ -135,10 +125,7 @@
         "requestUri":"/"
       },
       "input":{"shape":"DescribeSessionsRequest"},
-      "output":{"shape":"DescribeSessionsResult"},
-      "errors":[
-        {"shape":"InvalidParameterCombinationException"}
-      ]
+      "output":{"shape":"DescribeSessionsResult"}
     },
     "DescribeStacks":{
       "name":"DescribeStacks",
@@ -162,8 +149,7 @@
       "output":{"shape":"DisassociateFleetResult"},
       "errors":[
         {"shape":"ResourceInUseException"},
-        {"shape":"ResourceNotFoundException"},
-        {"shape":"ConcurrentModificationException"}
+        {"shape":"ResourceNotFoundException"}
       ]
     },
     "ExpireSession":{
@@ -203,9 +189,7 @@
       "output":{"shape":"StartFleetResult"},
       "errors":[
         {"shape":"ResourceNotFoundException"},
-        {"shape":"OperationNotPermittedException"},
-        {"shape":"LimitExceededException"},
-        {"shape":"ConcurrentModificationException"}
+        {"shape":"LimitExceededException"}
       ]
     },
     "StopFleet":{
@@ -217,8 +201,7 @@
       "input":{"shape":"StopFleetRequest"},
       "output":{"shape":"StopFleetResult"},
       "errors":[
-        {"shape":"ResourceNotFoundException"},
-        {"shape":"ConcurrentModificationException"}
+        {"shape":"ResourceNotFoundException"}
       ]
     },
     "UpdateFleet":{
@@ -233,11 +216,7 @@
         {"shape":"ResourceInUseException"},
         {"shape":"LimitExceededException"},
         {"shape":"InvalidRoleException"},
-        {"shape":"ResourceNotFoundException"},
-        {"shape":"ResourceNotAvailableException"},
-        {"shape":"InvalidParameterCombinationException"},
-        {"shape":"ConcurrentModificationException"},
-        {"shape":"IncompatibleImageException"}
+        {"shape":"ResourceNotFoundException"}
       ]
     },
     "UpdateStack":{
@@ -250,12 +229,7 @@
       "output":{"shape":"UpdateStackResult"},
       "errors":[
         {"shape":"ResourceNotFoundException"},
-        {"shape":"ResourceInUseException"},
-        {"shape":"InvalidRoleException"},
-        {"shape":"ResourceNotFoundException"},
-        {"shape":"InvalidParameterCombinationException"},
-        {"shape":"LimitExceededException"},
-        {"shape":"IncompatibleImageException"}
+        {"shape":"ResourceInUseException"}
       ]
     }
   },
@@ -296,15 +270,7 @@
       "members":{
       }
     },
-    "AuthenticationType":{
-      "type":"string",
-      "enum":[
-        "API",
-        "SAML"
-      ]
-    },
     "Boolean":{"type":"boolean"},
-    "BooleanObject":{"type":"boolean"},
     "ComputeCapacity":{
       "type":"structure",
       "required":["DesiredInstances"],
@@ -321,13 +287,6 @@
         "InUse":{"shape":"Integer"},
         "Available":{"shape":"Integer"}
       }
-    },
-    "ConcurrentModificationException":{
-      "type":"structure",
-      "members":{
-        "Message":{"shape":"ErrorMessage"}
-      },
-      "exception":true
     },
     "CreateFleetRequest":{
       "type":"structure",
@@ -346,8 +305,7 @@
         "MaxUserDurationInSeconds":{"shape":"Integer"},
         "DisconnectTimeoutInSeconds":{"shape":"Integer"},
         "Description":{"shape":"Description"},
-        "DisplayName":{"shape":"DisplayName"},
-        "EnableDefaultInternetAccess":{"shape":"BooleanObject"}
+        "DisplayName":{"shape":"DisplayName"}
       }
     },
     "CreateFleetResult":{
@@ -362,8 +320,7 @@
       "members":{
         "Name":{"shape":"String"},
         "Description":{"shape":"Description"},
-        "DisplayName":{"shape":"DisplayName"},
-        "StorageConnectors":{"shape":"StorageConnectorList"}
+        "DisplayName":{"shape":"DisplayName"}
       }
     },
     "CreateStackResult":{
@@ -456,8 +413,7 @@
         "FleetName":{"shape":"String"},
         "UserId":{"shape":"UserId"},
         "NextToken":{"shape":"String"},
-        "Limit":{"shape":"Integer"},
-        "AuthenticationType":{"shape":"AuthenticationType"}
+        "Limit":{"shape":"Integer"}
       }
     },
     "DescribeSessionsResult":{
@@ -541,8 +497,7 @@
         "State":{"shape":"FleetState"},
         "VpcConfig":{"shape":"VpcConfig"},
         "CreatedTime":{"shape":"Timestamp"},
-        "FleetErrors":{"shape":"FleetErrors"},
-        "EnableDefaultInternetAccess":{"shape":"BooleanObject"}
+        "FleetErrors":{"shape":"FleetErrors"}
       }
     },
     "FleetError":{
@@ -595,13 +550,11 @@
         "DisplayName":{"shape":"String"},
         "State":{"shape":"ImageState"},
         "Visibility":{"shape":"VisibilityType"},
-        "ImageBuilderSupported":{"shape":"Boolean"},
         "Platform":{"shape":"PlatformType"},
         "Description":{"shape":"String"},
         "StateChangeReason":{"shape":"ImageStateChangeReason"},
         "Applications":{"shape":"Applications"},
-        "CreatedTime":{"shape":"Timestamp"},
-        "PublicBaseImageReleasedDate":{"shape":"Timestamp"}
+        "CreatedTime":{"shape":"Timestamp"}
       }
     },
     "ImageList":{
@@ -631,21 +584,7 @@
         "IMAGE_BUILDER_NOT_AVAILABLE"
       ]
     },
-    "IncompatibleImageException":{
-      "type":"structure",
-      "members":{
-        "Message":{"shape":"ErrorMessage"}
-      },
-      "exception":true
-    },
     "Integer":{"type":"integer"},
-    "InvalidParameterCombinationException":{
-      "type":"structure",
-      "members":{
-        "Message":{"shape":"ErrorMessage"}
-      },
-      "exception":true
-    },
     "InvalidRoleException":{
       "type":"structure",
       "members":{
@@ -718,10 +657,6 @@
       },
       "exception":true
     },
-    "ResourceIdentifier":{
-      "type":"string",
-      "min":1
-    },
     "ResourceInUseException":{
       "type":"structure",
       "members":{
@@ -757,8 +692,7 @@
         "UserId":{"shape":"UserId"},
         "StackName":{"shape":"String"},
         "FleetName":{"shape":"String"},
-        "State":{"shape":"SessionState"},
-        "AuthenticationType":{"shape":"AuthenticationType"}
+        "State":{"shape":"SessionState"}
       }
     },
     "SessionList":{
@@ -781,28 +715,8 @@
         "Name":{"shape":"String"},
         "Description":{"shape":"String"},
         "DisplayName":{"shape":"String"},
-        "CreatedTime":{"shape":"Timestamp"},
-        "StorageConnectors":{"shape":"StorageConnectorList"},
-        "StackErrors":{"shape":"StackErrors"}
+        "CreatedTime":{"shape":"Timestamp"}
       }
-    },
-    "StackError":{
-      "type":"structure",
-      "members":{
-        "ErrorCode":{"shape":"StackErrorCode"},
-        "ErrorMessage":{"shape":"String"}
-      }
-    },
-    "StackErrorCode":{
-      "type":"string",
-      "enum":[
-        "STORAGE_CONNECTOR_ERROR",
-        "INTERNAL_SERVICE_ERROR"
-      ]
-    },
-    "StackErrors":{
-      "type":"list",
-      "member":{"shape":"StackError"}
     },
     "StackList":{
       "type":"list",
@@ -832,22 +746,6 @@
       "members":{
       }
     },
-    "StorageConnector":{
-      "type":"structure",
-      "required":["ConnectorType"],
-      "members":{
-        "ConnectorType":{"shape":"StorageConnectorType"},
-        "ResourceIdentifier":{"shape":"ResourceIdentifier"}
-      }
-    },
-    "StorageConnectorList":{
-      "type":"list",
-      "member":{"shape":"StorageConnector"}
-    },
-    "StorageConnectorType":{
-      "type":"string",
-      "enum":["HOMEFOLDERS"]
-    },
     "String":{
       "type":"string",
       "min":1
@@ -858,7 +756,8 @@
     },
     "SubnetIdList":{
       "type":"list",
-      "member":{"shape":"String"}
+      "member":{"shape":"String"},
+      "min":1
     },
     "Timestamp":{"type":"timestamp"},
     "UpdateFleetRequest":{
@@ -874,8 +773,7 @@
         "DisconnectTimeoutInSeconds":{"shape":"Integer"},
         "DeleteVpcConfig":{"shape":"Boolean"},
         "Description":{"shape":"Description"},
-        "DisplayName":{"shape":"DisplayName"},
-        "EnableDefaultInternetAccess":{"shape":"BooleanObject"}
+        "DisplayName":{"shape":"DisplayName"}
       }
     },
     "UpdateFleetResult":{
@@ -890,9 +788,7 @@
       "members":{
         "DisplayName":{"shape":"DisplayName"},
         "Description":{"shape":"Description"},
-        "Name":{"shape":"String"},
-        "StorageConnectors":{"shape":"StorageConnectorList"},
-        "DeleteStorageConnectors":{"shape":"Boolean"}
+        "Name":{"shape":"String"}
       }
     },
     "UpdateStackResult":{
@@ -915,6 +811,7 @@
     },
     "VpcConfig":{
       "type":"structure",
+      "required":["SubnetIds"],
       "members":{
         "SubnetIds":{"shape":"SubnetIdList"}
       }

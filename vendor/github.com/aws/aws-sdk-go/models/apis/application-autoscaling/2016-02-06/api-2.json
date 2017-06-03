@@ -367,8 +367,7 @@
       "enum":[
         "ecs:service:DesiredCount",
         "ec2:spot-fleet-request:TargetCapacity",
-        "elasticmapreduce:instancegroup:InstanceCount",
-        "appstream:fleet:DesiredCapacity"
+        "elasticmapreduce:instancegroup:InstanceCount"
       ]
     },
     "ScalableTarget":{
@@ -470,8 +469,7 @@
       "enum":[
         "ecs",
         "elasticmapreduce",
-        "ec2",
-        "appstream"
+        "ec2"
       ]
     },
     "StepAdjustment":{

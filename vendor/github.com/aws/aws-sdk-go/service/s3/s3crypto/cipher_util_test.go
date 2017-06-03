@@ -101,9 +101,6 @@ func TestCEKFactory(t *testing.T) {
 		CEKRegistry: map[string]CEKEntry{
 			AESGCMNoPadding: newAESGCMContentCipher,
 		},
-		PadderRegistry: map[string]Padder{
-			NoPadder.Name(): NoPadder,
-		},
 	}
 	iv, err := hex.DecodeString("0d18e06c7c725ac9e362e1ce")
 	assert.NoError(t, err)
@@ -150,9 +147,6 @@ func TestCEKFactoryNoCEK(t *testing.T) {
 		},
 		CEKRegistry: map[string]CEKEntry{
 			AESGCMNoPadding: newAESGCMContentCipher,
-		},
-		PadderRegistry: map[string]Padder{
-			NoPadder.Name(): NoPadder,
 		},
 	}
 	iv, err := hex.DecodeString("0d18e06c7c725ac9e362e1ce")
@@ -201,7 +195,6 @@ func TestCEKFactoryCustomEntry(t *testing.T) {
 		CEKRegistry: map[string]CEKEntry{
 			"custom": newAESGCMContentCipher,
 		},
-		PadderRegistry: map[string]Padder{},
 	}
 	iv, err := hex.DecodeString("0d18e06c7c725ac9e362e1ce")
 	assert.NoError(t, err)

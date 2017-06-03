@@ -26,21 +26,6 @@
         {"shape":"ServiceAccountException"}
       ]
     },
-    "CreateNetworkProfile":{
-      "name":"CreateNetworkProfile",
-      "http":{
-        "method":"POST",
-        "requestUri":"/"
-      },
-      "input":{"shape":"CreateNetworkProfileRequest"},
-      "output":{"shape":"CreateNetworkProfileResult"},
-      "errors":[
-        {"shape":"ArgumentException"},
-        {"shape":"NotFoundException"},
-        {"shape":"LimitExceededException"},
-        {"shape":"ServiceAccountException"}
-      ]
-    },
     "CreateProject":{
       "name":"CreateProject",
       "http":{
@@ -94,21 +79,6 @@
       },
       "input":{"shape":"DeleteDevicePoolRequest"},
       "output":{"shape":"DeleteDevicePoolResult"},
-      "errors":[
-        {"shape":"ArgumentException"},
-        {"shape":"NotFoundException"},
-        {"shape":"LimitExceededException"},
-        {"shape":"ServiceAccountException"}
-      ]
-    },
-    "DeleteNetworkProfile":{
-      "name":"DeleteNetworkProfile",
-      "http":{
-        "method":"POST",
-        "requestUri":"/"
-      },
-      "input":{"shape":"DeleteNetworkProfileRequest"},
-      "output":{"shape":"DeleteNetworkProfileResult"},
       "errors":[
         {"shape":"ArgumentException"},
         {"shape":"NotFoundException"},
@@ -244,21 +214,6 @@
       },
       "input":{"shape":"GetJobRequest"},
       "output":{"shape":"GetJobResult"},
-      "errors":[
-        {"shape":"ArgumentException"},
-        {"shape":"NotFoundException"},
-        {"shape":"LimitExceededException"},
-        {"shape":"ServiceAccountException"}
-      ]
-    },
-    "GetNetworkProfile":{
-      "name":"GetNetworkProfile",
-      "http":{
-        "method":"POST",
-        "requestUri":"/"
-      },
-      "input":{"shape":"GetNetworkProfileRequest"},
-      "output":{"shape":"GetNetworkProfileResult"},
       "errors":[
         {"shape":"ArgumentException"},
         {"shape":"NotFoundException"},
@@ -443,37 +398,6 @@
       "errors":[
         {"shape":"ArgumentException"},
         {"shape":"NotFoundException"},
-        {"shape":"LimitExceededException"},
-        {"shape":"ServiceAccountException"}
-      ]
-    },
-    "ListNetworkProfiles":{
-      "name":"ListNetworkProfiles",
-      "http":{
-        "method":"POST",
-        "requestUri":"/"
-      },
-      "input":{"shape":"ListNetworkProfilesRequest"},
-      "output":{"shape":"ListNetworkProfilesResult"},
-      "errors":[
-        {"shape":"ArgumentException"},
-        {"shape":"NotFoundException"},
-        {"shape":"LimitExceededException"},
-        {"shape":"ServiceAccountException"}
-      ]
-    },
-    "ListOfferingPromotions":{
-      "name":"ListOfferingPromotions",
-      "http":{
-        "method":"POST",
-        "requestUri":"/"
-      },
-      "input":{"shape":"ListOfferingPromotionsRequest"},
-      "output":{"shape":"ListOfferingPromotionsResult"},
-      "errors":[
-        {"shape":"ArgumentException"},
-        {"shape":"NotFoundException"},
-        {"shape":"NotEligibleException"},
         {"shape":"LimitExceededException"},
         {"shape":"ServiceAccountException"}
       ]
@@ -723,21 +647,6 @@
         {"shape":"ServiceAccountException"}
       ]
     },
-    "UpdateNetworkProfile":{
-      "name":"UpdateNetworkProfile",
-      "http":{
-        "method":"POST",
-        "requestUri":"/"
-      },
-      "input":{"shape":"UpdateNetworkProfileRequest"},
-      "output":{"shape":"UpdateNetworkProfileResult"},
-      "errors":[
-        {"shape":"ArgumentException"},
-        {"shape":"NotFoundException"},
-        {"shape":"LimitExceededException"},
-        {"shape":"ServiceAccountException"}
-      ]
-    },
     "UpdateProject":{
       "name":"UpdateProject",
       "http":{
@@ -765,14 +674,9 @@
       "members":{
         "awsAccountNumber":{"shape":"AWSAccountNumber"},
         "unmeteredDevices":{"shape":"PurchasedDevicesMap"},
-        "unmeteredRemoteAccessDevices":{"shape":"PurchasedDevicesMap"},
-        "maxJobTimeoutMinutes":{"shape":"JobTimeoutMinutes"},
-        "trialMinutes":{"shape":"TrialMinutes"},
-        "maxSlots":{"shape":"MaxSlotMap"},
-        "defaultJobTimeoutMinutes":{"shape":"JobTimeoutMinutes"}
+        "unmeteredRemoteAccessDevices":{"shape":"PurchasedDevicesMap"}
       }
     },
-    "AccountsCleanup":{"type":"boolean"},
     "AmazonResourceName":{
       "type":"string",
       "min":32
@@ -781,7 +685,6 @@
       "type":"list",
       "member":{"shape":"AmazonResourceName"}
     },
-    "AppPackagesCleanup":{"type":"boolean"},
     "ArgumentException":{
       "type":"structure",
       "members":{
@@ -894,39 +797,11 @@
         "devicePool":{"shape":"DevicePool"}
       }
     },
-    "CreateNetworkProfileRequest":{
-      "type":"structure",
-      "required":[
-        "projectArn",
-        "name"
-      ],
-      "members":{
-        "projectArn":{"shape":"AmazonResourceName"},
-        "name":{"shape":"Name"},
-        "description":{"shape":"Message"},
-        "type":{"shape":"NetworkProfileType"},
-        "uplinkBandwidthBits":{"shape":"Long"},
-        "downlinkBandwidthBits":{"shape":"Long"},
-        "uplinkDelayMs":{"shape":"Long"},
-        "downlinkDelayMs":{"shape":"Long"},
-        "uplinkJitterMs":{"shape":"Long"},
-        "downlinkJitterMs":{"shape":"Long"},
-        "uplinkLossPercent":{"shape":"PercentInteger"},
-        "downlinkLossPercent":{"shape":"PercentInteger"}
-      }
-    },
-    "CreateNetworkProfileResult":{
-      "type":"structure",
-      "members":{
-        "networkProfile":{"shape":"NetworkProfile"}
-      }
-    },
     "CreateProjectRequest":{
       "type":"structure",
       "required":["name"],
       "members":{
-        "name":{"shape":"Name"},
-        "defaultJobTimeoutMinutes":{"shape":"JobTimeoutMinutes"}
+        "name":{"shape":"Name"}
       }
     },
     "CreateProjectResult":{
@@ -993,18 +868,6 @@
       }
     },
     "DeleteDevicePoolResult":{
-      "type":"structure",
-      "members":{
-      }
-    },
-    "DeleteNetworkProfileRequest":{
-      "type":"structure",
-      "required":["arn"],
-      "members":{
-        "arn":{"shape":"AmazonResourceName"}
-      }
-    },
-    "DeleteNetworkProfileResult":{
       "type":"structure",
       "members":{
       }
@@ -1086,8 +949,7 @@
         "PLATFORM",
         "FORM_FACTOR",
         "MANUFACTURER",
-        "REMOTE_ACCESS_ENABLED",
-        "APPIUM_VERSION"
+        "REMOTE_ACCESS_ENABLED"
       ]
     },
     "DeviceFormFactor":{
@@ -1150,14 +1012,6 @@
       "member":{"shape":"Device"}
     },
     "Double":{"type":"double"},
-    "ExecutionConfiguration":{
-      "type":"structure",
-      "members":{
-        "jobTimeoutMinutes":{"shape":"JobTimeoutMinutes"},
-        "accountsCleanup":{"shape":"AccountsCleanup"},
-        "appPackagesCleanup":{"shape":"AppPackagesCleanup"}
-      }
-    },
     "ExecutionResult":{
       "type":"string",
       "enum":[
@@ -1206,8 +1060,7 @@
       "members":{
         "devicePoolArn":{"shape":"AmazonResourceName"},
         "appArn":{"shape":"AmazonResourceName"},
-        "testType":{"shape":"TestType"},
-        "test":{"shape":"ScheduleRunTest"}
+        "testType":{"shape":"TestType"}
       }
     },
     "GetDevicePoolCompatibilityResult":{
@@ -1254,19 +1107,6 @@
       "type":"structure",
       "members":{
         "job":{"shape":"Job"}
-      }
-    },
-    "GetNetworkProfileRequest":{
-      "type":"structure",
-      "required":["arn"],
-      "members":{
-        "arn":{"shape":"AmazonResourceName"}
-      }
-    },
-    "GetNetworkProfileResult":{
-      "type":"structure",
-      "members":{
-        "networkProfile":{"shape":"NetworkProfile"}
       }
     },
     "GetOfferingStatusRequest":{
@@ -1414,7 +1254,6 @@
         "deviceMinutes":{"shape":"DeviceMinutes"}
       }
     },
-    "JobTimeoutMinutes":{"type":"integer"},
     "Jobs":{
       "type":"list",
       "member":{"shape":"Job"}
@@ -1487,35 +1326,6 @@
       "type":"structure",
       "members":{
         "jobs":{"shape":"Jobs"},
-        "nextToken":{"shape":"PaginationToken"}
-      }
-    },
-    "ListNetworkProfilesRequest":{
-      "type":"structure",
-      "required":["arn"],
-      "members":{
-        "arn":{"shape":"AmazonResourceName"},
-        "type":{"shape":"NetworkProfileType"},
-        "nextToken":{"shape":"PaginationToken"}
-      }
-    },
-    "ListNetworkProfilesResult":{
-      "type":"structure",
-      "members":{
-        "networkProfiles":{"shape":"NetworkProfiles"},
-        "nextToken":{"shape":"PaginationToken"}
-      }
-    },
-    "ListOfferingPromotionsRequest":{
-      "type":"structure",
-      "members":{
-        "nextToken":{"shape":"PaginationToken"}
-      }
-    },
-    "ListOfferingPromotionsResult":{
-      "type":"structure",
-      "members":{
-        "offeringPromotions":{"shape":"OfferingPromotions"},
         "nextToken":{"shape":"PaginationToken"}
       }
     },
@@ -1676,11 +1486,6 @@
       }
     },
     "Long":{"type":"long"},
-    "MaxSlotMap":{
-      "type":"map",
-      "key":{"shape":"String"},
-      "value":{"shape":"Integer"}
-    },
     "Message":{
       "type":"string",
       "max":16384,
@@ -1702,34 +1507,6 @@
       "type":"string",
       "max":256,
       "min":0
-    },
-    "NetworkProfile":{
-      "type":"structure",
-      "members":{
-        "arn":{"shape":"AmazonResourceName"},
-        "name":{"shape":"Name"},
-        "description":{"shape":"Message"},
-        "type":{"shape":"NetworkProfileType"},
-        "uplinkBandwidthBits":{"shape":"Long"},
-        "downlinkBandwidthBits":{"shape":"Long"},
-        "uplinkDelayMs":{"shape":"Long"},
-        "downlinkDelayMs":{"shape":"Long"},
-        "uplinkJitterMs":{"shape":"Long"},
-        "downlinkJitterMs":{"shape":"Long"},
-        "uplinkLossPercent":{"shape":"PercentInteger"},
-        "downlinkLossPercent":{"shape":"PercentInteger"}
-      }
-    },
-    "NetworkProfileType":{
-      "type":"string",
-      "enum":[
-        "CURATED",
-        "PRIVATE"
-      ]
-    },
-    "NetworkProfiles":{
-      "type":"list",
-      "member":{"shape":"NetworkProfile"}
     },
     "NotEligibleException":{
       "type":"structure",
@@ -1759,21 +1536,6 @@
       "type":"string",
       "min":32
     },
-    "OfferingPromotion":{
-      "type":"structure",
-      "members":{
-        "id":{"shape":"OfferingPromotionIdentifier"},
-        "description":{"shape":"Message"}
-      }
-    },
-    "OfferingPromotionIdentifier":{
-      "type":"string",
-      "min":4
-    },
-    "OfferingPromotions":{
-      "type":"list",
-      "member":{"shape":"OfferingPromotion"}
-    },
     "OfferingStatus":{
       "type":"structure",
       "members":{
@@ -1793,7 +1555,6 @@
       "members":{
         "offeringStatus":{"shape":"OfferingStatus"},
         "transactionId":{"shape":"TransactionIdentifier"},
-        "offeringPromotionId":{"shape":"OfferingPromotionIdentifier"},
         "createdOn":{"shape":"DateTime"},
         "cost":{"shape":"MonetaryAmount"}
       }
@@ -1823,11 +1584,6 @@
       "max":1024,
       "min":4
     },
-    "PercentInteger":{
-      "type":"integer",
-      "max":100,
-      "min":0
-    },
     "Problem":{
       "type":"structure",
       "members":{
@@ -1856,7 +1612,6 @@
       "members":{
         "arn":{"shape":"AmazonResourceName"},
         "name":{"shape":"Name"},
-        "defaultJobTimeoutMinutes":{"shape":"JobTimeoutMinutes"},
         "created":{"shape":"DateTime"}
       }
     },
@@ -1868,8 +1623,7 @@
       "type":"structure",
       "members":{
         "offeringId":{"shape":"OfferingIdentifier"},
-        "quantity":{"shape":"Integer"},
-        "offeringPromotionId":{"shape":"OfferingPromotionIdentifier"}
+        "quantity":{"shape":"Integer"}
       }
     },
     "PurchaseOfferingResult":{
@@ -1963,8 +1717,7 @@
         "LESS_THAN",
         "GREATER_THAN",
         "IN",
-        "NOT_IN",
-        "CONTAINS"
+        "NOT_IN"
       ]
     },
     "Rules":{
@@ -1988,8 +1741,7 @@
         "totalJobs":{"shape":"Integer"},
         "completedJobs":{"shape":"Integer"},
         "billingMethod":{"shape":"BillingMethod"},
-        "deviceMinutes":{"shape":"DeviceMinutes"},
-        "networkProfile":{"shape":"NetworkProfile"}
+        "deviceMinutes":{"shape":"DeviceMinutes"}
       }
     },
     "Runs":{
@@ -2055,8 +1807,7 @@
         "devicePoolArn":{"shape":"AmazonResourceName"},
         "name":{"shape":"Name"},
         "test":{"shape":"ScheduleRunTest"},
-        "configuration":{"shape":"ScheduleRunConfiguration"},
-        "executionConfiguration":{"shape":"ExecutionConfiguration"}
+        "configuration":{"shape":"ScheduleRunConfiguration"}
       }
     },
     "ScheduleRunResult":{
@@ -2177,13 +1928,6 @@
       "type":"string",
       "min":32
     },
-    "TrialMinutes":{
-      "type":"structure",
-      "members":{
-        "total":{"shape":"Double"},
-        "remaining":{"shape":"Double"}
-      }
-    },
     "URL":{
       "type":"string",
       "max":2048,
@@ -2221,37 +1965,12 @@
         "devicePool":{"shape":"DevicePool"}
       }
     },
-    "UpdateNetworkProfileRequest":{
-      "type":"structure",
-      "required":["arn"],
-      "members":{
-        "arn":{"shape":"AmazonResourceName"},
-        "name":{"shape":"Name"},
-        "description":{"shape":"Message"},
-        "type":{"shape":"NetworkProfileType"},
-        "uplinkBandwidthBits":{"shape":"Long"},
-        "downlinkBandwidthBits":{"shape":"Long"},
-        "uplinkDelayMs":{"shape":"Long"},
-        "downlinkDelayMs":{"shape":"Long"},
-        "uplinkJitterMs":{"shape":"Long"},
-        "downlinkJitterMs":{"shape":"Long"},
-        "uplinkLossPercent":{"shape":"PercentInteger"},
-        "downlinkLossPercent":{"shape":"PercentInteger"}
-      }
-    },
-    "UpdateNetworkProfileResult":{
-      "type":"structure",
-      "members":{
-        "networkProfile":{"shape":"NetworkProfile"}
-      }
-    },
     "UpdateProjectRequest":{
       "type":"structure",
       "required":["arn"],
       "members":{
         "arn":{"shape":"AmazonResourceName"},
-        "name":{"shape":"Name"},
-        "defaultJobTimeoutMinutes":{"shape":"JobTimeoutMinutes"}
+        "name":{"shape":"Name"}
       }
     },
     "UpdateProjectResult":{
