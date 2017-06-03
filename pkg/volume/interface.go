@@ -20,12 +20,13 @@ import (
 	"k8s.io/client-go/pkg/api/v1"
 
 	tprv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
+	"github.com/rootfs/snapshot/pkg/cloudprovider"
 )
 
 type VolumePlugin interface {
 	// Init inits volume plugin
 	// TODO supply a cloud provider interface for AWS/GCE/Azure/OpenStack volumes
-	Init(interface{})
+	Init(cloudprovider.Interface)
 	// SnapshotCreate creates a VolumeSnapshot from a PersistentVolumeSpec
 	SnapshotCreate(*v1.PersistentVolumeSpec) (*tprv1.VolumeSnapshotDataSource, error)
 	// SnapshotDelete deletes a VolumeSnapshot

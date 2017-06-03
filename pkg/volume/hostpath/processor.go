@@ -25,6 +25,7 @@ import (
 	"k8s.io/client-go/pkg/api/v1"
 
 	tprv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
+	"github.com/rootfs/snapshot/pkg/cloudprovider"
 	"github.com/rootfs/snapshot/pkg/volume"
 )
 
@@ -43,7 +44,7 @@ func GetPluginName() string {
 	return "hostPath"
 }
 
-func (h *hostPathPlugin) Init(_ interface{}) {
+func (h *hostPathPlugin) Init(_ cloudprovider.Interface) {
 }
 
 func (h *hostPathPlugin) SnapshotCreate(spec *v1.PersistentVolumeSpec) (*tprv1.VolumeSnapshotDataSource, error) {

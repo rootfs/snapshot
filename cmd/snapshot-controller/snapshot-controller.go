@@ -29,8 +29,10 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/rootfs/snapshot/pkg/client"
+	"github.com/rootfs/snapshot/pkg/cloudprovider"
 	snapshotcontroller "github.com/rootfs/snapshot/pkg/controller/snapshot-controller"
 	"github.com/rootfs/snapshot/pkg/volume"
+	"github.com/rootfs/snapshot/pkg/volume/aws_ebs"
 	"github.com/rootfs/snapshot/pkg/volume/hostpath"
 )
 
@@ -38,8 +40,14 @@ const (
 	defaultSyncDuration time.Duration = 60 * time.Second
 )
 
+var (
+	kubeconfig      = flag.String("kubeconfig", "", "Path to a kube config. Only required if out-of-cluster.")
+	cloudProvider   = flag.String("cloudprovider", "", "aws|gcp|openstack|azure")
+	cloudConfigFile = flag.String("cloudconfig", "", "Path to a Cloud config. Only required if cloudprovider is set.")
+	volumePlugins   = make(map[string]volume.VolumePlugin)
+)
+
 func main() {
-	kubeconfig := flag.String("kubeconfig", "", "Path to a kube config. Only required if out-of-cluster.")
 	flag.Parse()
 	flag.Set("logtostderr", "true")
 	// Create the client config. Use kubeconfig if given, otherwise assume in-cluster.
@@ -71,8 +79,8 @@ func main() {
 		panic(err)
 	}
 	// build volume plugins map
-	volumePlugins := make(map[string]volume.VolumePlugin)
-	volumePlugins[hostpath.GetPluginName()] = hostpath.RegisterPlugin()
+	buildVolumePlugins()
+
 	// start controller on instances of our TPR
 	glog.Infof("starting snapshot controller")
 	ssController := snapshotcontroller.NewSnapshotController(snapshotClient, snapshotScheme, clientset, &volumePlugins, defaultSyncDuration)
@@ -92,4 +100,18 @@ func buildConfig(kubeconfig string) (*rest.Config, error) {
 		return clientcmd.BuildConfigFromFlags("", kubeconfig)
 	}
 	return rest.InClusterConfig()
+}
+
+func buildVolumePlugins() {
+	if len(*cloudProvider) != 0 && len(*cloudConfigFile) != 0 {
+		cloud, err := cloudprovider.InitCloudProvider(*cloudProvider, *cloudConfigFile)
+		if err == nil {
+			if *cloudProvider == "aws" {
+				awsPlugin := aws_ebs.RegisterPlugin()
+				awsPlugin.Init(cloud)
+				volumePlugins[aws_ebs.GetPluginName()] = awsPlugin
+			}
+		}
+	}
+	volumePlugins[hostpath.GetPluginName()] = hostpath.RegisterPlugin()
 }

@@ -19,7 +19,6 @@ package aws_ebs
 import (
 	"fmt"
 
-	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/client-go/pkg/api/v1"
 
 	tprv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
