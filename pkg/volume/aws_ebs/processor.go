@@ -23,11 +23,12 @@ import (
 
 	tprv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
 	"github.com/rootfs/snapshot/pkg/cloudprovider"
+	"github.com/rootfs/snapshot/pkg/cloudprovider/providers/aws"
 	"github.com/rootfs/snapshot/pkg/volume"
 )
 
 type awsEBSPlugin struct {
-	cloud cloudprovider.Interface
+	cloud *aws.Cloud
 }
 
 var _ volume.VolumePlugin = &awsEBSPlugin{}
@@ -41,7 +42,7 @@ func GetPluginName() string {
 }
 
 func (h *awsEBSPlugin) Init(cloud cloudprovider.Interface) {
-	h.cloud = cloud
+	h.cloud = cloud.(*aws.Cloud)
 }
 
 func (h *awsEBSPlugin) SnapshotCreate(spec *v1.PersistentVolumeSpec) (*tprv1.VolumeSnapshotDataSource, error) {

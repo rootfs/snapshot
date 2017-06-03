@@ -35,7 +35,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"k8s.io/apimachinery/pkg/types"
-	kubeletapis "k8s.io/kubernetes/pkg/kubelet/apis"
 )
 
 const TestClusterId = "clusterid.test"
@@ -600,10 +599,11 @@ func TestNodeAddresses(t *testing.T) {
 	if err3 != nil {
 		t.Errorf("Should not error when instance found")
 	}
-	if len(addrs3) != 4 {
-		t.Errorf("Should return exactly 4 NodeAddresses")
+	if len(addrs3) != 5 {
+		t.Errorf("Should return exactly 5 NodeAddresses")
 	}
 	testHasNodeAddress(t, addrs3, v1.NodeInternalIP, "192.168.0.1")
+	testHasNodeAddress(t, addrs3, v1.NodeLegacyHostIP, "192.168.0.1")
 	testHasNodeAddress(t, addrs3, v1.NodeExternalIP, "1.2.3.4")
 	testHasNodeAddress(t, addrs3, v1.NodeExternalDNS, "instance-same.ec2.external")
 	testHasNodeAddress(t, addrs3, v1.NodeInternalDNS, "instance-same.ec2.internal")
@@ -1051,7 +1051,7 @@ func TestFindInstancesByNodeNameCached(t *testing.T) {
 	}
 
 	nodeNames := sets.NewString(nodeNameOne)
-	returnedInstances, errr := c.getInstancesByNodeNamesCached(nodeNames, "running")
+	returnedInstances, errr := c.getInstancesByNodeNamesCached(nodeNames)
 
 	if errr != nil {
 		t.Errorf("Failed to find instance: %v", err)
@@ -1084,8 +1084,8 @@ func TestGetVolumeLabels(t *testing.T) {
 
 	assert.Nil(t, err, "Error creating Volume %v", err)
 	assert.Equal(t, map[string]string{
-		kubeletapis.LabelZoneFailureDomain: "us-east-1a",
-		kubeletapis.LabelZoneRegion:        "us-east-1"}, labels)
+		metav1.LabelZoneFailureDomain: "us-east-1a",
+		metav1.LabelZoneRegion:        "us-east-1"}, labels)
 	awsServices.ec2.AssertExpectations(t)
 }
 
@@ -1284,69 +1284,4 @@ func TestProxyProtocolEnabled(t *testing.T) {
 	}
 	result = proxyProtocolEnabled(fakeBackend)
 	assert.False(t, result, "did not expect to find %s in %s", ProxyProtocolPolicyName, policies)
-}
-
-func TestGetLoadBalancerAdditionalTags(t *testing.T) {
-	tagTests := []struct {
-		Annotations map[string]string
-		Tags        map[string]string
-	}{
-		{
-			Annotations: map[string]string{
-				ServiceAnnotationLoadBalancerAdditionalTags: "Key=Val",
-			},
-			Tags: map[string]string{
-				"Key": "Val",
-			},
-		},
-		{
-			Annotations: map[string]string{
-				ServiceAnnotationLoadBalancerAdditionalTags: "Key1=Val1, Key2=Val2",
-			},
-			Tags: map[string]string{
-				"Key1": "Val1",
-				"Key2": "Val2",
-			},
-		},
-		{
-			Annotations: map[string]string{
-				ServiceAnnotationLoadBalancerAdditionalTags: "Key1=, Key2=Val2",
-				"anotherKey":                                "anotherValue",
-			},
-			Tags: map[string]string{
-				"Key1": "",
-				"Key2": "Val2",
-			},
-		},
-		{
-			Annotations: map[string]string{
-				"Nothing": "Key1=, Key2=Val2, Key3",
-			},
-			Tags: map[string]string{},
-		},
-		{
-			Annotations: map[string]string{
-				ServiceAnnotationLoadBalancerAdditionalTags: "K=V K1=V2,Key1========, =====, ======Val, =Val, , 234,",
-			},
-			Tags: map[string]string{
-				"K":    "V K1",
-				"Key1": "",
-				"234":  "",
-			},
-		},
-	}
-
-	for _, tagTest := range tagTests {
-		result := getLoadBalancerAdditionalTags(tagTest.Annotations)
-		for k, v := range result {
-			if len(result) != len(tagTest.Tags) {
-				t.Errorf("incorrect expected length: %v != %v", result, tagTest.Tags)
-				continue
-			}
-			if tagTest.Tags[k] != v {
-				t.Errorf("%s != %s", tagTest.Tags[k], v)
-				continue
-			}
-		}
-	}
 }
