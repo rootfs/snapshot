@@ -10,3 +10,4 @@ import:
   version: ~3.0.0-beta
   subpackages:
   - lib
+- package: k8s.io/apiserver
