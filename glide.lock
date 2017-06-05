@@ -1,5 +1,5 @@
 hash: e30302a5c0ed916fa8c0114e594563d3389e1f8dcba8dddc6ddc74c16b8602fc
-updated: 2017-06-03T22:03:55.470905443Z
+updated: 2017-06-05T14:17:50.55068865Z
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -202,11 +202,9 @@ imports:
 - name: k8s.io/apimachinery
   version: 28d5d926c7c976d5885f31ace03d4a9b3ad8abd2
   subpackages:
-  - pkg/api/equality
   - pkg/api/errors
   - pkg/api/meta
   - pkg/api/resource
-  - pkg/api/testing
   - pkg/apimachinery
   - pkg/apimachinery/announced
   - pkg/apimachinery/registered
