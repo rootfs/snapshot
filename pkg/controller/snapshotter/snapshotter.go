@@ -110,9 +110,9 @@ func (vs *volumeSnapshotter) getPVFromVolumeSnapshot(snapshotName string, snapsh
 // This is the function responsible for determining the correct volume plugin to use,
 // asking it to make a snapshot and assignig it some name that it returns to the caller.
 func (vs *volumeSnapshotter) takeSnapshot(spec *v1.PersistentVolumeSpec) (*tprv1.VolumeSnapshotDataSource, error) {
-	volumeType := tprv1.GetSupportedVolumeFromPVC(spec)
+	volumeType := tprv1.GetSupportedVolumeFromPVSpec(spec)
 	if len(volumeType) == 0 {
-		return nil, fmt.Errorf("unsupported volume type found in PVC %#v", spec)
+		return nil, fmt.Errorf("unsupported volume type found in PV %#v", spec)
 	}
 	plugin, ok := (*vs.volumePlugins)[volumeType]
 	if !ok {

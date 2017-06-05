@@ -29,7 +29,10 @@ import (
 	"github.com/rootfs/snapshot/pkg/volume"
 )
 
-const depot = "/tmp/"
+const (
+	depot        = "/tmp/"
+	restorePoint = "/restore/"
+)
 
 type hostPathPlugin struct {
 }
@@ -68,4 +71,26 @@ func (h *hostPathPlugin) SnapshotDelete(src *tprv1.VolumeSnapshotDataSource, _ *
 	}
 	path := src.HostPath.Path
 	return os.Remove(path)
+}
+
+func (h *hostPathPlugin) SnapshotRestore(snapshotData *tprv1.VolumeSnapshotData, _ *v1.PersistentVolumeClaim, _ string, _ map[string]string) (*v1.PersistentVolumeSource, map[string]string, error) {
+	// retrieve VolumeSnapshotDataSource
+	if snapshotData == nil || snapshotData.Spec.HostPath == nil {
+		return nil, nil, fmt.Errorf("failed to retrieve Snapshot spec")
+	}
+	// restore snapshot to a PV
+	snapId := snapshotData.Spec.HostPath.Path
+	dir := restorePoint + string(uuid.NewUUID())
+	os.MkdirAll(dir, 0750)
+	cmd := exec.Command("tar", "xzvf", snapId, "-C", dir)
+	err := cmd.Run()
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to restore %s to %s: %v", snapId, dir, err)
+	}
+	pv := &v1.PersistentVolumeSource{
+		HostPath: &v1.HostPathVolumeSource{
+			Path: dir,
+		},
+	}
+	return pv, nil, nil
 }

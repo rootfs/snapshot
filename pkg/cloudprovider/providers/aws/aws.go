@@ -306,6 +306,8 @@ type VolumeOptions struct {
 	// fully qualified resource name to the key to use for encryption.
 	// example: arn:aws:kms:us-east-1:012345678910:key/abcd1234-a123-456a-a12b-a123b4cd56ef
 	KmsKeyId string
+	// an existing EBS snapshotID
+	SnapshotId string
 }
 
 // VolumeOptions specifies volume snapshot options.
@@ -1726,6 +1728,10 @@ func (c *Cloud) CreateDisk(volumeOptions *VolumeOptions) (KubernetesVolumeID, er
 	if iops > 0 {
 		request.Iops = aws.Int64(iops)
 	}
+	if len(volumeOptions.SnapshotId) > 0 {
+		request.SnapshotId = aws.String(volumeOptions.SnapshotId)
+	}
+
 	response, err := c.ec2.CreateVolume(request)
 	if err != nil {
 		return "", err
