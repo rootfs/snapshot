@@ -112,8 +112,8 @@ type VolumeSnapshotDataStatus struct {
 
 type VolumeSnapshotDataList struct {
 	metav1.TypeMeta `json:",inline"`
-	Metadata        metav1.ListMeta  `json:"metadata"`
-	Items           []VolumeSnapshot `json:"items"`
+	Metadata        metav1.ListMeta      `json:"metadata"`
+	Items           []VolumeSnapshotData `json:"items"`
 }
 
 type VolumeSnapshotDataConditionType string
