@@ -32,4 +32,6 @@ type VolumePlugin interface {
 	// SnapshotDelete deletes a VolumeSnapshot
 	// PersistentVolume is provided for volume types, if any, that need PV Spec to delete snapshot
 	SnapshotDelete(*tprv1.VolumeSnapshotDataSource, *v1.PersistentVolume) error
+	// SnapshotRestore restores (promotes) a volume snapshot into a volume
+	SnapshotRestore(*tprv1.VolumeSnapshotData, *v1.PersistentVolumeClaim, string, map[string]string) (*v1.PersistentVolumeSource, map[string]string, error)
 }
