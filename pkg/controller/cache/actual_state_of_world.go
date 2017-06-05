@@ -40,6 +40,9 @@ type ActualStateOfWorld interface {
 	// Return a copy of the known snapshots
 	GetSnapshots() map[string]*tprv1.VolumeSnapshotSpec
 
+	// Get snapshot by its name
+	GetSnapshot(snapshotName string) *tprv1.VolumeSnapshotSpec
+
 	// Check whether the specified snapshot exists
 	SnapshotExists(snapshotName string) bool
 }
@@ -91,6 +94,15 @@ func (asw *actualStateOfWorld) GetSnapshots() map[string]*tprv1.VolumeSnapshotSp
 	}
 
 	return snapshots
+}
+
+// Get snapshot
+func (asw *actualStateOfWorld) GetSnapshot(snapshotName string) *tprv1.VolumeSnapshotSpec {
+	asw.RLock()
+	defer asw.RUnlock()
+	snapshotSpec, _ := asw.snapshots[snapshotName]
+
+	return snapshotSpec
 }
 
 // Checks for the existence of the snapshot

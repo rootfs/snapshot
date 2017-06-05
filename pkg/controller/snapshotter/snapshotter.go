@@ -47,6 +47,7 @@ type VolumeSnapshotter interface {
 	CreateVolumeSnapshot(snapshotName string, snapshotSpec *tprv1.VolumeSnapshotSpec)
 	DeleteVolumeSnapshot(snapshotName string, snapshotSpec *tprv1.VolumeSnapshotSpec)
 	PromoteVolumeSnapshotToPV(snapshotName string, snapshotSpec *tprv1.VolumeSnapshotSpec)
+	UpdateVolumeSnapshot(snapshotName string) error
 }
 
 type volumeSnapshotter struct {
@@ -205,32 +206,12 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 			glog.Errorf("Error creating the VolumeSnapshotData %s: %v", snapshotName, err)
 		}
 		vs.actualStateOfWorld.AddSnapshot(snapshotName, snapshotSpec)
-		// TODO: Update the VolumeSnapshot object too
-
-		var snapshotObj tprv1.VolumeSnapshot
-		err = vs.restClient.Get().
-			Name(snapName).
-			Resource(tprv1.VolumeSnapshotResourcePlural).
-			Namespace(v1.NamespaceDefault).
-			Do().Into(&snapshotObj)
-
-		objCopy, err := vs.scheme.DeepCopy(&snapshotObj)
+		// Update the VolumeSnapshot object too
+		err = vs.UpdateVolumeSnapshot(snapshotName)
 		if err != nil {
-			glog.Errorf("Error copying snapshot object %s object from API server", snapName)
+			glog.Errorf("Error updating volume snapshot %s: %v", snapshotName, err)
 		}
-		snapshotCopy, ok := objCopy.(*tprv1.VolumeSnapshot)
-		if !ok {
-			glog.Warning("expecting type VolumeSnapshot but received type %T", objCopy)
-		}
-		snapshotCopy.Spec.SnapshotDataName = snapName
-		snapshotCopy.Status.Conditions = []tprv1.VolumeSnapshotCondition{
-			{
-				Type:    tprv1.VolumeSnapshotConditionReady,
-				Status:  v1.ConditionTrue,
-				Message: "Snapsot created succsessfully",
-			},
-		}
-		// TODO: Make diff of the two objects and then use restClient.Patch to update it
+
 		return nil
 	}
 }
@@ -319,4 +300,79 @@ func (vs *volumeSnapshotter) PromoteVolumeSnapshotToPV(snapshotName string, snap
 			glog.Errorf("Failed to schedule the operation %q: %v", operationName, err)
 		}
 	}
+}
+
+func (vs *volumeSnapshotter) UpdateVolumeSnapshot(snapshotName string) error {
+	var snapshotObj tprv1.VolumeSnapshot
+	var snapshotDataList tprv1.VolumeSnapshotDataList
+	var snapshotDataObj tprv1.VolumeSnapshotData
+	var found bool
+
+	glog.Infof("In UpdateVolumeSnapshot")
+	// Get a fresh copy of the VolumeSnapshotData from the API server
+	err := vs.restClient.Get().
+		Resource(tprv1.VolumeSnapshotDataResourcePlural).
+		Namespace(v1.NamespaceDefault).
+		Do().Into(&snapshotDataList)
+	if err != nil {
+		return fmt.Errorf("Error retrieving the VolumeSnapshotData objects from API server: %v", err)
+	}
+	if len(snapshotDataList.Items) == 0 {
+		return fmt.Errorf("Error: no VolumeSnapshotData objects found on the API server")
+	}
+	// Get a fresh copy of the VolumeSnapshot from the API server
+	snapNameSpace, snapName, err := cache.GetNameAndNameSpaceFromSnapshotName(snapshotName)
+	if err != nil {
+		return fmt.Errorf("Error gettning namespace and name from VolumeSnapshot name %s: %v", snapshotName, err)
+	}
+	err = vs.restClient.Get().
+		Name(snapName).
+		Resource(tprv1.VolumeSnapshotResourcePlural).
+		Namespace(snapNameSpace).
+		Do().Into(&snapshotObj)
+
+	for _, snapData := range snapshotDataList.Items {
+		if snapData.Spec.VolumeSnapshotRef.Name == snapshotName {
+			snapshotDataObj = snapData
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("Error: no VolumeSnapshotData for VolumeSnapshot %s found", snapshotName)
+	}
+
+	objCopy, err := vs.scheme.DeepCopy(&snapshotObj)
+	if err != nil {
+		return fmt.Errorf("Error copying snapshot object %s object from API server: %v", snapshotName, err)
+	}
+	snapshotCopy, ok := objCopy.(*tprv1.VolumeSnapshot)
+	if !ok {
+		return fmt.Errorf("Error: expecting type VolumeSnapshot but received type %T", objCopy)
+	}
+	snapshotCopy.Spec.SnapshotDataName = snapshotDataObj.Metadata.Name
+	snapshotCopy.Status.Conditions = []tprv1.VolumeSnapshotCondition{
+		{
+			Type:               tprv1.VolumeSnapshotConditionReady,
+			Status:             v1.ConditionTrue,
+			Message:            "Snapshot created succsessfully",
+			LastTransitionTime: metav1.Now(),
+		},
+	}
+	glog.Infof("Updating VolumeSnapshot object")
+	// TODO: Make diff of the two objects and then use restClient.Patch to update it
+	var result tprv1.VolumeSnapshot
+	err = vs.restClient.Put().
+		Name(snapName).
+		Resource(tprv1.VolumeSnapshotResourcePlural).
+		Namespace(snapNameSpace).
+		Body(snapshotCopy).
+		Do().Into(&result)
+	if err != nil {
+		return fmt.Errorf("Error updating snapshot object %s on the API server: %v", snapshotName, err)
+	}
+	// Update the spec in the actual state of world
+	vs.actualStateOfWorld.AddSnapshot(snapshotName, &snapshotCopy.Spec)
+	return nil
 }

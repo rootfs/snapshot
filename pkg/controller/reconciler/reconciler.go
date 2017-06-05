@@ -117,14 +117,26 @@ func (rc *reconciler) reconcile() {
 		}
 	}
 	// Ensure the snapshots that should be created are created
-	for name, snapshot := range rc.desiredStateOfWorld.GetSnapshots() {
+	for name, snapshotSpec := range rc.desiredStateOfWorld.GetSnapshots() {
 		if !rc.actualStateOfWorld.SnapshotExists(name) {
 			// Call snapshotter to start creating the snapshot: it should use the volume
 			// plugin to create the on-disk snapshot, create the SnapshotData object for it
 			// and update adn put the Snapshot object to the actualStateOfWorld once the operation finishes.
 			// It's likely that the operation exists already: it should be fired by the controller right
 			// after the event has arrived.
-			rc.snapshotter.CreateVolumeSnapshot(name, snapshot)
+			rc.snapshotter.CreateVolumeSnapshot(name, snapshotSpec)
+		} else {
+			// The VolumeSnapshot is in both states of world: check its OK and fix it eventually.
+			aswSnapshotSpec := rc.actualStateOfWorld.GetSnapshot(name)
+			if aswSnapshotSpec.SnapshotDataName == "" {
+				// Seems the write to API server failed before. Find the SnapshotData and fix
+				// this VolumeSnapshot reference and status
+				glog.Infof("Volume snapshot %s is missing the snapshot data name - updating.", name)
+				err := rc.snapshotter.UpdateVolumeSnapshot(name)
+				if err != nil {
+					glog.Errorf("Error updating VolumeSnapshot %s: %v", name, err)
+				}
+			}
 		}
 	}
 }
