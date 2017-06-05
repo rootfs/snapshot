@@ -143,11 +143,11 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 	// 5. Add the Snapshot to the ActualStateOfWorld
 	// 6. Finish (we have created snapshot for an user)
 	return func() error {
-		// TODO: return if VolumeSnapshotData is already created
 		if snapshotSpec.SnapshotDataName != "" {
-			// This spec has the SnapshotDataName already set: this means importing admin-created snapshots
-			// TODO: Not implemented yet
-			return fmt.Errorf("Importing snapshots is not implemented yet")
+			// FIXME: what does it mean imported admin-created snapshots
+			vs.actualStateOfWorld.AddSnapshot(snapshotName, snapshotSpec)
+			glog.Infof("snapshot %s already binds to snapshotdata %s", snapshotName, snapshotSpec.SnapshotDataName)
+			return nil
 		}
 		pv, err := vs.getPVFromVolumeSnapshot(snapshotName, snapshotSpec)
 		if err != nil {
@@ -165,13 +165,6 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 			Message: "Snapsot created succsessfully",
 		}
 		snapName := "k8s-volume-snapshot-" + string(uuid.NewUUID())
-
-		// FIXME: temporarily use the snapshot name for snapshotdata,
-		// remove the following reassignment once bi-directional pointers are implemented
-		_, snapName, err = cache.GetNameAndNameSpaceFromSnapshotName(snapshotName)
-		if err != nil {
-			return err
-		}
 
 		snapshotData := &tprv1.VolumeSnapshotData{
 			Metadata: metav1.ObjectMeta{
