@@ -18,6 +18,7 @@ package aws_ebs
 
 import (
 	"fmt"
+	"strings"
 
 	"k8s.io/client-go/pkg/api/v1"
 
@@ -50,6 +51,9 @@ func (a *awsEBSPlugin) SnapshotCreate(spec *v1.PersistentVolumeSpec) (*tprv1.Vol
 		return nil, fmt.Errorf("invalid PV spec %v", spec)
 	}
 	volumeId := spec.AWSElasticBlockStore.VolumeID
+	if ind := strings.LastIndex(volumeId, "/"); ind >= 0 {
+		volumeId = volumeId[(ind + 1):]
+	}
 	snapshotOpt := &aws.SnapshotOptions{
 		VolumeId: volumeId,
 	}

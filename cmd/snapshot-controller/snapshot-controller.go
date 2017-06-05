@@ -30,6 +30,7 @@ import (
 
 	"github.com/rootfs/snapshot/pkg/client"
 	"github.com/rootfs/snapshot/pkg/cloudprovider"
+	"github.com/rootfs/snapshot/pkg/cloudprovider/providers/aws"
 	snapshotcontroller "github.com/rootfs/snapshot/pkg/controller/snapshot-controller"
 	"github.com/rootfs/snapshot/pkg/volume"
 	"github.com/rootfs/snapshot/pkg/volume/aws_ebs"
@@ -103,15 +104,18 @@ func buildConfig(kubeconfig string) (*rest.Config, error) {
 }
 
 func buildVolumePlugins() {
-	if len(*cloudProvider) != 0 && len(*cloudConfigFile) != 0 {
+	if len(*cloudProvider) != 0 {
 		cloud, err := cloudprovider.InitCloudProvider(*cloudProvider, *cloudConfigFile)
-		if err == nil {
-			if *cloudProvider == "aws" {
+		if err == nil && cloud != nil {
+			if *cloudProvider == aws.ProviderName {
 				awsPlugin := aws_ebs.RegisterPlugin()
 				awsPlugin.Init(cloud)
 				volumePlugins[aws_ebs.GetPluginName()] = awsPlugin
 			}
+		} else {
+			glog.Warningf("failed to initialize aws cloudprovider: %v, supported cloudproviders are %#v", err, cloudprovider.CloudProviders())
 		}
 	}
+
 	volumePlugins[hostpath.GetPluginName()] = hostpath.RegisterPlugin()
 }
