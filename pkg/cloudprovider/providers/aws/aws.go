@@ -1909,6 +1909,8 @@ func (c *Cloud) CreateSnapshot(snapshotOptions *SnapshotOptions) (snapshotId str
 	request := &ec2.CreateSnapshotInput{}
 	request.VolumeId = aws.String(snapshotOptions.VolumeId)
 	request.DryRun = aws.Bool(false)
+	descriptions := "Created by Kubernetes for volume " + snapshotOptions.VolumeId
+	request.Description = aws.String(descriptions)
 	res, err := c.ec2.CreateSnapshot(request)
 	if err != nil {
 		return "", err
