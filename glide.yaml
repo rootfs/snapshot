@@ -12,3 +12,7 @@ import:
   - lib
 - package: k8s.io/apiserver
 - package: github.com/aws/aws-sdk-go
+- package: golang.org/x/oauth2
+  subpackages:
+  - google
+
