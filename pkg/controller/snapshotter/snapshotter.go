@@ -107,6 +107,39 @@ func (vs *volumeSnapshotter) getPVFromVolumeSnapshot(snapshotName string, snapsh
 	return pv, nil
 }
 
+// Helper function that looks up VolumeSnapshotData for a VolumeSnapshot named snapshotName
+func (vs *volumeSnapshotter) getSnapshotDataFromSnapshotName(snapshotName string) *tprv1.VolumeSnapshotData {
+	var snapshotDataList tprv1.VolumeSnapshotDataList
+	var snapshotDataObj tprv1.VolumeSnapshotData
+	var found bool
+
+	err := vs.restClient.Get().
+		Resource(tprv1.VolumeSnapshotDataResourcePlural).
+		Namespace(v1.NamespaceDefault).
+		Do().Into(&snapshotDataList)
+	if err != nil {
+		glog.Errorf("Error retrieving the VolumeSnapshotData objects from API server: %v", err)
+		return nil
+	}
+	if len(snapshotDataList.Items) == 0 {
+		glog.Errorf("Error: no VolumeSnapshotData objects found on the API server")
+		return nil
+	}
+	for _, snapData := range snapshotDataList.Items {
+		if snapData.Spec.VolumeSnapshotRef.Name == snapshotName {
+			snapshotDataObj = snapData
+			found = true
+			break
+		}
+	}
+	if !found {
+		glog.Errorf("Error: no VolumeSnapshotData for VolumeSnapshot %s found", snapshotName)
+		return nil
+	}
+
+	return &snapshotDataObj
+}
+
 // This is the function responsible for determining the correct volume plugin to use,
 // asking it to make a snapshot and assignig it some name that it returns to the caller.
 func (vs *volumeSnapshotter) takeSnapshot(pv *v1.PersistentVolume) (*tprv1.VolumeSnapshotDataSource, error) {
@@ -127,6 +160,26 @@ func (vs *volumeSnapshotter) takeSnapshot(pv *v1.PersistentVolume) (*tprv1.Volum
 		return snap, nil
 	}
 	return nil, nil
+}
+
+// This is the function responsible for determining the correct volume plugin to use,
+// asking it to make a snapshot and assignig it some name that it returns to the caller.
+func (vs *volumeSnapshotter) deleteSnapshot(spec *v1.PersistentVolumeSpec, source *tprv1.VolumeSnapshotDataSource) error {
+	volumeType := tprv1.GetSupportedVolumeFromPVSpec(spec)
+	if len(volumeType) == 0 {
+		return fmt.Errorf("unsupported volume type found in PV %#v", spec)
+	}
+	plugin, ok := (*vs.volumePlugins)[volumeType]
+	if !ok {
+		return fmt.Errorf("%s is not supported volume for %#v", volumeType, spec)
+	}
+	err := plugin.SnapshotDelete(source, nil /* *v1.PersistentVolume */)
+	if err != nil {
+		return fmt.Errorf("failed to delete snapshot %#v, err: %v", source, err)
+	}
+	glog.Infof("snapshot %#v deleted", source)
+
+	return nil
 }
 
 // Below are the closures meant to build the functions for the GoRoutineMap operations.
@@ -188,7 +241,7 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 				},
 			},
 		}
-		var result tprv1.VolumeSnapshotData
+		var result metav1.Status
 		err = vs.restClient.Post().
 			Resource(tprv1.VolumeSnapshotDataResourcePlural).
 			Namespace(v1.NamespaceDefault).
@@ -219,12 +272,33 @@ func (vs *volumeSnapshotter) getSnapshotDeleteFunc(snapshotName string, snapshot
 	// 4. Remove the Snapshot from ActualStateOfWorld
 	// 5. Finish
 	return func() error {
+		// TODO: get VolumeSnapshotDataSource from associated VolumeSnapshotData
+		// then call volume delete snapshot method to delete the ot
+		snapshotDataObj := vs.getSnapshotDataFromSnapshotName(snapshotName)
+		if snapshotDataObj == nil {
+			return fmt.Errorf("Error getting VolumeSnapshotData for VolumeSnapshot %s", snapshotName)
+		}
+
 		pv, err := vs.getPVFromVolumeSnapshot(snapshotName, snapshotSpec)
-		if err != nil || pv == nil {
+		if err != nil {
 			return err
 		}
-		// TODO: get VolumeSnapshotDataSource from associated VolumeSnapshotData
-		// then call volume delete snapshot method to delete the snapshot
+
+		err = vs.deleteSnapshot(&pv.Spec, &snapshotDataObj.Spec.VolumeSnapshotDataSource)
+		if err != nil {
+			return fmt.Errorf("Failed to delete snapshot %s: %q", snapshotName, err)
+		}
+
+		snapshotDataName := snapshotDataObj.Metadata.Name
+		var result metav1.Status
+		err = vs.restClient.Delete().
+			Name(snapshotDataName).
+			Resource(tprv1.VolumeSnapshotDataResourcePlural).
+			Namespace(v1.NamespaceDefault).
+			Do().Into(&result)
+		if err != nil {
+			return fmt.Errorf("Failed to delete VolumeSnapshotData %s from API server: %q", snapshotDataName, err)
+		}
 
 		vs.actualStateOfWorld.DeleteSnapshot(snapshotName)
 
@@ -298,44 +372,19 @@ func (vs *volumeSnapshotter) PromoteVolumeSnapshotToPV(snapshotName string, snap
 
 func (vs *volumeSnapshotter) UpdateVolumeSnapshot(snapshotName string) error {
 	var snapshotObj tprv1.VolumeSnapshot
-	var snapshotDataList tprv1.VolumeSnapshotDataList
-	var snapshotDataObj tprv1.VolumeSnapshotData
-	var found bool
 
 	glog.Infof("In UpdateVolumeSnapshot")
 	// Get a fresh copy of the VolumeSnapshotData from the API server
-	err := vs.restClient.Get().
-		Resource(tprv1.VolumeSnapshotDataResourcePlural).
-		Namespace(v1.NamespaceDefault).
-		Do().Into(&snapshotDataList)
-	if err != nil {
-		return fmt.Errorf("Error retrieving the VolumeSnapshotData objects from API server: %v", err)
-	}
-	if len(snapshotDataList.Items) == 0 {
-		return fmt.Errorf("Error: no VolumeSnapshotData objects found on the API server")
-	}
 	// Get a fresh copy of the VolumeSnapshot from the API server
 	snapNameSpace, snapName, err := cache.GetNameAndNameSpaceFromSnapshotName(snapshotName)
 	if err != nil {
-		return fmt.Errorf("Error gettning namespace and name from VolumeSnapshot name %s: %v", snapshotName, err)
+		return fmt.Errorf("Error getting namespace and name from VolumeSnapshot name %s: %v", snapshotName, err)
 	}
 	err = vs.restClient.Get().
 		Name(snapName).
 		Resource(tprv1.VolumeSnapshotResourcePlural).
 		Namespace(snapNameSpace).
 		Do().Into(&snapshotObj)
-
-	for _, snapData := range snapshotDataList.Items {
-		if snapData.Spec.VolumeSnapshotRef.Name == snapshotName {
-			snapshotDataObj = snapData
-			found = true
-			break
-		}
-	}
-
-	if !found {
-		return fmt.Errorf("Error: no VolumeSnapshotData for VolumeSnapshot %s found", snapshotName)
-	}
 
 	objCopy, err := vs.scheme.DeepCopy(&snapshotObj)
 	if err != nil {
@@ -345,6 +394,12 @@ func (vs *volumeSnapshotter) UpdateVolumeSnapshot(snapshotName string) error {
 	if !ok {
 		return fmt.Errorf("Error: expecting type VolumeSnapshot but received type %T", objCopy)
 	}
+
+	snapshotDataObj := vs.getSnapshotDataFromSnapshotName(snapshotName)
+	if snapshotDataObj == nil {
+		return fmt.Errorf("Error getting VolumeSnapshotData for VolumeSnapshot %s", snapshotName)
+	}
+
 	snapshotCopy.Spec.SnapshotDataName = snapshotDataObj.Metadata.Name
 	snapshotCopy.Status.Conditions = []tprv1.VolumeSnapshotCondition{
 		{
