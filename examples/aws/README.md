@@ -1,5 +1,7 @@
 ### AWS EBS
 
+[![asciicast](https://asciinema.org/a/5jfggavfbkayuf7lkpe6n7li1.png)](https://asciinema.org/a/5jfggavfbkayuf7lkpe6n7li1)
+
 #### Start Snapshot Controller 
 
 (assuming running Kubernetes local cluster):
@@ -12,12 +14,12 @@ _output/bin/snapshot-controller  -kubeconfig=${HOME}/.kube/config
 ```bash
 kubectl create namespace myns
 # if no default storage class, create one
-kubectl -f https://raw.githubusercontent.com/kubernetes/kubernetes/master/examples/persistent-volume-provisioning/aws-ebs.yaml
-kubectl -f example/aws/pvc.yaml
+kubectl create -f https://raw.githubusercontent.com/kubernetes/kubernetes/master/examples/persistent-volume-provisioning/aws-ebs.yaml
+kubectl create -f examples/aws/pvc.yaml
 ```
  * Create a Snapshot Third Party Resource 
 ```bash
-kubectl -f example/aws/snapshot.yaml
+kubectl create -f examples/aws/snapshot.yaml
 ```
 
 #### Check VolumeSnapshot and VolumeSnapshotData are created
@@ -37,4 +39,21 @@ metadata:
   namespace: 
   annotations:
     snapshot.alpha.kubernetes.io/snapshot: snapshot-demo
+```
+### Starting Snapshot based PV Provisioner
+
+```bash
+_output/bin/snapshot-provisioner  -kubeconfig=${HOME}/.kube/config -cloudprovider=aws
+```
+
+### Create Storage Class to enable provisioner PVs based on volume snapshots
+
+```bash
+kubectl create -f examples/aws/class.yaml
+```
+
+### Claims a PV that restores from an existing volume snapshot
+
+```bash
+kubectl create -f examples/aws/claim.yaml
 ```

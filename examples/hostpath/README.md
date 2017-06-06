@@ -12,12 +12,12 @@ _output/bin/snapshot-controller  -kubeconfig=${HOME}/.kube/config
  * Create a hostpath PV and PVC
 ```bash
 kubectl create namespace myns
-kubectl -f example/hostpath/pv.yaml
-kubectl -f example/hostpath/pvc.yaml
+kubectl -f examples/hostpath/pv.yaml
+kubectl -f examples/hostpath/pvc.yaml
 ```
  * Create a Snapshot Third Party Resource 
 ```bash
-kubectl -f example/hostpath/snapshot.yaml
+kubectl -f examples/hostpath/snapshot.yaml
 ```
 
 #### Check VolumeSnapshot and VolumeSnapshotData are created
@@ -45,18 +45,18 @@ metadata:
 
 Start provisioner (assuming running Kubernetes local cluster):
 ```bash
-_output/bin/snapshot-provisioner-hostpath  -kubeconfig=${HOME}/.kube/config
+_output/bin/snapshot-provisioner  -kubeconfig=${HOME}/.kube/config
 ```
 
 Create a storage class:
 ```bash
-kubectl create -f example/hostpath/class.yaml
+kubectl create -f examples/hostpath/class.yaml
 ```
 
 ### Create a PVC that claims a PV based on an existing snapshot 
 
 ```bash
-kubectl create -f example/hostpath/claim.yaml
+kubectl create -f examples/hostpath/claim.yaml
 ```
 
 #### Check PV and PVC are created
