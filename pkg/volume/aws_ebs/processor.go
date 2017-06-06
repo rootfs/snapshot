@@ -99,7 +99,7 @@ func (a *awsEBSPlugin) SnapshotRestore(snapshotData *tprv1.VolumeSnapshotData, p
 
 	snapId := snapshotData.Spec.AWSElasticBlockStore.SnapshotID
 
-	tags["Name"] = kvol.GenerateVolumeName("External Storage", pvName, 255) // AWS tags can have 255 characters
+	tags["Name"] = kvol.GenerateVolumeName("Created from snapshot "+snapId+" ", pvName, 255) // AWS tags can have 255 characters
 
 	capacity := pvc.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)]
 	requestBytes := capacity.Value()
