@@ -50,7 +50,8 @@ func GetPluginName() string {
 func (h *hostPathPlugin) Init(_ cloudprovider.Interface) {
 }
 
-func (h *hostPathPlugin) SnapshotCreate(spec *v1.PersistentVolumeSpec) (*tprv1.VolumeSnapshotDataSource, error) {
+func (h *hostPathPlugin) SnapshotCreate(pv *v1.PersistentVolume) (*tprv1.VolumeSnapshotDataSource, error) {
+	spec := &pv.Spec
 	if spec == nil || spec.HostPath == nil {
 		return nil, fmt.Errorf("invalid PV spec %v", spec)
 	}

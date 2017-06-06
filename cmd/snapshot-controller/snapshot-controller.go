@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
