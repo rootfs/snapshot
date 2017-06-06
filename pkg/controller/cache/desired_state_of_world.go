@@ -82,6 +82,7 @@ func (dsw *desiredStateOfWorld) DeleteSnapshot(snapshotName string) error {
 
 	glog.Infof("Deleteing snapshot from desired state of world: %s", snapshotName)
 
+	delete(dsw.snapshots, snapshotName)
 	return nil
 }
 

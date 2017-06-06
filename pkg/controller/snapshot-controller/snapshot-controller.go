@@ -168,16 +168,34 @@ func (c *snapshotController) onSnapshotUpdate(oldObj, newObj interface{}) {
 }
 
 func (c *snapshotController) onSnapshotDelete(obj interface{}) {
+	deletedSnapshot, ok := obj.(*tprv1.VolumeSnapshot)
+	if !ok {
+		// DeletedFinalStateUnkown is an expected data type here
+		deletedState, ok := obj.(kcache.DeletedFinalStateUnknown)
+		if !ok {
+			glog.Errorf("Error: unkown type passed as snapshot for deletion: %T", obj)
+			return
+		}
+		deletedSnapshot, ok = deletedState.Obj.(*tprv1.VolumeSnapshot)
+		if !ok {
+			glog.Errorf("Error: unkown data type in DeletedState: %T", deletedState.Obj)
+			return
+		}
+	}
 	// Delete snapshot: Remove the snapshot from DesiredStateOfWorld, then ask snapshotter to delete
 	// the snapshot itself
-	objCopy, err := api.Scheme.DeepCopy(obj)
+	objCopy, err := api.Scheme.DeepCopy(deletedSnapshot)
 	if err != nil {
 		glog.Warning("failed to copy obj %#v: %v", obj, err)
 		return
 	}
 
-	snapshot := objCopy.(*tprv1.VolumeSnapshot)
-	glog.Infof("[CONTROLLER] OnDelete %s\n", snapshot.Metadata.SelfLink)
+	snapshot, ok := objCopy.(*tprv1.VolumeSnapshot)
+	if !ok {
+		glog.Warning("expecting type VolumeSnapshot but received type %T", objCopy)
+		return
+	}
+	glog.Infof("[CONTROLLER] OnDelete %s, snapshot name: %s/%s\n", snapshot.Metadata.SelfLink, snapshot.Metadata.Namespace, snapshot.Metadata.Name)
 	c.desiredStateOfWorld.DeleteSnapshot(cache.MakeSnapshotName(snapshot.Metadata.Namespace, snapshot.Metadata.Name))
 
 }
