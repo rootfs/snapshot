@@ -41,7 +41,7 @@ import (
 )
 
 const (
-	provisionerName  = "volumesnapshot.external-storage.k8s.io/hostpath"
+	provisionerName  = "volumesnapshot.external-storage.k8s.io/snapshot-promoter"
 	provisionerIDAnn = "snapshotProvisionerIdentity"
 )
 
@@ -253,7 +253,7 @@ func main() {
 		snapshotProvisioner,
 		serverVersion.GitVersion,
 	)
-
+	glog.Infof("starting PV provisioner %s", provisionerName)
 	pc.Run(wait.NeverStop)
 }
 
