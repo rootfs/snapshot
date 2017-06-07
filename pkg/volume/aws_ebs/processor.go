@@ -166,3 +166,16 @@ func (a *awsEBSPlugin) SnapshotRestore(snapshotData *tprv1.VolumeSnapshotData, p
 	return pv, labels, nil
 
 }
+
+func (a *awsEBSPlugin) VolumeDelete(pv *v1.PersistentVolume) error {
+	if pv == nil || pv.Spec.AWSElasticBlockStore == nil {
+		return fmt.Errorf("invalid EBS PV: %v", pv)
+	}
+	volumeId := pv.Spec.AWSElasticBlockStore.VolumeID
+	_, err := a.cloud.DeleteDisk(aws.KubernetesVolumeID(volumeId))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

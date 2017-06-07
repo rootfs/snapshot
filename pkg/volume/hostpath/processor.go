@@ -95,3 +95,12 @@ func (h *hostPathPlugin) SnapshotRestore(snapshotData *tprv1.VolumeSnapshotData,
 	}
 	return pv, nil, nil
 }
+
+func (h *hostPathPlugin) VolumeDelete(pv *v1.PersistentVolume) error {
+	if pv == nil || pv.Spec.HostPath == nil {
+		return fmt.Errorf("invalid VolumeSnapshotDataSource: %v", pv)
+	}
+	path := pv.Spec.HostPath.Path
+	return os.Remove(path)
+
+}

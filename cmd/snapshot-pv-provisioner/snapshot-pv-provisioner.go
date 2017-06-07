@@ -190,14 +190,24 @@ func (p *snapshotProvisioner) Delete(volume *v1.PersistentVolume) error {
 		return &controller.IgnoredError{"identity annotation on PV does not match ours"}
 	}
 
-	return nil
+	volumeType := tprv1.GetSupportedVolumeFromPVSpec(&volume.Spec)
+	if len(volumeType) == 0 {
+		return fmt.Errorf("unsupported volume type found in PV %#v", *volume)
+	}
+	plugin, ok := volumePlugins[volumeType]
+	if !ok {
+		return fmt.Errorf("%s is not supported volume for %#v", volumeType, *volume)
+	}
+
+	// delete PV
+	return plugin.VolumeDelete(volume)
 }
 
 var (
 	master          = flag.String("master", "", "Master URL")
 	kubeconfig      = flag.String("kubeconfig", "", "Absolute path to the kubeconfig")
 	id              = flag.String("id", "", "Unique provisioner identity")
-	cloudProvider   = flag.String("cloudprovider", "", "aws|gcp|openstack|azure")
+	cloudProvider   = flag.String("cloudprovider", "", "aws|gce")
 	cloudConfigFile = flag.String("cloudconfig", "", "Path to a Cloud config. Only required if cloudprovider is set.")
 	volumePlugins   = make(map[string]volume.VolumePlugin)
 )
