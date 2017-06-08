@@ -167,5 +167,6 @@ func (plugin *gcePersistentDiskPlugin) SnapshotDelete(src *tprv1.VolumeSnapshotD
 }
 
 func (plugin *gcePersistentDiskPlugin) VolumeDelete(pv *v1.PersistentVolume) error {
-	return plugin.VolumeDelete(volume)
+	// add delete
+	return plugin.VolumeDelete(pv)
 }
