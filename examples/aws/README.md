@@ -6,7 +6,7 @@
 
 (assuming running Kubernetes local cluster):
 ```
-_output/bin/snapshot-controller  -kubeconfig=${HOME}/.kube/config
+_output/bin/snapshot-controller  -kubeconfig=${HOME}/.kube/config -cloudprovider=aws
 ```
 
 ####  Create a snapshot

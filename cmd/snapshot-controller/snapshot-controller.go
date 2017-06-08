@@ -44,7 +44,7 @@ const (
 
 var (
 	kubeconfig      = flag.String("kubeconfig", "", "Path to a kube config. Only required if out-of-cluster.")
-	cloudProvider   = flag.String("cloudprovider", "", "aws|gcp|openstack|azure")
+	cloudProvider   = flag.String("cloudprovider", "", "aws|gce")
 	cloudConfigFile = flag.String("cloudconfig", "", "Path to a Cloud config. Only required if cloudprovider is set.")
 	volumePlugins   = make(map[string]volume.VolumePlugin)
 )
