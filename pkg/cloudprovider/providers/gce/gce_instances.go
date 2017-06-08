@@ -32,7 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/kubernetes/pkg/api/v1"
-	"k8s.io/kubernetes/pkg/cloudprovider"
+	"github.com/rootfs/snapshot/pkg/cloudprovider"
 )
 
 func newInstancesMetricContext(request, zone string) *metricContext {

@@ -187,6 +187,12 @@ type AWSElasticBlockStoreVolumeSnapshotSource struct {
 	SnapshotID string `json:"snapshotId"`
 }
 
+// GCE PD volume snapshot source
+type GCEPersistentDiskSnapshotSource struct {
+	// Unique id of the persistent disk snapshot resource. Used to identify the disk snapshot in GCE
+	SnapshotName string `json:"snapshotId"`
+}
+
 // Represents the actual location and type of the snapshot. Only one of its members may be specified.
 type VolumeSnapshotDataSource struct {
 	// HostPath represents a directory on the host.
@@ -201,6 +207,9 @@ type VolumeSnapshotDataSource struct {
 	// More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
 	// +optional
 	AWSElasticBlockStore *AWSElasticBlockStoreVolumeSnapshotSource `json:"awsElasticBlockStore,omitempty"`
+	// GCEPersistentDiskSnapshotSource represents an GCE PD snapshot resource
+	// +optional
+	GCEPersistentDiskSnapshot *GCEPersistentDiskSnapshotSource `json:"gcePersistentDisk,omitempty"`
 }
 
 func GetSupportedVolumeFromPVSpec(spec *core_v1.PersistentVolumeSpec) string {
@@ -209,6 +218,9 @@ func GetSupportedVolumeFromPVSpec(spec *core_v1.PersistentVolumeSpec) string {
 	}
 	if spec.AWSElasticBlockStore != nil {
 		return "aws_ebs"
+	}
+	if spec.GCEPersistentDisk != nil {
+		return "gce-pd"
 	}
 	return ""
 }

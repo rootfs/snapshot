@@ -32,9 +32,11 @@ import (
 	"github.com/rootfs/snapshot/pkg/client"
 	"github.com/rootfs/snapshot/pkg/cloudprovider"
 	"github.com/rootfs/snapshot/pkg/cloudprovider/providers/aws"
+	"github.com/rootfs/snapshot/pkg/cloudprovider/providers/gce"
 	snapshotcontroller "github.com/rootfs/snapshot/pkg/controller/snapshot-controller"
 	"github.com/rootfs/snapshot/pkg/volume"
 	"github.com/rootfs/snapshot/pkg/volume/aws_ebs"
+	"github.com/rootfs/snapshot/pkg/volume/gce_pd"
 	"github.com/rootfs/snapshot/pkg/volume/hostpath"
 )
 
@@ -112,9 +114,16 @@ func buildVolumePlugins() {
 				awsPlugin := aws_ebs.RegisterPlugin()
 				awsPlugin.Init(cloud)
 				volumePlugins[aws_ebs.GetPluginName()] = awsPlugin
+				glog.Info("Register cloudprovider aws")
+			}
+			if *cloudProvider == gce.ProviderName {
+				gcePlugin := gce_pd.RegisterPlugin()
+				gcePlugin.Init(cloud)
+				volumePlugins[gce_pd.GetPluginName()] = gcePlugin
+				glog.Info("Register cloudprovider %s", gce_pd.GetPluginName())
 			}
 		} else {
-			glog.Warningf("failed to initialize aws cloudprovider: %v, supported cloudproviders are %#v", err, cloudprovider.CloudProviders())
+			glog.Warningf("failed to initialize cloudprovider: %v, supported cloudproviders are %#v", err, cloudprovider.CloudProviders())
 		}
 	}
 

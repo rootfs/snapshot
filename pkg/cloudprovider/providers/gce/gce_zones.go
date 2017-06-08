@@ -16,7 +16,7 @@ limitations under the License.
 
 package gce
 
-import "k8s.io/kubernetes/pkg/cloudprovider"
+import "github.com/rootfs/snapshot/pkg/cloudprovider"
 
 func (gce *GCECloud) GetZone() (cloudprovider.Zone, error) {
 	return cloudprovider.Zone{

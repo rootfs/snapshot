@@ -20,9 +20,10 @@ import (
 	"testing"
 
 	"fmt"
+
+	"github.com/rootfs/snapshot/pkg/cloudprovider"
 	compute "google.golang.org/api/compute/v1"
 	"google.golang.org/api/googleapi"
-	"k8s.io/kubernetes/pkg/cloudprovider"
 	kubeletapis "k8s.io/kubernetes/pkg/kubelet/apis"
 )
 

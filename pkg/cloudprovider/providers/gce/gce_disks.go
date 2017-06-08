@@ -24,8 +24,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rootfs/snapshot/pkg/cloudprovider"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/kubernetes/pkg/cloudprovider"
 	kubeletapis "k8s.io/kubernetes/pkg/kubelet/apis"
 	"k8s.io/kubernetes/pkg/volume"
 
@@ -68,6 +68,11 @@ type Disks interface {
 	// DeleteDisk deletes PD.
 	DeleteDisk(diskToDelete string) error
 
+	// Create an GCE PD volume snapshot
+	CreateSnapshot(diskName string, zone string, snapshotName string, tags map[string]string) error
+	// Delete an GCE PD volume snapshot
+	DeleteSnapshot(snapshotToDelete string) error
+
 	// GetAutoLabelsForPD returns labels to apply to PersistentVolume
 	// representing this PD, namely failure domain and zone.
 	// zone can be provided to specify the zone for the PD,
@@ -83,6 +88,11 @@ type GCEDisk struct {
 	Name string
 	Kind string
 	Type string
+}
+
+type gceSnapshot struct {
+	Name string
+	Kind string
 }
 
 func newDiskMetricContext(request, zone string) *metricContext {
@@ -260,6 +270,63 @@ func (gce *GCECloud) CreateDisk(
 	return err
 }
 
+func (gce *GCECloud) CreateDiskFromSnapshot(snapshot string,
+	name string, diskType string, zone string, sizeGb int64, tags map[string]string) error {
+
+	// Do not allow creation of PDs in zones that are not managed. Such PDs
+	// then cannot be deleted by DeleteDisk.
+	isManaged := false
+	for _, managedZone := range gce.managedZones {
+		if zone == managedZone {
+			isManaged = true
+			break
+		}
+	}
+	if !isManaged {
+		return fmt.Errorf("kubernetes does not manage zone %q", zone)
+	}
+
+	tagsStr, err := gce.encodeDiskTags(tags)
+	if err != nil {
+		return err
+	}
+
+	switch diskType {
+	case DiskTypeSSD, DiskTypeStandard:
+		// noop
+	case "":
+		diskType = diskTypeDefault
+	default:
+		return fmt.Errorf("invalid GCE disk type %q", diskType)
+	}
+	diskTypeUri := fmt.Sprintf(diskTypeUriTemplate, gce.projectID, zone, diskType)
+
+	snapshotName := "global/snapshots/" + snapshot
+	diskToCreate := &compute.Disk{
+		Name:           name,
+		SizeGb:         sizeGb,
+		Description:    tagsStr,
+		Type:           diskTypeUri,
+		SourceSnapshot: snapshotName,
+	}
+
+	mc := newDiskMetricContext("create", zone)
+	createOp, err := gce.manager.CreateDisk(gce.projectID, zone, diskToCreate)
+	if isGCEError(err, "alreadyExists") {
+		glog.Warningf("GCE PD %q already exists, reusing", name)
+		return nil
+	} else if err != nil {
+		return mc.Observe(err)
+	}
+
+	err = gce.manager.WaitForZoneOp(createOp, zone, mc)
+	if isGCEError(err, "alreadyExists") {
+		glog.Warningf("GCE PD %q already exists, reusing", name)
+		return nil
+	}
+	return err
+}
+
 func (gce *GCECloud) DeleteDisk(diskToDelete string) error {
 	err := gce.doDeleteDisk(diskToDelete)
 	if isGCEError(err, "resourceInUseByAnotherResource") {
@@ -270,6 +337,83 @@ func (gce *GCECloud) DeleteDisk(diskToDelete string) error {
 		return nil
 	}
 	return err
+}
+
+func newSnapshotContext(request string) *metricContext {
+	return &metricContext{
+		start:      time.Now(),
+		attributes: []string{"snapshot_" + request, unusedMetricLabel, unusedMetricLabel},
+	}
+}
+
+func (gce *GCECloud) DeleteSnapshot(snapshotToDelete string) error {
+
+	snapshot, err := gce.getSnapshotByName(snapshotToDelete)
+	if err != nil {
+		return err
+	}
+	//no snapshot is found
+	if snapshot == nil {
+		return nil
+	}
+
+	deleteOp, err := gce.service.Snapshots.Delete(gce.projectID, snapshotToDelete).Do()
+	if err != nil {
+		return err
+	}
+	mc := newSnapshotContext("delete")
+	return gce.waitForGlobalOp(deleteOp, mc)
+}
+
+func (gce *GCECloud) getSnapshotByName(snapshotName string) (*gceSnapshot, error) {
+	snapshot, err := gce.service.Snapshots.Get(gce.projectID, snapshotName).Do()
+	if err == nil {
+		s := &gceSnapshot{
+			Name: snapshot.Name,
+			Kind: snapshot.Kind,
+		}
+		return s, nil
+	}
+	if !isHTTPErrorCode(err, http.StatusNotFound) {
+		return nil, err
+	}
+	return nil, nil
+}
+
+func (gce *GCECloud) CreateSnapshot(diskName string, zone string, snapshotName string, tags map[string]string) error {
+	isManaged := false
+	for _, managedZone := range gce.managedZones {
+		if zone == managedZone {
+			isManaged = true
+			break
+		}
+	}
+	if !isManaged {
+		return fmt.Errorf("kubernetes does not manage zone %q", zone)
+	}
+	tagsStr, err := gce.encodeDiskTags(tags)
+	if err != nil {
+		return err
+	}
+
+	snapshotToCreate := &compute.Snapshot{
+		Name:        snapshotName,
+		Description: tagsStr,
+	}
+
+	createOp, err := gce.manager.CreateSnapshot(gce.projectID, zone, diskName, snapshotToCreate)
+	if err != nil {
+		return err
+	}
+
+	mc := newDiskMetricContext("create", zone)
+	err = gce.waitForZoneOp(createOp, zone, mc)
+	if isGCEError(err, "alreadyExists") {
+		glog.Warningf("GCE PD Snapshot %q already exists, reusing", snapshotName)
+		return nil
+	}
+	return err
+
 }
 
 // Builds the labels that should be automatically added to a PersistentVolume backed by a GCE PD

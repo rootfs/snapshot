@@ -29,10 +29,10 @@ import (
 
 	"gopkg.in/gcfg.v1"
 
+	"github.com/rootfs/snapshot/pkg/cloudprovider"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/flowcontrol"
-	"k8s.io/kubernetes/pkg/cloudprovider"
 	"k8s.io/kubernetes/pkg/controller"
 
 	"github.com/golang/glog"
@@ -108,6 +108,9 @@ type GCECloud struct {
 }
 
 type ServiceManager interface {
+	// Creates a new snapshot for the given disk on GCE.
+	CreateSnapshot(project string, zone string, diskName string, snapshot *compute.Snapshot) (*compute.Operation, error)
+
 	// Creates a new persistent disk on GCE with the given disk spec.
 	CreateDisk(project string, zone string, disk *compute.Disk) (*compute.Operation, error)
 
@@ -467,6 +470,15 @@ func (manager *GCEServiceManager) CreateDisk(
 	disk *compute.Disk) (*compute.Operation, error) {
 
 	return manager.gce.service.Disks.Insert(project, zone, disk).Do()
+}
+
+func (manager *GCEServiceManager) CreateSnapshot(
+	project string,
+	zone string,
+	diskName string,
+	snapshot *compute.Snapshot) (*compute.Operation, error) {
+
+	return manager.gce.service.Disks.CreateSnapshot(project, zone, diskName, snapshot).Do()
 }
 
 func (manager *GCEServiceManager) GetDisk(

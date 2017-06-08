@@ -23,8 +23,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rootfs/snapshot/pkg/cloudprovider"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/kubernetes/pkg/cloudprovider"
 
 	"github.com/golang/glog"
 	compute "google.golang.org/api/compute/v1"
