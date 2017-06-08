@@ -167,6 +167,9 @@ func (plugin *gcePersistentDiskPlugin) SnapshotDelete(src *tprv1.VolumeSnapshotD
 }
 
 func (plugin *gcePersistentDiskPlugin) VolumeDelete(pv *v1.PersistentVolume) error {
-	// add delete
-	return plugin.VolumeDelete(pv)
+	if pv == nil || pv.Spec.GCEPersistentDisk == nil {
+		return fmt.Errorf("Invalid GCE PD: %v", pv)
+	}
+	diskName := pv.Spec.GCEPersistentDisk.PDName
+	return plugin.cloud.DeleteDisk(diskName)
 }
