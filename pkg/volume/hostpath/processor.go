@@ -74,6 +74,17 @@ func (h *hostPathPlugin) SnapshotDelete(src *tprv1.VolumeSnapshotDataSource, _ *
 	return os.Remove(path)
 }
 
+func (a *hostPathPlugin) DescribeSnapshot(snapshotData *tprv1.VolumeSnapshotData) (isCompleted bool, err error) {
+	if snapshotData == nil || snapshotData.Spec.HostPath == nil {
+		return false, fmt.Errorf("failed to retrieve Snapshot spec")
+	}
+	path := snapshotData.Spec.HostPath.Path
+	if _, err := os.Stat(path); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 func (h *hostPathPlugin) SnapshotRestore(snapshotData *tprv1.VolumeSnapshotData, _ *v1.PersistentVolumeClaim, _ string, _ map[string]string) (*v1.PersistentVolumeSource, map[string]string, error) {
 	// retrieve VolumeSnapshotDataSource
 	if snapshotData == nil || snapshotData.Spec.HostPath == nil {

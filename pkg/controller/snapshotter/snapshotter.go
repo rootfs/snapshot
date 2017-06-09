@@ -48,6 +48,7 @@ type VolumeSnapshotter interface {
 	DeleteVolumeSnapshot(snapshotName string, snapshotSpec *tprv1.VolumeSnapshotSpec)
 	PromoteVolumeSnapshotToPV(snapshotName string, snapshotSpec *tprv1.VolumeSnapshotSpec)
 	UpdateVolumeSnapshot(snapshotName string) error
+	UpdateVolumeSnapshotData(snapshotDataName string, status *[]tprv1.VolumeSnapshotDataCondition) error
 }
 
 type volumeSnapshotter struct {
@@ -139,6 +140,56 @@ func (vs *volumeSnapshotter) getSnapshotDataFromSnapshotName(snapshotName string
 
 	return &snapshotDataObj
 }
+func (vs *volumeSnapshotter) updateSnapshotDataStatus(snapshotName string, snapshotSpec *tprv1.VolumeSnapshotSpec) error {
+	var snapshotDataObj tprv1.VolumeSnapshotData
+	snapshotDataName := snapshotSpec.SnapshotDataName
+	glog.Infof("In UpdateVolumeSnapshotData")
+	err := vs.restClient.Get().
+		Name(snapshotDataName).
+		Resource(tprv1.VolumeSnapshotDataResourcePlural).
+		Namespace(v1.NamespaceDefault).
+		Do().Into(&snapshotDataObj)
+	if err != nil {
+		return err
+	}
+
+	if len(snapshotDataObj.Status.Conditions) < 1 ||
+		snapshotDataObj.Status.Conditions[0].Type != tprv1.VolumeSnapshotDataConditionReady {
+		pv, err := vs.getPVFromVolumeSnapshot(snapshotName, snapshotSpec)
+		if err != nil {
+			return err
+		}
+		spec := &pv.Spec
+		volumeType := tprv1.GetSupportedVolumeFromPVSpec(spec)
+		if len(volumeType) == 0 {
+			return fmt.Errorf("unsupported volume type found in PV %#v", spec)
+		}
+		plugin, ok := (*vs.volumePlugins)[volumeType]
+		if !ok {
+			return fmt.Errorf("%s is not supported volume for %#v", volumeType, spec)
+		}
+		completed, err := plugin.DescribeSnapshot(&snapshotDataObj)
+		if !completed {
+			return fmt.Errorf("snapshot is not completed yet: %v", err)
+		}
+		glog.Infof("snapshot successfully created, updating VolumeSnapshotData status for %s", snapshotDataName)
+		status := []tprv1.VolumeSnapshotDataCondition{
+			{
+				Type:               tprv1.VolumeSnapshotDataConditionReady,
+				Status:             v1.ConditionTrue,
+				Message:            "Snapshot data created succsessfully",
+				LastTransitionTime: metav1.Now(),
+			},
+		}
+		err = vs.UpdateVolumeSnapshotData(snapshotDataName, &status)
+		if err != nil {
+			return err
+		}
+
+	}
+	vs.actualStateOfWorld.AddSnapshot(snapshotName, snapshotSpec)
+	return nil
+}
 
 // This is the function responsible for determining the correct volume plugin to use,
 // asking it to make a snapshot and assignig it some name that it returns to the caller.
@@ -156,7 +207,7 @@ func (vs *volumeSnapshotter) takeSnapshot(pv *v1.PersistentVolume) (*tprv1.Volum
 	if err != nil {
 		glog.Warningf("failed to snapshot %#v, err: %v", spec, err)
 	} else {
-		glog.Infof("snapshot %#v to snap %#v", spec, snap)
+		glog.Infof("snapshot created: %v", snap)
 		return snap, nil
 	}
 	return nil, nil
@@ -198,10 +249,8 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 	// 6. Finish (we have created snapshot for an user)
 	return func() error {
 		if snapshotSpec.SnapshotDataName != "" {
-			// FIXME: what does it mean imported admin-created snapshots
-			vs.actualStateOfWorld.AddSnapshot(snapshotName, snapshotSpec)
-			glog.Infof("snapshot %s already binds to snapshotdata %s", snapshotName, snapshotSpec.SnapshotDataName)
-			return nil
+			// update snapshot data status and if complete, adds to asw
+			return vs.updateSnapshotDataStatus(snapshotName, snapshotSpec)
 		}
 		pv, err := vs.getPVFromVolumeSnapshot(snapshotName, snapshotSpec)
 		if err != nil {
@@ -214,9 +263,9 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 		}
 		// Snapshot has been created, made an object for it
 		readyCondition := tprv1.VolumeSnapshotDataCondition{
-			Type:    tprv1.VolumeSnapshotDataConditionReady,
+			Type:    tprv1.VolumeSnapshotDataConditionPending,
 			Status:  v1.ConditionTrue,
-			Message: "Snapsot created succsessfully",
+			Message: "Snapshot data is being created",
 		}
 		snapName := "k8s-volume-snapshot-" + string(uuid.NewUUID())
 
@@ -252,7 +301,6 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 			//FIXME: Errors writing to the API server are common: this needs to be re-tried
 			glog.Errorf("Error creating the VolumeSnapshotData %s: %v", snapshotName, err)
 		}
-		vs.actualStateOfWorld.AddSnapshot(snapshotName, snapshotSpec)
 		// Update the VolumeSnapshot object too
 		err = vs.UpdateVolumeSnapshot(snapshotName)
 		if err != nil {
@@ -421,7 +469,40 @@ func (vs *volumeSnapshotter) UpdateVolumeSnapshot(snapshotName string) error {
 	if err != nil {
 		return fmt.Errorf("Error updating snapshot object %s on the API server: %v", snapshotName, err)
 	}
-	// Update the spec in the actual state of world
-	vs.actualStateOfWorld.AddSnapshot(snapshotName, &snapshotCopy.Spec)
+	return nil
+}
+
+func (vs *volumeSnapshotter) UpdateVolumeSnapshotData(snapshotDataName string, status *[]tprv1.VolumeSnapshotDataCondition) error {
+	var snapshotDataObj tprv1.VolumeSnapshotData
+
+	glog.Infof("In UpdateVolumeSnapshotData")
+	err := vs.restClient.Get().
+		Name(snapshotDataName).
+		Resource(tprv1.VolumeSnapshotDataResourcePlural).
+		Namespace(v1.NamespaceDefault).
+		Do().Into(&snapshotDataObj)
+
+	objCopy, err := vs.scheme.DeepCopy(&snapshotDataObj)
+	if err != nil {
+		return fmt.Errorf("Error copying snapshot data object %s object from API server: %v", snapshotDataName, err)
+	}
+	snapshotDataCopy, ok := objCopy.(*tprv1.VolumeSnapshotData)
+	if !ok {
+		return fmt.Errorf("Error: expecting type VolumeSnapshotData but received type %T", objCopy)
+	}
+
+	snapshotDataCopy.Status.Conditions = *status
+	glog.Infof("Updating VolumeSnapshotData object")
+	// TODO: Make diff of the two objects and then use restClient.Patch to update it
+	var result tprv1.VolumeSnapshotData
+	err = vs.restClient.Put().
+		Name(snapshotDataName).
+		Resource(tprv1.VolumeSnapshotDataResourcePlural).
+		Namespace(v1.NamespaceDefault).
+		Body(snapshotDataCopy).
+		Do().Into(&result)
+	if err != nil {
+		return fmt.Errorf("Error updating snapshotdata object %s on the API server: %v", snapshotDataName, err)
+	}
 	return nil
 }

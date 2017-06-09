@@ -44,7 +44,7 @@ type VolumeSnapshotConditionType string
 
 // These are valid conditions of a volume snapshot.
 const (
-	// VolumeSnapshotReadey is added when the snapshot has been successfully created and is ready to be used.
+	// VolumeSnapshotReady is added when the snapshot has been successfully created and is ready to be used.
 	VolumeSnapshotConditionReady VolumeSnapshotConditionType = "Ready"
 )
 
@@ -122,6 +122,10 @@ type VolumeSnapshotDataConditionType string
 const (
 	// VolumeSnapshotDataReady is added when the on-disk snapshot has been successfully created.
 	VolumeSnapshotDataConditionReady VolumeSnapshotDataConditionType = "Ready"
+	// VolumeSnapshotDataPending is added when the on-disk snapshot has been successfully created but is not available to use.
+	VolumeSnapshotDataConditionPending VolumeSnapshotDataConditionType = "Pending"
+	// VolumeSnapshotDataError is added but the on-disk snapshot is failed to created
+	VolumeSnapshotDataConditionError VolumeSnapshotDataConditionType = "Error"
 )
 
 // VolumeSnapshot Condition describes the state of a volume snapshot  at a certain point.
