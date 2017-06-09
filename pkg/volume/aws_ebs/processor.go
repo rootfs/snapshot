@@ -86,6 +86,14 @@ func (a *awsEBSPlugin) SnapshotDelete(src *tprv1.VolumeSnapshotDataSource, _ *v1
 	return nil
 }
 
+func (a *awsEBSPlugin) DescribeSnapshot(snapshotData *tprv1.VolumeSnapshotData) (isCompleted bool, err error) {
+	if snapshotData == nil || snapshotData.Spec.AWSElasticBlockStore == nil {
+		return false, fmt.Errorf("invalid VolumeSnapshotDataSource: %v", snapshotData)
+	}
+	snapshotId := snapshotData.Spec.AWSElasticBlockStore.SnapshotID
+	return a.cloud.DescribeSnapshot(snapshotId)
+}
+
 func (a *awsEBSPlugin) SnapshotRestore(snapshotData *tprv1.VolumeSnapshotData, pvc *v1.PersistentVolumeClaim, pvName string, parameters map[string]string) (*v1.PersistentVolumeSource, map[string]string, error) {
 	var err error
 	var tags = make(map[string]string)

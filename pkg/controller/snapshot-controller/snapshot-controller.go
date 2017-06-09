@@ -163,8 +163,11 @@ func (c *snapshotController) onSnapshotAdd(obj interface{}) {
 func (c *snapshotController) onSnapshotUpdate(oldObj, newObj interface{}) {
 	oldSnapshot := oldObj.(*tprv1.VolumeSnapshot)
 	newSnapshot := newObj.(*tprv1.VolumeSnapshot)
-	glog.Infof("[CONTROLLER] OnUpdate oldObj: %s\n", oldSnapshot.Metadata.SelfLink)
-	glog.Infof("[CONTROLLER] OnUpdate newObj: %s\n", newSnapshot.Metadata.SelfLink)
+	glog.Infof("[CONTROLLER] OnUpdate oldObj: %#v", oldSnapshot.Spec)
+	glog.Infof("[CONTROLLER] OnUpdate newObj: %#v", newSnapshot.Spec)
+	if oldSnapshot.Spec.SnapshotDataName != newSnapshot.Spec.SnapshotDataName {
+		c.desiredStateOfWorld.AddSnapshot(cache.MakeSnapshotName(newSnapshot.Metadata.Namespace, newSnapshot.Metadata.Name), &newSnapshot.Spec)
+	}
 }
 
 func (c *snapshotController) onSnapshotDelete(obj interface{}) {
