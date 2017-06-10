@@ -17,14 +17,20 @@ limitations under the License.
 package controller
 
 import (
+	"fmt"
+	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/golang/glog"
 
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/uuid"
 
 	"k8s.io/client-go/kubernetes"
+	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+
 	apiv1 "k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/rest"
 	kcache "k8s.io/client-go/tools/cache"
@@ -83,11 +89,16 @@ func NewSnapshotController(client *rest.RESTClient,
 		snapshotClient: client,
 		snapshotScheme: scheme,
 	}
-
-	//eventBroadcaster := record.NewBroadcaster()
-	//eventBroadcaster.StartLogging(glog.Infof)
-	//eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: v1core.New(client).Events("")})
-	//	sc.recorder = eventBroadcaster.NewRecorder(api.Scheme, apiv1.EventSource{Component: "volume snapshotting"})
+	identity := uuid.NewUUID()
+	eventBroadcaster := record.NewBroadcaster()
+	eventBroadcaster.StartLogging(glog.Infof)
+	eventBroadcaster.StartRecordingToSink(&corev1.EventSinkImpl{Interface: corev1.New(client).Events("")})
+	out, err := exec.Command("hostname").Output()
+	if err != nil {
+		sc.recorder = eventBroadcaster.NewRecorder(api.Scheme, apiv1.EventSource{Component: fmt.Sprintf("VolumeSnapshot-%s", string(identity))})
+	} else {
+		sc.recorder = eventBroadcaster.NewRecorder(api.Scheme, apiv1.EventSource{Component: fmt.Sprintf("VolumeSnapshot-%s-%s", strings.TrimSpace(string(out)), string(identity))})
+	}
 
 	sc.desiredStateOfWorld = cache.NewDesiredStateOfWorld()
 	sc.actualStateOfWorld = cache.NewActualStateOfWorld()
@@ -97,6 +108,7 @@ func NewSnapshotController(client *rest.RESTClient,
 		scheme,
 		clientset,
 		sc.actualStateOfWorld,
+		sc.recorder,
 		volumePlugins)
 
 	sc.reconciler = reconciler.NewReconciler(

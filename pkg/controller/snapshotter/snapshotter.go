@@ -27,6 +27,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	v1 "k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/kubernetes/pkg/util/goroutinemap"
 	"k8s.io/kubernetes/pkg/util/goroutinemap/exponentialbackoff"
 
@@ -57,6 +58,7 @@ type volumeSnapshotter struct {
 	scheme             *runtime.Scheme
 	actualStateOfWorld cache.ActualStateOfWorld
 	runningOperation   goroutinemap.GoRoutineMap
+	recorder           record.EventRecorder
 	volumePlugins      *map[string]volume.VolumePlugin
 }
 
@@ -71,6 +73,7 @@ func NewVolumeSnapshotter(
 	scheme *runtime.Scheme,
 	clientset kubernetes.Interface,
 	asw cache.ActualStateOfWorld,
+	recorder record.EventRecorder,
 	volumePlugins *map[string]volume.VolumePlugin) VolumeSnapshotter {
 	return &volumeSnapshotter{
 		restClient:         restClient,
@@ -79,6 +82,7 @@ func NewVolumeSnapshotter(
 		actualStateOfWorld: asw,
 		runningOperation:   goroutinemap.NewGoRoutineMap(defaultExponentialBackOffOnError),
 		volumePlugins:      volumePlugins,
+		recorder:           recorder,
 	}
 }
 
