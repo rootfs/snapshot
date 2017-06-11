@@ -167,6 +167,14 @@ func (plugin *gcePersistentDiskPlugin) SnapshotDelete(src *tprv1.VolumeSnapshotD
 	return nil
 }
 
+func (plugin *gcePersistentDiskPlugin) DescribeSnapshot(snapshotData *tprv1.VolumeSnapshotData) (isCompleted bool, err error) {
+	if snapshotData == nil || snapshotData.Spec.GCEPersistentDiskSnapshot == nil {
+		return false, fmt.Errorf("invalid VolumeSnapshotDataSource: %v", snapshotData)
+	}
+	snapshotId := snapshotData.Spec.GCEPersistentDiskSnapshot.SnapshotName
+	return plugin.cloud.DescribeSnapshot(snapshotId)
+}
+
 func (plugin *gcePersistentDiskPlugin) VolumeDelete(pv *v1.PersistentVolume) error {
 	if pv == nil || pv.Spec.GCEPersistentDisk == nil {
 		return fmt.Errorf("Invalid GCE PD: %v", pv)

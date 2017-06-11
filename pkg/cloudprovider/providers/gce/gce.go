@@ -151,6 +151,10 @@ type Disks interface {
 	// Delete an GCE PD volume snapshot
 	DeleteSnapshot(snapshotToDelete string) error
 
+	// Describe a GCE PD volume snapshot status for create or delete.
+	// return status (completed or pending or error), and error
+	DescribeSnapshot(snapshotToGet string) (isCompleted bool, err error)
+
 	// GetAutoLabelsForPD returns labels to apply to PersistentVolume
 	// representing this PD, namely failure domain and zone.
 	// zone can be provided to specify the zone for the PD,
@@ -2781,8 +2785,9 @@ func (gce *GCECloud) convertDiskToAttachedDisk(disk *gceDisk, readWrite string) 
 }
 
 type gceSnapshot struct {
-	Name string
-	Kind string
+	Name   string
+	Kind   string
+	Status string
 }
 
 func (gce *GCECloud) CreateDiskFromSnapshot(snapshot string,
@@ -2839,6 +2844,21 @@ func (gce *GCECloud) CreateDiskFromSnapshot(snapshot string,
 	return err
 }
 
+func (gce *GCECloud) DescribeSnapshot(snapshotToGet string) (isCompleted bool, err error) {
+	snapshot, err := gce.getSnapshotByName(snapshotToGet)
+	if err != nil {
+		return false, err
+	}
+	//no snapshot is found
+	if snapshot == nil {
+		return false, fmt.Errorf("snapshot %s is found", snapshotToGet)
+	}
+	if snapshot.Status == "READY" {
+		return true, nil
+	}
+	return false, nil
+}
+
 func (gce *GCECloud) DeleteSnapshot(snapshotToDelete string) error {
 
 	snapshot, err := gce.getSnapshotByName(snapshotToDelete)
@@ -2861,8 +2881,9 @@ func (gce *GCECloud) getSnapshotByName(snapshotName string) (*gceSnapshot, error
 	snapshot, err := gce.service.Snapshots.Get(gce.projectID, snapshotName).Do()
 	if err == nil {
 		s := &gceSnapshot{
-			Name: snapshot.Name,
-			Kind: snapshot.Kind,
+			Name:   snapshot.Name,
+			Kind:   snapshot.Kind,
+			Status: snapshot.Status,
 		}
 		return s, nil
 	}
