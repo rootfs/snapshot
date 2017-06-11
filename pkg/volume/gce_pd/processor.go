@@ -21,13 +21,14 @@ import (
 	"strings"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/golang/glog"
 	tprv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
 	"github.com/rootfs/snapshot/pkg/cloudprovider"
 	"github.com/rootfs/snapshot/pkg/cloudprovider/providers/gce"
 	"github.com/rootfs/snapshot/pkg/volume"
 	"k8s.io/client-go/pkg/api/v1"
-	kubeletapis "k8s.io/kubernetes/pkg/kubelet/apis"
 	k8svol "k8s.io/kubernetes/pkg/volume"
 )
 
@@ -59,7 +60,7 @@ func (plugin *gcePersistentDiskPlugin) SnapshotCreate(pv *v1.PersistentVolume) (
 		return nil, fmt.Errorf("invalid PV spec %v", spec)
 	}
 	diskName := spec.GCEPersistentDisk.PDName
-	zone := pv.Labels[kubeletapis.LabelZoneFailureDomain]
+	zone := pv.Labels[metav1.LabelZoneFailureDomain]
 	snapshotName := createSnapshotName(string(pv.Name))
 	glog.Infof("Jing snapshotName %s", snapshotName)
 	// Gather provisioning options
