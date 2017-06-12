@@ -55,7 +55,16 @@ func (a *azurePlugin) SnapshotCreate(pv *v1.PersistentVolume) (*tprv1.VolumeSnap
 	if spec == nil || spec.AzureDisk == nil {
 		return nil, fmt.Errorf("invalid PV spec %v", spec)
 	}
-	return nil, nil
+	uri := spec.AzureDisk.DataDiskURI
+	time, err := a.cloud.CreateSnapshot(uri)
+	if err != nil {
+		return nil, err
+	}
+	return &tprv1.VolumeSnapshotDataSource{
+		AzureDisk: &tprv1.AzureDiskVolumeSnapshotSource{
+			SnapshotTime: *time,
+		},
+	}, nil
 }
 
 func (a *azurePlugin) SnapshotDelete(src *tprv1.VolumeSnapshotDataSource, _ *v1.PersistentVolume) error {
