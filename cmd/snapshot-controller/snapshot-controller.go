@@ -32,10 +32,12 @@ import (
 	"github.com/rootfs/snapshot/pkg/client"
 	"github.com/rootfs/snapshot/pkg/cloudprovider"
 	"github.com/rootfs/snapshot/pkg/cloudprovider/providers/aws"
+	"github.com/rootfs/snapshot/pkg/cloudprovider/providers/azure"
 	"github.com/rootfs/snapshot/pkg/cloudprovider/providers/gce"
 	snapshotcontroller "github.com/rootfs/snapshot/pkg/controller/snapshot-controller"
 	"github.com/rootfs/snapshot/pkg/volume"
 	"github.com/rootfs/snapshot/pkg/volume/aws_ebs"
+	"github.com/rootfs/snapshot/pkg/volume/azure_dd"
 	"github.com/rootfs/snapshot/pkg/volume/gce_pd"
 	"github.com/rootfs/snapshot/pkg/volume/hostpath"
 )
@@ -121,6 +123,12 @@ func buildVolumePlugins() {
 				gcePlugin.Init(cloud)
 				volumePlugins[gce_pd.GetPluginName()] = gcePlugin
 				glog.Info("Register cloudprovider %s", gce_pd.GetPluginName())
+			}
+			if *cloudProvider == azure.ProviderName {
+				azurePlugin := azure_dd.RegisterPlugin()
+				azurePlugin.Init(cloud)
+				volumePlugins[azure_dd.GetPluginName()] = azurePlugin
+				glog.Info("Register cloudprovider %s", azure_dd.GetPluginName())
 			}
 		} else {
 			glog.Warningf("failed to initialize cloudprovider: %v, supported cloudproviders are %#v", err, cloudprovider.CloudProviders())

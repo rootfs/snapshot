@@ -19,7 +19,7 @@ package azure
 import (
 	"fmt"
 
-	"k8s.io/kubernetes/pkg/cloudprovider"
+	"github.com/rootfs/snapshot/pkg/cloudprovider"
 
 	"github.com/Azure/azure-sdk-for-go/arm/network"
 	"github.com/Azure/go-autorest/autorest/to"

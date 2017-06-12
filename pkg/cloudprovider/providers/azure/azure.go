@@ -21,7 +21,8 @@ import (
 	"io"
 	"io/ioutil"
 
-	"k8s.io/kubernetes/pkg/cloudprovider"
+	"github.com/rootfs/snapshot/pkg/cloudprovider"
+
 	"k8s.io/kubernetes/pkg/version"
 
 	"github.com/Azure/azure-sdk-for-go/arm/compute"
@@ -32,6 +33,8 @@ import (
 	"github.com/ghodss/yaml"
 	"time"
 )
+
+const ProviderName = "azure"
 
 // CloudProviderName is the value used for the --cloud-provider flag
 const CloudProviderName = "azure"

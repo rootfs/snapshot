@@ -18,6 +18,7 @@ package v1
 
 import (
 	"encoding/json"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -197,6 +198,11 @@ type GCEPersistentDiskSnapshotSource struct {
 	SnapshotName string `json:"snapshotId"`
 }
 
+type AzureDiskVolumeSnapshotSource struct {
+	// Timestamp the snapshot is created. Used to identify the snapshot associated with an Azure blob
+	SnapshotTime time.Time
+}
+
 // Represents the actual location and type of the snapshot. Only one of its members may be specified.
 type VolumeSnapshotDataSource struct {
 	// HostPath represents a directory on the host.
@@ -214,6 +220,9 @@ type VolumeSnapshotDataSource struct {
 	// GCEPersistentDiskSnapshotSource represents an GCE PD snapshot resource
 	// +optional
 	GCEPersistentDiskSnapshot *GCEPersistentDiskSnapshotSource `json:"gcePersistentDisk,omitempty"`
+	// AzureDisk represents an Azure disk snapshot resource
+	// +optional
+	AzureDisk *AzureDiskVolumeSnapshotSource `json:"azureDisk,omitempty"`
 }
 
 func GetSupportedVolumeFromPVSpec(spec *core_v1.PersistentVolumeSpec) string {
@@ -225,6 +234,9 @@ func GetSupportedVolumeFromPVSpec(spec *core_v1.PersistentVolumeSpec) string {
 	}
 	if spec.GCEPersistentDisk != nil {
 		return "gce-pd"
+	}
+	if spec.AzureDisk != nil {
+		return "azure_dd"
 	}
 	return ""
 }

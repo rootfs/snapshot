@@ -23,7 +23,7 @@ import (
 	"net/http"
 	"sync"
 
-	"k8s.io/kubernetes/pkg/cloudprovider"
+	"github.com/rootfs/snapshot/pkg/cloudprovider"
 )
 
 const instanceInfoURL = "http://169.254.169.254/metadata/v1/InstanceInfo"
