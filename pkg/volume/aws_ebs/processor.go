@@ -56,9 +56,12 @@ func (a *awsEBSPlugin) SnapshotCreate(pv *v1.PersistentVolume) (*tprv1.VolumeSna
 		return nil, fmt.Errorf("invalid PV spec %v", spec)
 	}
 	volumeId := spec.AWSElasticBlockStore.VolumeID
+	prefix := ""
 	if ind := strings.LastIndex(volumeId, "/"); ind >= 0 {
+		prefix = volumeId[:(ind + 1)]
 		volumeId = volumeId[(ind + 1):]
 	}
+
 	snapshotOpt := &aws.SnapshotOptions{
 		VolumeId: volumeId,
 	}
@@ -68,7 +71,7 @@ func (a *awsEBSPlugin) SnapshotCreate(pv *v1.PersistentVolume) (*tprv1.VolumeSna
 	}
 	return &tprv1.VolumeSnapshotDataSource{
 		AWSElasticBlockStore: &tprv1.AWSElasticBlockStoreVolumeSnapshotSource{
-			SnapshotID: snapshotId,
+			SnapshotID: prefix + snapshotId,
 		},
 	}, nil
 }
@@ -78,6 +81,9 @@ func (a *awsEBSPlugin) SnapshotDelete(src *tprv1.VolumeSnapshotDataSource, _ *v1
 		return fmt.Errorf("invalid VolumeSnapshotDataSource: %v", src)
 	}
 	snapshotId := src.AWSElasticBlockStore.SnapshotID
+	if ind := strings.LastIndex(snapshotId, "/"); ind >= 0 {
+		snapshotId = snapshotId[(ind + 1):]
+	}
 	_, err := a.cloud.DeleteSnapshot(snapshotId)
 	if err != nil {
 		return err
@@ -91,6 +97,9 @@ func (a *awsEBSPlugin) DescribeSnapshot(snapshotData *tprv1.VolumeSnapshotData) 
 		return false, fmt.Errorf("invalid VolumeSnapshotDataSource: %v", snapshotData)
 	}
 	snapshotId := snapshotData.Spec.AWSElasticBlockStore.SnapshotID
+	if ind := strings.LastIndex(snapshotId, "/"); ind >= 0 {
+		snapshotId = snapshotId[(ind + 1):]
+	}
 	return a.cloud.DescribeSnapshot(snapshotId)
 }
 
@@ -106,6 +115,14 @@ func (a *awsEBSPlugin) SnapshotRestore(snapshotData *tprv1.VolumeSnapshotData, p
 	}
 
 	snapId := snapshotData.Spec.AWSElasticBlockStore.SnapshotID
+	// snapshot Id is like aws://zone/snapshotId
+	snapZone := ""
+	if strings.HasPrefix(snapId, "aws://") {
+		if ind := strings.LastIndex(snapId, "/"); ind >= 0 {
+			snapZone = snapId[len("aws://"):ind]
+			snapId = snapId[(ind + 1):]
+		}
+	}
 
 	tags["Name"] = kvol.GenerateVolumeName("Created from snapshot "+snapId+" ", pvName, 255) // AWS tags can have 255 characters
 
@@ -144,6 +161,15 @@ func (a *awsEBSPlugin) SnapshotRestore(snapshotData *tprv1.VolumeSnapshotData, p
 		}
 	}
 
+	if len(snapZone) > 0 && len(volumeOptions.AvailabilityZone) > 0 && snapZone != volumeOptions.AvailabilityZone {
+		// copy snapshot to dest zone if needed
+		glog.Infof("copy snapshot %s from %s to zone %", snapId, volumeOptions.AvailabilityZone, snapZone)
+		destSnapId, err := a.cloud.CopySnapshot(snapZone, snapId, volumeOptions.AvailabilityZone)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to copy snapshot  %s from %s to zone %", snapId, volumeOptions.AvailabilityZone, snapZone)
+		}
+		volumeOptions.SnapshotId = destSnapId
+	}
 	// TODO: implement PVC.Selector parsing
 	if pvc.Spec.Selector != nil {
 		return nil, nil, fmt.Errorf("claim.Spec.Selector is not supported for dynamic provisioning on AWS")

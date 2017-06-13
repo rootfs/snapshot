@@ -216,6 +216,8 @@ type EC2 interface {
 	DeleteSnapshot(*ec2.DeleteSnapshotInput) (*ec2.DeleteSnapshotOutput, error)
 	// Lists snapshots
 	DescribeSnapshots(*ec2.DescribeSnapshotsInput) ([]*ec2.Snapshot, error)
+	// Copy Snapshot
+	CopySnapshot(*ec2.CopySnapshotInput) (*ec2.CopySnapshotOutput, error)
 
 	DescribeSecurityGroups(request *ec2.DescribeSecurityGroupsInput) ([]*ec2.SecurityGroup, error)
 
@@ -352,6 +354,9 @@ type Volumes interface {
 
 	// Delete an EBS volume snapshot
 	DeleteSnapshot(snapshotId string) (bool, error)
+
+	// Copy an EBS Volume snapshot to destination zone
+	CopySnapshot(string, string, string) (snapshotId string, err error)
 
 	// Describe an EBS volume snapshot status for create or delete.
 	// return status (completed or pending or error), and error
@@ -668,6 +673,11 @@ func (s *awsSdkEC2) DeleteVolume(request *ec2.DeleteVolumeInput) (*ec2.DeleteVol
 
 func (s *awsSdkEC2) CreateSnapshot(request *ec2.CreateSnapshotInput) (*ec2.Snapshot, error) {
 	resp, err := s.ec2.CreateSnapshot(request)
+	return resp, err
+}
+
+func (s *awsSdkEC2) CopySnapshot(request *ec2.CopySnapshotInput) (*ec2.CopySnapshotOutput, error) {
+	resp, err := s.ec2.CopySnapshot(request)
 	return resp, err
 }
 
@@ -1924,6 +1934,25 @@ func (c *Cloud) CreateSnapshot(snapshotOptions *SnapshotOptions) (snapshotId str
 	}
 	return *res.SnapshotId, nil
 
+}
+
+// CopySnapshot copies an EBS volume snapshot to dest zone
+func (c *Cloud) CopySnapshot(sourceZone, sourceSnapshotId, destZone string) (string, error) {
+	request := &ec2.CopySnapshotInput{}
+	request.SourceSnapshotId = aws.String(sourceSnapshotId)
+	request.SourceRegion = aws.String(sourceZone)
+	request.DestinationRegion = aws.String(destZone)
+	request.DryRun = aws.Bool(false)
+	descriptions := "Copied by Kubernetes from snapshot " + sourceZone + "/" + sourceSnapshotId
+	request.Description = aws.String(descriptions)
+	res, err := c.ec2.CopySnapshot(request)
+	if err != nil {
+		return "", err
+	}
+	if res == nil {
+		return "", fmt.Errorf("nil CopySnapshotResponse")
+	}
+	return *res.SnapshotId, nil
 }
 
 // DeleteSnapshot deletes an EBS volume snapshot
