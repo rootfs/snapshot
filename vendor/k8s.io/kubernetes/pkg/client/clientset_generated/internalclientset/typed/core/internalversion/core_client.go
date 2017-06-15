@@ -39,6 +39,7 @@ type CoreInterface interface {
 	SecretsGetter
 	ServicesGetter
 	ServiceAccountsGetter
+	SnapshotsGetter
 }
 
 // CoreClient is used to interact with features provided by the  group.
