@@ -15,9 +15,8 @@ limitations under the License.
 */
 
 /*
-Package cache implements data structures used by the attach/detach controller
-to keep track of volumes, the nodes they are attached to, and the pods that
-reference them.
+Package cache implements data structures used by the snapshot controller
+to keep track of volume snapshots.
 */
 package cache
 
@@ -31,17 +30,17 @@ import (
 type ActualStateOfWorld interface {
 	// Adds snapshot to the list of snapshots. No-op if the snapshot
 	// is already in the list.
-	AddSnapshot(string, *tprv1.VolumeSnapshotSpec) error
+	AddSnapshot(string, *tprv1.VolumeSnapshot) error
 
 	// Deletes the snapshot from the list of known snapshots. No-op if the snapshot
 	// does not exist.
 	DeleteSnapshot(snapshotName string) error
 
 	// Return a copy of the known snapshots
-	GetSnapshots() map[string]*tprv1.VolumeSnapshotSpec
+	GetSnapshots() map[string]*tprv1.VolumeSnapshot
 
 	// Get snapshot by its name
-	GetSnapshot(snapshotName string) *tprv1.VolumeSnapshotSpec
+	GetSnapshot(snapshotName string) *tprv1.VolumeSnapshot
 
 	// Check whether the specified snapshot exists
 	SnapshotExists(snapshotName string) bool
@@ -51,20 +50,20 @@ type actualStateOfWorld struct {
 	// List of snapshots that need to be created
 	// it maps [snapshotName] pvcName
 	// FIXME: This needs to be changed to something else (spec?)
-	snapshots map[string]*tprv1.VolumeSnapshotSpec
+	snapshots map[string]*tprv1.VolumeSnapshot
 	sync.RWMutex
 }
 
 // NewActualStateOfWorld returns a new instance of ActualStateOfWorld.
 func NewActualStateOfWorld() ActualStateOfWorld {
-	m := make(map[string]*tprv1.VolumeSnapshotSpec)
+	m := make(map[string]*tprv1.VolumeSnapshot)
 	return &actualStateOfWorld{
 		snapshots: m,
 	}
 }
 
 // Adds a snapshot to the list of snapshots to be created.
-func (asw *actualStateOfWorld) AddSnapshot(snapshotName string, snapshot *tprv1.VolumeSnapshotSpec) error {
+func (asw *actualStateOfWorld) AddSnapshot(snapshotName string, snapshot *tprv1.VolumeSnapshot) error {
 	asw.Lock()
 	defer asw.Unlock()
 
@@ -84,26 +83,26 @@ func (asw *actualStateOfWorld) DeleteSnapshot(snapshotName string) error {
 }
 
 // Returns a copy of the list of the snapshots known to the actual state of world.
-func (asw *actualStateOfWorld) GetSnapshots() map[string]*tprv1.VolumeSnapshotSpec {
+func (asw *actualStateOfWorld) GetSnapshots() map[string]*tprv1.VolumeSnapshot {
 	asw.RLock()
 	defer asw.RUnlock()
 
-	snapshots := make(map[string]*tprv1.VolumeSnapshotSpec)
+	snapshots := make(map[string]*tprv1.VolumeSnapshot)
 
-	for snapName, snapSpec := range asw.snapshots {
-		snapshots[snapName] = snapSpec
+	for snapName, snapshot := range asw.snapshots {
+		snapshots[snapName] = snapshot
 	}
 
 	return snapshots
 }
 
 // Get snapshot
-func (asw *actualStateOfWorld) GetSnapshot(snapshotName string) *tprv1.VolumeSnapshotSpec {
+func (asw *actualStateOfWorld) GetSnapshot(snapshotName string) *tprv1.VolumeSnapshot {
 	asw.RLock()
 	defer asw.RUnlock()
-	snapshotSpec, _ := asw.snapshots[snapshotName]
+	snapshot, _ := asw.snapshots[snapshotName]
 
-	return snapshotSpec
+	return snapshot
 }
 
 // Checks for the existence of the snapshot
