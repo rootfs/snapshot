@@ -25,7 +25,6 @@ import (
 
 type VolumePlugin interface {
 	// Init inits volume plugin
-	// TODO supply a cloud provider interface for AWS/GCE/Azure/OpenStack volumes
 	Init(cloudprovider.Interface)
 	// SnapshotCreate creates a VolumeSnapshot from a PersistentVolumeSpec
 	SnapshotCreate(*v1.PersistentVolume) (*tprv1.VolumeSnapshotDataSource, error)
