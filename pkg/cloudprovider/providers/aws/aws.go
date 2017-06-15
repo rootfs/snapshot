@@ -352,6 +352,10 @@ type Volumes interface {
 
 	// Delete an EBS volume snapshot
 	DeleteSnapshot(snapshotId string) (bool, error)
+
+	// Describe an EBS volume snapshot status for create or delete.
+	// return status (completed or pending or error), and error
+	DescribeSnapshot(snapshotId string) (isCompleted bool, err error)
 }
 
 // InstanceGroups is an interface for managing cloud-managed instance groups / autoscaling instance groups
@@ -1932,6 +1936,32 @@ func (c *Cloud) DeleteSnapshot(snapshotId string) (bool, error) {
 	}
 
 	return true, nil
+}
+
+// DescribeSnapshot returns the status of the snapshot
+func (c *Cloud) DescribeSnapshot(snapshotId string) (isCompleted bool, err error) {
+	request := &ec2.DescribeSnapshotsInput{
+		SnapshotIds: []*string{
+			aws.String(snapshotId),
+		},
+	}
+	result, err := c.ec2.DescribeSnapshots(request)
+	if err != nil {
+		return false, err
+	}
+	if len(result) != 1 {
+		return false, fmt.Errorf("wrong result from DescribeSnapshots: %#v", result)
+	}
+	if result[0].State == nil {
+		return false, fmt.Errorf("missing state from DescribeSnapshots: %#v", result)
+	}
+	if *result[0].State == ec2.SnapshotStateCompleted {
+		return true, nil
+	}
+	if *result[0].State == ec2.SnapshotStateError {
+		return false, fmt.Errorf("snapshot state is error: %s", *result[0].StateMessage)
+	}
+	return false, fmt.Errorf(*result[0].StateMessage)
 }
 
 // Gets the current load balancer state

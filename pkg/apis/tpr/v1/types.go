@@ -44,7 +44,7 @@ type VolumeSnapshotConditionType string
 
 // These are valid conditions of a volume snapshot.
 const (
-	// VolumeSnapshotReadey is added when the snapshot has been successfully created and is ready to be used.
+	// VolumeSnapshotReady is added when the snapshot has been successfully created and is ready to be used.
 	VolumeSnapshotConditionReady VolumeSnapshotConditionType = "Ready"
 )
 
@@ -122,6 +122,10 @@ type VolumeSnapshotDataConditionType string
 const (
 	// VolumeSnapshotDataReady is added when the on-disk snapshot has been successfully created.
 	VolumeSnapshotDataConditionReady VolumeSnapshotDataConditionType = "Ready"
+	// VolumeSnapshotDataPending is added when the on-disk snapshot has been successfully created but is not available to use.
+	VolumeSnapshotDataConditionPending VolumeSnapshotDataConditionType = "Pending"
+	// VolumeSnapshotDataError is added but the on-disk snapshot is failed to created
+	VolumeSnapshotDataConditionError VolumeSnapshotDataConditionType = "Error"
 )
 
 // VolumeSnapshot Condition describes the state of a volume snapshot  at a certain point.
@@ -187,6 +191,12 @@ type AWSElasticBlockStoreVolumeSnapshotSource struct {
 	SnapshotID string `json:"snapshotId"`
 }
 
+// GCE PD volume snapshot source
+type GCEPersistentDiskSnapshotSource struct {
+	// Unique id of the persistent disk snapshot resource. Used to identify the disk snapshot in GCE
+	SnapshotName string `json:"snapshotId"`
+}
+
 // Represents the actual location and type of the snapshot. Only one of its members may be specified.
 type VolumeSnapshotDataSource struct {
 	// HostPath represents a directory on the host.
@@ -201,6 +211,9 @@ type VolumeSnapshotDataSource struct {
 	// More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
 	// +optional
 	AWSElasticBlockStore *AWSElasticBlockStoreVolumeSnapshotSource `json:"awsElasticBlockStore,omitempty"`
+	// GCEPersistentDiskSnapshotSource represents an GCE PD snapshot resource
+	// +optional
+	GCEPersistentDiskSnapshot *GCEPersistentDiskSnapshotSource `json:"gcePersistentDisk,omitempty"`
 }
 
 func GetSupportedVolumeFromPVSpec(spec *core_v1.PersistentVolumeSpec) string {
@@ -209,6 +222,9 @@ func GetSupportedVolumeFromPVSpec(spec *core_v1.PersistentVolumeSpec) string {
 	}
 	if spec.AWSElasticBlockStore != nil {
 		return "aws_ebs"
+	}
+	if spec.GCEPersistentDisk != nil {
+		return "gce-pd"
 	}
 	return ""
 }

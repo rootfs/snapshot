@@ -25,7 +25,6 @@ import (
 
 type VolumePlugin interface {
 	// Init inits volume plugin
-	// TODO supply a cloud provider interface for AWS/GCE/Azure/OpenStack volumes
 	Init(cloudprovider.Interface)
 	// SnapshotCreate creates a VolumeSnapshot from a PersistentVolumeSpec
 	SnapshotCreate(*v1.PersistentVolume) (*tprv1.VolumeSnapshotDataSource, error)
@@ -34,6 +33,9 @@ type VolumePlugin interface {
 	SnapshotDelete(*tprv1.VolumeSnapshotDataSource, *v1.PersistentVolume) error
 	// SnapshotRestore restores (promotes) a volume snapshot into a volume
 	SnapshotRestore(*tprv1.VolumeSnapshotData, *v1.PersistentVolumeClaim, string, map[string]string) (*v1.PersistentVolumeSource, map[string]string, error)
+	// Describe an EBS volume snapshot status for create or delete.
+	// return status (completed or pending or error), and error
+	DescribeSnapshot(snapshotData *tprv1.VolumeSnapshotData) (isCompleted bool, err error)
 	// VolumeDelete deletes a PV
 	// TODO in the future pass kubernetes client for certain volumes (e.g. rbd) so they can access storage class to retrieve secret
 	VolumeDelete(pv *v1.PersistentVolume) error

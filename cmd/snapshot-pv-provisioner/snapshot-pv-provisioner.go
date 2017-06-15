@@ -23,21 +23,23 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/kubernetes-incubator/external-storage/lib/controller"
+	tprv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
+	tprclient "github.com/rootfs/snapshot/pkg/client"
+	"github.com/rootfs/snapshot/pkg/cloudprovider"
+	"github.com/rootfs/snapshot/pkg/cloudprovider/providers/aws"
+	"github.com/rootfs/snapshot/pkg/cloudprovider/providers/gce"
+	"github.com/rootfs/snapshot/pkg/volume"
+	"github.com/rootfs/snapshot/pkg/volume/aws_ebs"
+	"github.com/rootfs/snapshot/pkg/volume/gce_pd"
+	"github.com/rootfs/snapshot/pkg/volume/hostpath"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-
-	tprv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
-	tprclient "github.com/rootfs/snapshot/pkg/client"
-	"github.com/rootfs/snapshot/pkg/cloudprovider"
-	"github.com/rootfs/snapshot/pkg/cloudprovider/providers/aws"
-	"github.com/rootfs/snapshot/pkg/volume"
-	"github.com/rootfs/snapshot/pkg/volume/aws_ebs"
-	"github.com/rootfs/snapshot/pkg/volume/hostpath"
 )
 
 const (
@@ -276,10 +278,17 @@ func buildVolumePlugins() {
 				awsPlugin.Init(cloud)
 				volumePlugins[aws_ebs.GetPluginName()] = awsPlugin
 			}
+			if *cloudProvider == gce.ProviderName {
+				gcePlugin := gce_pd.RegisterPlugin()
+				gcePlugin.Init(cloud)
+				volumePlugins[gce_pd.GetPluginName()] = gcePlugin
+				glog.Info("Register cloudprovider %s", gce_pd.GetPluginName())
+			}
 		} else {
 			glog.Warningf("failed to initialize aws cloudprovider: %v, supported cloudproviders are %#v", err, cloudprovider.CloudProviders())
 		}
 	}
 
 	volumePlugins[hostpath.GetPluginName()] = hostpath.RegisterPlugin()
+
 }
