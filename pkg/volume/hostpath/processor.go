@@ -57,7 +57,7 @@ func (h *hostPathPlugin) SnapshotCreate(pv *v1.PersistentVolume) (*tprv1.VolumeS
 	}
 	path := spec.HostPath.Path
 	file := depot + string(uuid.NewUUID()) + ".tgz"
-	cmd := exec.Command("tar", "czvf", file, path)
+	cmd := exec.Command("tar", "czf", file, path)
 	res := &tprv1.VolumeSnapshotDataSource{
 		HostPath: &tprv1.HostPathVolumeSnapshotSource{
 			Path: file,
@@ -94,7 +94,7 @@ func (h *hostPathPlugin) SnapshotRestore(snapshotData *tprv1.VolumeSnapshotData,
 	snapId := snapshotData.Spec.HostPath.Path
 	dir := restorePoint + string(uuid.NewUUID())
 	os.MkdirAll(dir, 0750)
-	cmd := exec.Command("tar", "xzvf", snapId, "-C", dir)
+	cmd := exec.Command("tar", "xzf", snapId, "-C", dir, "--strip-components=1")
 	err := cmd.Run()
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to restore %s to %s: %v", snapId, dir, err)
