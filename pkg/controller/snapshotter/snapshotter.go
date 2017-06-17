@@ -45,7 +45,7 @@ const (
 // and delete operations need to be idempotent and count with the fact the API object writes
 type VolumeSnapshotter interface {
 	CreateVolumeSnapshot(snapshotName string, snapshot *tprv1.VolumeSnapshot)
-	DeleteVolumeSnapshot(snapshotName string, snapshotc *tprv1.VolumeSnapshot)
+	DeleteVolumeSnapshot(snapshotName string, snapshot *tprv1.VolumeSnapshot)
 	PromoteVolumeSnapshotToPV(snapshotName string, snapshot *tprv1.VolumeSnapshot)
 	UpdateVolumeSnapshot(snapshotName string) error
 	UpdateVolumeSnapshotData(snapshotDataName string, status *[]tprv1.VolumeSnapshotDataCondition) error
