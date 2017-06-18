@@ -290,7 +290,7 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 				},
 			},
 		}
-		var result tprv1.VolumeSnapshotData
+		var result metav1.Status
 		err = vs.restClient.Post().
 			Resource(tprv1.VolumeSnapshotDataResourcePlural).
 			Namespace(v1.NamespaceDefault).
