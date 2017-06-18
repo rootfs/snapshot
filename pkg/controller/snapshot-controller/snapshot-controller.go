@@ -37,10 +37,22 @@ import (
 	"github.com/rootfs/snapshot/pkg/controller/reconciler"
 	"github.com/rootfs/snapshot/pkg/controller/snapshotter"
 	"github.com/rootfs/snapshot/pkg/volume"
+
+	"github.com/rootfs/snapshot/pkg/controller/populator"
+	k8scache "k8s.io/client-go/tools/cache"
 )
 
 const (
 	reconcilerLoopPeriod time.Duration = 100 * time.Millisecond
+
+	// desiredStateOfWorldPopulatorLoopSleepPeriod is the amount of time the
+	// DesiredStateOfWorldPopulator loop waits between successive executions
+	desiredStateOfWorldPopulatorLoopSleepPeriod time.Duration = 1 * time.Minute
+
+	// desiredStateOfWorldPopulatorListPodsRetryDuration is the amount of
+	// time the DesiredStateOfWorldPopulator loop waits between list snapshots
+	// calls.
+	desiredStateOfWorldPopulatorListSnapshotsRetryDuration time.Duration = 3 * time.Minute
 )
 
 type SnapshotController interface {
@@ -72,6 +84,13 @@ type snapshotController struct {
 	snapshotter snapshotter.VolumeSnapshotter
 	// recorder is used to record events in the API server
 	recorder record.EventRecorder
+
+	snapshotStore      k8scache.Store
+	snapshotController k8scache.Controller
+
+	// desiredStateOfWorldPopulator runs an asynchronous periodic loop to
+	// populate the current snapshots using snapshotInformer.
+	desiredStateOfWorldPopulator populator.DesiredStateOfWorldPopulator
 }
 
 func NewSnapshotController(client *rest.RESTClient,
@@ -79,10 +98,36 @@ func NewSnapshotController(client *rest.RESTClient,
 	clientset kubernetes.Interface,
 	volumePlugins *map[string]volume.VolumePlugin,
 	syncDuration time.Duration) SnapshotController {
+
 	sc := &snapshotController{
 		snapshotClient: client,
 		snapshotScheme: scheme,
 	}
+
+	// Watch snapshot objects
+	source := kcache.NewListWatchFromClient(
+		sc.snapshotClient,
+		tprv1.VolumeSnapshotResourcePlural,
+		apiv1.NamespaceAll,
+		fields.Everything())
+
+	sc.snapshotStore, sc.snapshotController = kcache.NewInformer(
+		source,
+
+		// The object type.
+		&tprv1.VolumeSnapshot{},
+
+		// resyncPeriod
+		// Every resyncPeriod, all resources in the kcache will retrigger events.
+		// Set to 0 to disable the resync.
+		time.Minute*60,
+
+		// Your custom resource event handlers.
+		kcache.ResourceEventHandlerFuncs{
+			AddFunc:    sc.onSnapshotAdd,
+			UpdateFunc: sc.onSnapshotUpdate,
+			DeleteFunc: sc.onSnapshotDelete,
+		})
 
 	//eventBroadcaster := record.NewBroadcaster()
 	//eventBroadcaster.StartLogging(glog.Infof)
@@ -107,39 +152,28 @@ func NewSnapshotController(client *rest.RESTClient,
 		sc.actualStateOfWorld,
 		sc.snapshotter)
 
+	sc.desiredStateOfWorldPopulator = populator.NewDesiredStateOfWorldPopulator(
+		desiredStateOfWorldPopulatorLoopSleepPeriod,
+		desiredStateOfWorldPopulatorListSnapshotsRetryDuration,
+		sc.snapshotStore,
+		sc.desiredStateOfWorld,
+	)
+
 	return sc
 }
 
 // Run starts an Snapshot resource controller
 func (c *snapshotController) Run(ctx <-chan struct{}) {
-	glog.Infof("Watch snapshot objects\n")
+	glog.Infof("Starting snapshot controller")
+	defer glog.Infof("Shutting down snapshot controller")
 
-	// Watch snapshot objects
-	source := kcache.NewListWatchFromClient(
-		c.snapshotClient,
-		tprv1.VolumeSnapshotResourcePlural,
-		apiv1.NamespaceAll,
-		fields.Everything())
-
-	_, controller := kcache.NewInformer(
-		source,
-
-		// The object type.
-		&tprv1.VolumeSnapshot{},
-
-		// resyncPeriod
-		// Every resyncPeriod, all resources in the kcache will retrigger events.
-		// Set to 0 to disable the resync.
-		time.Minute*60,
-
-		// Your custom resource event handlers.
-		kcache.ResourceEventHandlerFuncs{
-			AddFunc:    c.onSnapshotAdd,
-			UpdateFunc: c.onSnapshotUpdate,
-			DeleteFunc: c.onSnapshotDelete,
-		})
+	go c.snapshotController.Run(ctx)
+	if !c.snapshotController.HasSynced() {
+		return
+	}
 	go c.reconciler.Run(ctx)
-	go controller.Run(ctx)
+	go c.desiredStateOfWorldPopulator.Run(ctx)
+
 }
 
 func (c *snapshotController) onSnapshotAdd(obj interface{}) {
@@ -156,8 +190,8 @@ func (c *snapshotController) onSnapshotAdd(obj interface{}) {
 		glog.Warning("expecting type VolumeSnapshot but received type %T", objCopy)
 		return
 	}
-	glog.Infof("[CONTROLLER] OnAdd %s, Spec %#v", snapshot.Metadata.SelfLink, snapshot.Spec)
-	c.desiredStateOfWorld.AddSnapshot(cache.MakeSnapshotName(snapshot.Metadata.Namespace, snapshot.Metadata.Name), &snapshot.Spec)
+	glog.Infof("[CONTROLLER] OnAdd %s, Snapshot %#v", snapshot.Metadata.SelfLink, snapshot)
+	c.desiredStateOfWorld.AddSnapshot(cache.MakeSnapshotName(snapshot.Metadata.Namespace, snapshot.Metadata.Name), snapshot)
 }
 
 func (c *snapshotController) onSnapshotUpdate(oldObj, newObj interface{}) {
@@ -166,7 +200,7 @@ func (c *snapshotController) onSnapshotUpdate(oldObj, newObj interface{}) {
 	glog.Infof("[CONTROLLER] OnUpdate oldObj: %#v", oldSnapshot.Spec)
 	glog.Infof("[CONTROLLER] OnUpdate newObj: %#v", newSnapshot.Spec)
 	if oldSnapshot.Spec.SnapshotDataName != newSnapshot.Spec.SnapshotDataName {
-		c.desiredStateOfWorld.AddSnapshot(cache.MakeSnapshotName(newSnapshot.Metadata.Namespace, newSnapshot.Metadata.Name), &newSnapshot.Spec)
+		c.desiredStateOfWorld.AddSnapshot(cache.MakeSnapshotName(newSnapshot.Metadata.Namespace, newSnapshot.Metadata.Name), newSnapshot)
 	}
 }
 

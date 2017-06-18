@@ -39,14 +39,14 @@ const (
 	defaultExponentialBackOffOnError = true
 )
 
-// VolumeSnapshotter does the "heavy lifting": it spawns gouroutines that talk to the
+// VolumeSnapshotter does the "heavy lifting": it spawns goroutines that talk to the
 // backend to actually perform the operations on the storage devices.
 // It creates and deletes the snapshots and promotes snapshots to volumes (PV). The create
 // and delete operations need to be idempotent and count with the fact the API object writes
 type VolumeSnapshotter interface {
-	CreateVolumeSnapshot(snapshotName string, snapshotSpec *tprv1.VolumeSnapshotSpec)
-	DeleteVolumeSnapshot(snapshotName string, snapshotSpec *tprv1.VolumeSnapshotSpec)
-	PromoteVolumeSnapshotToPV(snapshotName string, snapshotSpec *tprv1.VolumeSnapshotSpec)
+	CreateVolumeSnapshot(snapshotName string, snapshot *tprv1.VolumeSnapshot)
+	DeleteVolumeSnapshot(snapshotName string, snapshot *tprv1.VolumeSnapshot)
+	PromoteVolumeSnapshotToPV(snapshotName string, snapshot *tprv1.VolumeSnapshot)
 	UpdateVolumeSnapshot(snapshotName string) error
 	UpdateVolumeSnapshotData(snapshotDataName string, status *[]tprv1.VolumeSnapshotDataCondition) error
 }
@@ -83,8 +83,8 @@ func NewVolumeSnapshotter(
 }
 
 // Helper function to get PV from VolumeSnapshot
-func (vs *volumeSnapshotter) getPVFromVolumeSnapshot(snapshotName string, snapshotSpec *tprv1.VolumeSnapshotSpec) (*v1.PersistentVolume, error) {
-	pvcName := snapshotSpec.PersistentVolumeClaimName
+func (vs *volumeSnapshotter) getPVFromVolumeSnapshot(snapshotName string, snapshot *tprv1.VolumeSnapshot) (*v1.PersistentVolume, error) {
+	pvcName := snapshot.Spec.PersistentVolumeClaimName
 	if pvcName == "" {
 		return nil, fmt.Errorf("The PVC name is not specified in snapshot %s", snapshotName)
 	}
@@ -140,9 +140,9 @@ func (vs *volumeSnapshotter) getSnapshotDataFromSnapshotName(snapshotName string
 
 	return &snapshotDataObj
 }
-func (vs *volumeSnapshotter) updateSnapshotDataStatus(snapshotName string, snapshotSpec *tprv1.VolumeSnapshotSpec) error {
+func (vs *volumeSnapshotter) updateSnapshotDataStatus(snapshotName string, snapshot *tprv1.VolumeSnapshot) error {
 	var snapshotDataObj tprv1.VolumeSnapshotData
-	snapshotDataName := snapshotSpec.SnapshotDataName
+	snapshotDataName := snapshot.Spec.SnapshotDataName
 	glog.Infof("In UpdateVolumeSnapshotData")
 	err := vs.restClient.Get().
 		Name(snapshotDataName).
@@ -155,7 +155,7 @@ func (vs *volumeSnapshotter) updateSnapshotDataStatus(snapshotName string, snaps
 
 	if len(snapshotDataObj.Status.Conditions) < 1 ||
 		snapshotDataObj.Status.Conditions[0].Type != tprv1.VolumeSnapshotDataConditionReady {
-		pv, err := vs.getPVFromVolumeSnapshot(snapshotName, snapshotSpec)
+		pv, err := vs.getPVFromVolumeSnapshot(snapshotName, snapshot)
 		if err != nil {
 			return err
 		}
@@ -187,7 +187,7 @@ func (vs *volumeSnapshotter) updateSnapshotDataStatus(snapshotName string, snaps
 		}
 
 	}
-	vs.actualStateOfWorld.AddSnapshot(snapshotName, snapshotSpec)
+	vs.actualStateOfWorld.AddSnapshot(snapshotName, snapshot)
 	return nil
 }
 
@@ -235,7 +235,7 @@ func (vs *volumeSnapshotter) deleteSnapshot(spec *v1.PersistentVolumeSpec, sourc
 
 // Below are the closures meant to build the functions for the GoRoutineMap operations.
 
-func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshotSpec *tprv1.VolumeSnapshotSpec) func() error {
+func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot *tprv1.VolumeSnapshot) func() error {
 	// Create a snapshot:
 	// 1. If Snapshot referencs SnapshotData object, try to find it
 	//   1a. If doesn't exist, log error and finish, if it exists already, check its SnapshotRef
@@ -248,11 +248,11 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 	// 5. Add the Snapshot to the ActualStateOfWorld
 	// 6. Finish (we have created snapshot for an user)
 	return func() error {
-		if snapshotSpec.SnapshotDataName != "" {
+		if snapshot.Spec.SnapshotDataName != "" {
 			// update snapshot data status and if complete, adds to asw
-			return vs.updateSnapshotDataStatus(snapshotName, snapshotSpec)
+			return vs.updateSnapshotDataStatus(snapshotName, snapshot)
 		}
-		pv, err := vs.getPVFromVolumeSnapshot(snapshotName, snapshotSpec)
+		pv, err := vs.getPVFromVolumeSnapshot(snapshotName, snapshot)
 		if err != nil {
 			return err
 		}
@@ -311,7 +311,7 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 	}
 }
 
-func (vs *volumeSnapshotter) getSnapshotDeleteFunc(snapshotName string, snapshotSpec *tprv1.VolumeSnapshotSpec) func() error {
+func (vs *volumeSnapshotter) getSnapshotDeleteFunc(snapshotName string, snapshot *tprv1.VolumeSnapshot) func() error {
 	// Delete a snapshot
 	// 1. Find the SnapshotData corresponding to Snapshot
 	//   1a: Not found => finish (it's been deleted already)
@@ -327,7 +327,7 @@ func (vs *volumeSnapshotter) getSnapshotDeleteFunc(snapshotName string, snapshot
 			return fmt.Errorf("Error getting VolumeSnapshotData for VolumeSnapshot %s", snapshotName)
 		}
 
-		pv, err := vs.getPVFromVolumeSnapshot(snapshotName, snapshotSpec)
+		pv, err := vs.getPVFromVolumeSnapshot(snapshotName, snapshot)
 		if err != nil {
 			return err
 		}
@@ -354,7 +354,7 @@ func (vs *volumeSnapshotter) getSnapshotDeleteFunc(snapshotName string, snapshot
 	}
 }
 
-func (vs *volumeSnapshotter) getSnapshotPromoteFunc(snapshotName string, snapshotSpec *tprv1.VolumeSnapshotSpec) func() error {
+func (vs *volumeSnapshotter) getSnapshotPromoteFunc(snapshotName string, snapshot *tprv1.VolumeSnapshot) func() error {
 	// Promote snapshot to a PVC
 	// 1. We have a PVC referencing a Snapshot object
 	// 2. Find the SnapshotData corresponding to tha Snapshot
@@ -364,29 +364,11 @@ func (vs *volumeSnapshotter) getSnapshotPromoteFunc(snapshotName string, snapsho
 	return func() error { return nil }
 }
 
-func (vs *volumeSnapshotter) CreateVolumeSnapshot(snapshotName string, snapshotSpec *tprv1.VolumeSnapshotSpec) {
-	operationName := snapshotOpCreatePrefix + snapshotName + snapshotSpec.PersistentVolumeClaimName
-	glog.Infof("Snapshotter is about to create volume snapshot operation named %s, spec %#v", operationName, snapshotSpec)
+func (vs *volumeSnapshotter) CreateVolumeSnapshot(snapshotName string, snapshot *tprv1.VolumeSnapshot) {
+	operationName := snapshotOpCreatePrefix + snapshotName + snapshot.Spec.PersistentVolumeClaimName
+	glog.Infof("Snapshotter is about to create volume snapshot operation named %s, spec %#v", operationName, snapshot.Spec)
 
-	err := vs.runningOperation.Run(operationName, vs.getSnapshotCreateFunc(snapshotName, snapshotSpec))
-
-	if err != nil {
-		switch {
-		case goroutinemap.IsAlreadyExists(err):
-			glog.V(4).Infof("operation %q is already running, skipping", operationName)
-		case exponentialbackoff.IsExponentialBackoff(err):
-			glog.V(4).Infof("operation %q postponed due to exponential backoff", operationName)
-		default:
-			glog.Errorf("Failed to schedule the operation %q: %v", operationName, err)
-		}
-	}
-}
-
-func (vs *volumeSnapshotter) DeleteVolumeSnapshot(snapshotName string, snapshotSpec *tprv1.VolumeSnapshotSpec) {
-	operationName := snapshotOpDeletePrefix + snapshotName + snapshotSpec.PersistentVolumeClaimName
-	glog.Infof("Snapshotter is about to create volume snapshot operation named %s", operationName)
-
-	err := vs.runningOperation.Run(operationName, vs.getSnapshotDeleteFunc(snapshotName, snapshotSpec))
+	err := vs.runningOperation.Run(operationName, vs.getSnapshotCreateFunc(snapshotName, snapshot))
 
 	if err != nil {
 		switch {
@@ -400,11 +382,29 @@ func (vs *volumeSnapshotter) DeleteVolumeSnapshot(snapshotName string, snapshotS
 	}
 }
 
-func (vs *volumeSnapshotter) PromoteVolumeSnapshotToPV(snapshotName string, snapshotSpec *tprv1.VolumeSnapshotSpec) {
-	operationName := snapshotOpPromotePrefix + snapshotName + snapshotSpec.PersistentVolumeClaimName
+func (vs *volumeSnapshotter) DeleteVolumeSnapshot(snapshotName string, snapshot *tprv1.VolumeSnapshot) {
+	operationName := snapshotOpDeletePrefix + snapshotName + snapshot.Spec.PersistentVolumeClaimName
 	glog.Infof("Snapshotter is about to create volume snapshot operation named %s", operationName)
 
-	err := vs.runningOperation.Run(operationName, vs.getSnapshotPromoteFunc(snapshotName, snapshotSpec))
+	err := vs.runningOperation.Run(operationName, vs.getSnapshotDeleteFunc(snapshotName, snapshot))
+
+	if err != nil {
+		switch {
+		case goroutinemap.IsAlreadyExists(err):
+			glog.V(4).Infof("operation %q is already running, skipping", operationName)
+		case exponentialbackoff.IsExponentialBackoff(err):
+			glog.V(4).Infof("operation %q postponed due to exponential backoff", operationName)
+		default:
+			glog.Errorf("Failed to schedule the operation %q: %v", operationName, err)
+		}
+	}
+}
+
+func (vs *volumeSnapshotter) PromoteVolumeSnapshotToPV(snapshotName string, snapshot *tprv1.VolumeSnapshot) {
+	operationName := snapshotOpPromotePrefix + snapshotName + snapshot.Spec.PersistentVolumeClaimName
+	glog.Infof("Snapshotter is about to create volume snapshot operation named %s", operationName)
+
+	err := vs.runningOperation.Run(operationName, vs.getSnapshotPromoteFunc(snapshotName, snapshot))
 
 	if err != nil {
 		switch {

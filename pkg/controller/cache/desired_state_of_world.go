@@ -15,9 +15,8 @@ limitations under the License.
 */
 
 /*
-Package cache implements data structures used by the attach/detach controller
-to keep track of volumes, the nodes they are attached to, and the pods that
-reference them.
+Package cache implements data structures used by the snapshot controller
+to keep track of volume snapshots.
 */
 package cache
 
@@ -33,14 +32,14 @@ import (
 type DesiredStateOfWorld interface {
 	// Adds snapshot to the list of snapshots. No-op if the snapshot
 	// is already in the list.
-	AddSnapshot(string, *tprv1.VolumeSnapshotSpec) error
+	AddSnapshot(string, *tprv1.VolumeSnapshot) error
 
 	// Deletes the snapshot from the list of known snapshots. No-op if the snapshot
 	// does not exist.
 	DeleteSnapshot(snapshotName string) error
 
 	// Return a copy of the known snapshots
-	GetSnapshots() map[string]*tprv1.VolumeSnapshotSpec
+	GetSnapshots() map[string]*tprv1.VolumeSnapshot
 
 	// Check whether the specified snapshot exists
 	SnapshotExists(snapshotName string) bool
@@ -49,20 +48,20 @@ type DesiredStateOfWorld interface {
 type desiredStateOfWorld struct {
 	// List of snapshots that exist in the desired state of world
 	// it maps [snapshotName] snapshotSpec
-	snapshots map[string]*tprv1.VolumeSnapshotSpec
+	snapshots map[string]*tprv1.VolumeSnapshot
 	sync.RWMutex
 }
 
 // NewDesiredStateOfWorld returns a new instance of DesiredStateOfWorld.
 func NewDesiredStateOfWorld() DesiredStateOfWorld {
-	m := make(map[string]*tprv1.VolumeSnapshotSpec)
+	m := make(map[string]*tprv1.VolumeSnapshot)
 	return &desiredStateOfWorld{
 		snapshots: m,
 	}
 }
 
 // Adds a snapshot to the list of snapshots to be created
-func (dsw *desiredStateOfWorld) AddSnapshot(snapshotName string, snapshot *tprv1.VolumeSnapshotSpec) error {
+func (dsw *desiredStateOfWorld) AddSnapshot(snapshotName string, snapshot *tprv1.VolumeSnapshot) error {
 	if snapshot == nil {
 		return fmt.Errorf("nil snapshot spec")
 	}
@@ -87,14 +86,14 @@ func (dsw *desiredStateOfWorld) DeleteSnapshot(snapshotName string) error {
 }
 
 // Returns a copy of the list of the snapshots known to the actual state of world.
-func (dsw *desiredStateOfWorld) GetSnapshots() map[string]*tprv1.VolumeSnapshotSpec {
+func (dsw *desiredStateOfWorld) GetSnapshots() map[string]*tprv1.VolumeSnapshot {
 	dsw.RLock()
 	defer dsw.RUnlock()
 
-	snapshots := make(map[string]*tprv1.VolumeSnapshotSpec)
+	snapshots := make(map[string]*tprv1.VolumeSnapshot)
 
-	for snapName, snapSpec := range dsw.snapshots {
-		snapshots[snapName] = snapSpec
+	for snapName, snapshot := range dsw.snapshots {
+		snapshots[snapName] = snapshot
 	}
 
 	return snapshots

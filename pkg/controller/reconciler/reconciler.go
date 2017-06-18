@@ -73,7 +73,7 @@ func (rc *reconciler) Run(stopCh <-chan struct{}) {
 
 // reconciliationLoopFunc this can be disabled via cli option disableReconciliation.
 // It periodically checks whether the VolumeSnapshots have corresponding SnapshotData
-// and creates or deleltes the snapshots when required.
+// and creates or deletes the snapshots when required.
 func (rc *reconciler) reconciliationLoopFunc() func() {
 	return func() {
 
@@ -117,18 +117,18 @@ func (rc *reconciler) reconcile() {
 		}
 	}
 	// Ensure the snapshots that should be created are created
-	for name, snapshotSpec := range rc.desiredStateOfWorld.GetSnapshots() {
+	for name, snapshot := range rc.desiredStateOfWorld.GetSnapshots() {
 		if !rc.actualStateOfWorld.SnapshotExists(name) {
 			// Call snapshotter to start creating the snapshot: it should use the volume
 			// plugin to create the on-disk snapshot, create the SnapshotData object for it
 			// and update adn put the Snapshot object to the actualStateOfWorld once the operation finishes.
 			// It's likely that the operation exists already: it should be fired by the controller right
 			// after the event has arrived.
-			rc.snapshotter.CreateVolumeSnapshot(name, snapshotSpec)
+			rc.snapshotter.CreateVolumeSnapshot(name, snapshot)
 		} else {
 			// The VolumeSnapshot is in both states of world: check its OK and fix it eventually.
-			aswSnapshotSpec := rc.actualStateOfWorld.GetSnapshot(name)
-			if aswSnapshotSpec.SnapshotDataName == "" {
+			aswSnapshot := rc.actualStateOfWorld.GetSnapshot(name)
+			if aswSnapshot.Spec.SnapshotDataName == "" {
 				// Seems the write to API server failed before. Find the SnapshotData and fix
 				// this VolumeSnapshot reference and status
 				glog.Infof("Volume snapshot %s is missing the snapshot data name - updating.", name)
