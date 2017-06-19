@@ -24,7 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/client-go/pkg/api/v1"
 
-	tprv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
+	crdv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
 	"github.com/rootfs/snapshot/pkg/cloudprovider"
 	"github.com/rootfs/snapshot/pkg/volume"
 )
@@ -50,7 +50,7 @@ func GetPluginName() string {
 func (h *hostPathPlugin) Init(_ cloudprovider.Interface) {
 }
 
-func (h *hostPathPlugin) SnapshotCreate(pv *v1.PersistentVolume) (*tprv1.VolumeSnapshotDataSource, error) {
+func (h *hostPathPlugin) SnapshotCreate(pv *v1.PersistentVolume) (*crdv1.VolumeSnapshotDataSource, error) {
 	spec := &pv.Spec
 	if spec == nil || spec.HostPath == nil {
 		return nil, fmt.Errorf("invalid PV spec %v", spec)
@@ -58,15 +58,15 @@ func (h *hostPathPlugin) SnapshotCreate(pv *v1.PersistentVolume) (*tprv1.VolumeS
 	path := spec.HostPath.Path
 	file := depot + string(uuid.NewUUID()) + ".tgz"
 	cmd := exec.Command("tar", "czf", file, path)
-	res := &tprv1.VolumeSnapshotDataSource{
-		HostPath: &tprv1.HostPathVolumeSnapshotSource{
+	res := &crdv1.VolumeSnapshotDataSource{
+		HostPath: &crdv1.HostPathVolumeSnapshotSource{
 			Path: file,
 		},
 	}
 	return res, cmd.Run()
 }
 
-func (h *hostPathPlugin) SnapshotDelete(src *tprv1.VolumeSnapshotDataSource, _ *v1.PersistentVolume) error {
+func (h *hostPathPlugin) SnapshotDelete(src *crdv1.VolumeSnapshotDataSource, _ *v1.PersistentVolume) error {
 	if src == nil || src.HostPath == nil {
 		return fmt.Errorf("invalid VolumeSnapshotDataSource: %v", src)
 	}
@@ -74,7 +74,7 @@ func (h *hostPathPlugin) SnapshotDelete(src *tprv1.VolumeSnapshotDataSource, _ *
 	return os.Remove(path)
 }
 
-func (a *hostPathPlugin) DescribeSnapshot(snapshotData *tprv1.VolumeSnapshotData) (isCompleted bool, err error) {
+func (a *hostPathPlugin) DescribeSnapshot(snapshotData *crdv1.VolumeSnapshotData) (isCompleted bool, err error) {
 	if snapshotData == nil || snapshotData.Spec.HostPath == nil {
 		return false, fmt.Errorf("failed to retrieve Snapshot spec")
 	}
@@ -85,7 +85,7 @@ func (a *hostPathPlugin) DescribeSnapshot(snapshotData *tprv1.VolumeSnapshotData
 	return true, nil
 }
 
-func (h *hostPathPlugin) SnapshotRestore(snapshotData *tprv1.VolumeSnapshotData, _ *v1.PersistentVolumeClaim, _ string, _ map[string]string) (*v1.PersistentVolumeSource, map[string]string, error) {
+func (h *hostPathPlugin) SnapshotRestore(snapshotData *crdv1.VolumeSnapshotData, _ *v1.PersistentVolumeClaim, _ string, _ map[string]string) (*v1.PersistentVolumeSource, map[string]string, error) {
 	// retrieve VolumeSnapshotDataSource
 	if snapshotData == nil || snapshotData.Spec.HostPath == nil {
 		return nil, nil, fmt.Errorf("failed to retrieve Snapshot spec")

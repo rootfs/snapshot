@@ -20,7 +20,7 @@ package populator
 
 import (
 	"github.com/golang/glog"
-	tprv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
+	crdv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
 	"github.com/rootfs/snapshot/pkg/controller/cache"
 	"k8s.io/apimachinery/pkg/util/wait"
 	k8scache "k8s.io/client-go/tools/cache"
@@ -100,7 +100,7 @@ func (dswp *desiredStateOfWorldPopulator) findAndRemoveDeletedSnapshots() {
 
 func (dswp *desiredStateOfWorldPopulator) findAndAddActiveSnapshots() {
 	for _, obj := range dswp.snapshotStore.List() {
-		snapshot := obj.(*tprv1.VolumeSnapshot)
+		snapshot := obj.(*crdv1.VolumeSnapshot)
 
 		snapshotName := cache.MakeSnapshotName(snapshot.Metadata.Namespace, snapshot.Metadata.Name)
 		if !dswp.desiredStateOfWorld.SnapshotExists(snapshotName) {

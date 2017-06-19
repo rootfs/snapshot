@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	tprv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
+	crdv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -38,12 +38,12 @@ const (
 
 func NewClient(cfg *rest.Config) (*rest.RESTClient, *runtime.Scheme, error) {
 	scheme := runtime.NewScheme()
-	if err := tprv1.AddToScheme(scheme); err != nil {
+	if err := crdv1.AddToScheme(scheme); err != nil {
 		return nil, nil, err
 	}
 
 	config := *cfg
-	config.GroupVersion = &tprv1.SchemeGroupVersion
+	config.GroupVersion = &crdv1.SchemeGroupVersion
 	config.APIPath = "/apis"
 	config.ContentType = runtime.ContentTypeJSON
 	config.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: serializer.NewCodecFactory(scheme)}
@@ -59,10 +59,10 @@ func NewClient(cfg *rest.Config) (*rest.RESTClient, *runtime.Scheme, error) {
 func CreateTPR(clientset kubernetes.Interface) error {
 	tpr := &v1beta1.ThirdPartyResource{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: tprv1.VolumeSnapshotDataResource + "." + tprv1.GroupName,
+			Name: crdv1.VolumeSnapshotDataResource + "." + crdv1.GroupName,
 		},
 		Versions: []v1beta1.APIVersion{
-			{Name: tprv1.SchemeGroupVersion.Version},
+			{Name: crdv1.SchemeGroupVersion.Version},
 		},
 		Description: "Volume Snapshot Data ThirdPartyResource",
 	}
@@ -74,10 +74,10 @@ func CreateTPR(clientset kubernetes.Interface) error {
 
 	tpr = &v1beta1.ThirdPartyResource{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: tprv1.VolumeSnapshotResource + "." + tprv1.GroupName,
+			Name: crdv1.VolumeSnapshotResource + "." + crdv1.GroupName,
 		},
 		Versions: []v1beta1.APIVersion{
-			{Name: tprv1.SchemeGroupVersion.Version},
+			{Name: crdv1.SchemeGroupVersion.Version},
 		},
 		Description: "Volume Snapshot ThirdPartyResource",
 	}
@@ -91,7 +91,7 @@ func CreateTPR(clientset kubernetes.Interface) error {
 
 func WaitForSnapshotResource(snapshotClient *rest.RESTClient) error {
 	return wait.Poll(100*time.Millisecond, 60*time.Second, func() (bool, error) {
-		_, err := snapshotClient.Get().Namespace(apiv1.NamespaceDefault).Resource(tprv1.VolumeSnapshotDataResourcePlural).DoRaw()
+		_, err := snapshotClient.Get().Namespace(apiv1.NamespaceDefault).Resource(crdv1.VolumeSnapshotDataResourcePlural).DoRaw()
 		if err == nil {
 			return true, nil
 		}

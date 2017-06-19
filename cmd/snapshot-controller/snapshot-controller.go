@@ -65,8 +65,8 @@ func main() {
 		panic(err)
 	}
 
-	// initialize third party resource if it does not exist
-	err = client.CreateTPR(clientset)
+	// initialize CRD resource if it does not exist
+	err = client.CreateCRD(clientset)
 	if err != nil {
 		panic(err)
 	}
@@ -77,7 +77,7 @@ func main() {
 		panic(err)
 	}
 
-	// wait until TPR gets processed
+	// wait until CRD gets processed
 	err = client.WaitForSnapshotResource(snapshotClient)
 	if err != nil {
 		panic(err)
@@ -85,7 +85,7 @@ func main() {
 	// build volume plugins map
 	buildVolumePlugins()
 
-	// start controller on instances of our TPR
+	// start controller on instances of our CRD
 	glog.Infof("starting snapshot controller")
 	ssController := snapshotcontroller.NewSnapshotController(snapshotClient, snapshotScheme, clientset, &volumePlugins, defaultSyncDuration)
 	stopCh := make(chan struct{})

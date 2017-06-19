@@ -24,23 +24,23 @@ import (
 	"sync"
 
 	"github.com/golang/glog"
-	tprv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
+	crdv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
 )
 
 type ActualStateOfWorld interface {
 	// Adds snapshot to the list of snapshots. No-op if the snapshot
 	// is already in the list.
-	AddSnapshot(*tprv1.VolumeSnapshot) error
+	AddSnapshot(*crdv1.VolumeSnapshot) error
 
 	// Deletes the snapshot from the list of known snapshots. No-op if the snapshot
 	// does not exist.
 	DeleteSnapshot(snapshotName string) error
 
 	// Return a copy of the known snapshots
-	GetSnapshots() map[string]*tprv1.VolumeSnapshot
+	GetSnapshots() map[string]*crdv1.VolumeSnapshot
 
 	// Get snapshot by its name
-	GetSnapshot(snapshotName string) *tprv1.VolumeSnapshot
+	GetSnapshot(snapshotName string) *crdv1.VolumeSnapshot
 
 	// Check whether the specified snapshot exists
 	SnapshotExists(snapshotName string) bool
@@ -49,20 +49,20 @@ type ActualStateOfWorld interface {
 type actualStateOfWorld struct {
 	// List of snapshots that need to be created
 	// it maps [snapshotName] VolumeSnapshot
-	snapshots map[string]*tprv1.VolumeSnapshot
+	snapshots map[string]*crdv1.VolumeSnapshot
 	sync.RWMutex
 }
 
 // NewActualStateOfWorld returns a new instance of ActualStateOfWorld.
 func NewActualStateOfWorld() ActualStateOfWorld {
-	m := make(map[string]*tprv1.VolumeSnapshot)
+	m := make(map[string]*crdv1.VolumeSnapshot)
 	return &actualStateOfWorld{
 		snapshots: m,
 	}
 }
 
 // Adds a snapshot to the list of snapshots to be created.
-func (asw *actualStateOfWorld) AddSnapshot(snapshot *tprv1.VolumeSnapshot) error {
+func (asw *actualStateOfWorld) AddSnapshot(snapshot *crdv1.VolumeSnapshot) error {
 	asw.Lock()
 	defer asw.Unlock()
 
@@ -83,11 +83,11 @@ func (asw *actualStateOfWorld) DeleteSnapshot(snapshotName string) error {
 }
 
 // Returns a copy of the list of the snapshots known to the actual state of world.
-func (asw *actualStateOfWorld) GetSnapshots() map[string]*tprv1.VolumeSnapshot {
+func (asw *actualStateOfWorld) GetSnapshots() map[string]*crdv1.VolumeSnapshot {
 	asw.RLock()
 	defer asw.RUnlock()
 
-	snapshots := make(map[string]*tprv1.VolumeSnapshot)
+	snapshots := make(map[string]*crdv1.VolumeSnapshot)
 
 	for snapName, snapshot := range asw.snapshots {
 		snapshots[snapName] = snapshot
@@ -97,7 +97,7 @@ func (asw *actualStateOfWorld) GetSnapshots() map[string]*tprv1.VolumeSnapshot {
 }
 
 // Get snapshot
-func (asw *actualStateOfWorld) GetSnapshot(snapshotName string) *tprv1.VolumeSnapshot {
+func (asw *actualStateOfWorld) GetSnapshot(snapshotName string) *crdv1.VolumeSnapshot {
 	asw.RLock()
 	defer asw.RUnlock()
 	snapshot, _ := asw.snapshots[snapshotName]

@@ -26,7 +26,7 @@ import (
 
 	"github.com/golang/glog"
 
-	tprv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
+	crdv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
 	"github.com/rootfs/snapshot/pkg/cloudprovider"
 	"github.com/rootfs/snapshot/pkg/cloudprovider/providers/aws"
 	"github.com/rootfs/snapshot/pkg/volume"
@@ -50,7 +50,7 @@ func (a *awsEBSPlugin) Init(cloud cloudprovider.Interface) {
 	a.cloud = cloud.(*aws.Cloud)
 }
 
-func (a *awsEBSPlugin) SnapshotCreate(pv *v1.PersistentVolume) (*tprv1.VolumeSnapshotDataSource, error) {
+func (a *awsEBSPlugin) SnapshotCreate(pv *v1.PersistentVolume) (*crdv1.VolumeSnapshotDataSource, error) {
 	spec := &pv.Spec
 	if spec == nil || spec.AWSElasticBlockStore == nil {
 		return nil, fmt.Errorf("invalid PV spec %v", spec)
@@ -66,14 +66,14 @@ func (a *awsEBSPlugin) SnapshotCreate(pv *v1.PersistentVolume) (*tprv1.VolumeSna
 	if err != nil {
 		return nil, err
 	}
-	return &tprv1.VolumeSnapshotDataSource{
-		AWSElasticBlockStore: &tprv1.AWSElasticBlockStoreVolumeSnapshotSource{
+	return &crdv1.VolumeSnapshotDataSource{
+		AWSElasticBlockStore: &crdv1.AWSElasticBlockStoreVolumeSnapshotSource{
 			SnapshotID: snapshotId,
 		},
 	}, nil
 }
 
-func (a *awsEBSPlugin) SnapshotDelete(src *tprv1.VolumeSnapshotDataSource, _ *v1.PersistentVolume) error {
+func (a *awsEBSPlugin) SnapshotDelete(src *crdv1.VolumeSnapshotDataSource, _ *v1.PersistentVolume) error {
 	if src == nil || src.AWSElasticBlockStore == nil {
 		return fmt.Errorf("invalid VolumeSnapshotDataSource: %v", src)
 	}
@@ -86,7 +86,7 @@ func (a *awsEBSPlugin) SnapshotDelete(src *tprv1.VolumeSnapshotDataSource, _ *v1
 	return nil
 }
 
-func (a *awsEBSPlugin) DescribeSnapshot(snapshotData *tprv1.VolumeSnapshotData) (isCompleted bool, err error) {
+func (a *awsEBSPlugin) DescribeSnapshot(snapshotData *crdv1.VolumeSnapshotData) (isCompleted bool, err error) {
 	if snapshotData == nil || snapshotData.Spec.AWSElasticBlockStore == nil {
 		return false, fmt.Errorf("invalid VolumeSnapshotDataSource: %v", snapshotData)
 	}
@@ -94,7 +94,7 @@ func (a *awsEBSPlugin) DescribeSnapshot(snapshotData *tprv1.VolumeSnapshotData) 
 	return a.cloud.DescribeSnapshot(snapshotId)
 }
 
-func (a *awsEBSPlugin) SnapshotRestore(snapshotData *tprv1.VolumeSnapshotData, pvc *v1.PersistentVolumeClaim, pvName string, parameters map[string]string) (*v1.PersistentVolumeSource, map[string]string, error) {
+func (a *awsEBSPlugin) SnapshotRestore(snapshotData *crdv1.VolumeSnapshotData, pvc *v1.PersistentVolumeClaim, pvName string, parameters map[string]string) (*v1.PersistentVolumeSource, map[string]string, error) {
 	var err error
 	var tags = make(map[string]string)
 	// retrieve VolumeSnapshotDataSource

@@ -30,7 +30,7 @@ import (
 	"k8s.io/kubernetes/pkg/util/goroutinemap"
 	"k8s.io/kubernetes/pkg/util/goroutinemap/exponentialbackoff"
 
-	tprv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
+	crdv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
 	"github.com/rootfs/snapshot/pkg/controller/cache"
 	"github.com/rootfs/snapshot/pkg/volume"
 )
@@ -44,11 +44,11 @@ const (
 // It creates and deletes the snapshots and promotes snapshots to volumes (PV). The create
 // and delete operations need to be idempotent and count with the fact the API object writes
 type VolumeSnapshotter interface {
-	CreateVolumeSnapshot(snapshot *tprv1.VolumeSnapshot)
-	DeleteVolumeSnapshot(snapshot *tprv1.VolumeSnapshot)
-	PromoteVolumeSnapshotToPV(snapshot *tprv1.VolumeSnapshot)
+	CreateVolumeSnapshot(snapshot *crdv1.VolumeSnapshot)
+	DeleteVolumeSnapshot(snapshot *crdv1.VolumeSnapshot)
+	PromoteVolumeSnapshotToPV(snapshot *crdv1.VolumeSnapshot)
 	UpdateVolumeSnapshot(snapshotName string) error
-	UpdateVolumeSnapshotData(snapshotDataName string, status *[]tprv1.VolumeSnapshotDataCondition) error
+	UpdateVolumeSnapshotData(snapshotDataName string, status *[]crdv1.VolumeSnapshotDataCondition) error
 }
 
 type volumeSnapshotter struct {
@@ -83,7 +83,7 @@ func NewVolumeSnapshotter(
 }
 
 // Helper function to get PV from VolumeSnapshot
-func (vs *volumeSnapshotter) getPVFromVolumeSnapshot(snapshotName string, snapshot *tprv1.VolumeSnapshot) (*v1.PersistentVolume, error) {
+func (vs *volumeSnapshotter) getPVFromVolumeSnapshot(snapshotName string, snapshot *crdv1.VolumeSnapshot) (*v1.PersistentVolume, error) {
 	pvcName := snapshot.Spec.PersistentVolumeClaimName
 	if pvcName == "" {
 		return nil, fmt.Errorf("The PVC name is not specified in snapshot %s", snapshotName)
@@ -109,13 +109,13 @@ func (vs *volumeSnapshotter) getPVFromVolumeSnapshot(snapshotName string, snapsh
 }
 
 // Helper function that looks up VolumeSnapshotData for a VolumeSnapshot named snapshotName
-func (vs *volumeSnapshotter) getSnapshotDataFromSnapshotName(snapshotName string) *tprv1.VolumeSnapshotData {
-	var snapshotDataList tprv1.VolumeSnapshotDataList
-	var snapshotDataObj tprv1.VolumeSnapshotData
+func (vs *volumeSnapshotter) getSnapshotDataFromSnapshotName(snapshotName string) *crdv1.VolumeSnapshotData {
+	var snapshotDataList crdv1.VolumeSnapshotDataList
+	var snapshotDataObj crdv1.VolumeSnapshotData
 	var found bool
 
 	err := vs.restClient.Get().
-		Resource(tprv1.VolumeSnapshotDataResourcePlural).
+		Resource(crdv1.VolumeSnapshotDataResourcePlural).
 		Namespace(v1.NamespaceDefault).
 		Do().Into(&snapshotDataList)
 	if err != nil {
@@ -140,13 +140,13 @@ func (vs *volumeSnapshotter) getSnapshotDataFromSnapshotName(snapshotName string
 
 	return &snapshotDataObj
 }
-func (vs *volumeSnapshotter) updateSnapshotDataStatus(snapshotName string, snapshot *tprv1.VolumeSnapshot) error {
-	var snapshotDataObj tprv1.VolumeSnapshotData
+func (vs *volumeSnapshotter) updateSnapshotDataStatus(snapshotName string, snapshot *crdv1.VolumeSnapshot) error {
+	var snapshotDataObj crdv1.VolumeSnapshotData
 	snapshotDataName := snapshot.Spec.SnapshotDataName
 	glog.Infof("In UpdateVolumeSnapshotData")
 	err := vs.restClient.Get().
 		Name(snapshotDataName).
-		Resource(tprv1.VolumeSnapshotDataResourcePlural).
+		Resource(crdv1.VolumeSnapshotDataResourcePlural).
 		Namespace(v1.NamespaceDefault).
 		Do().Into(&snapshotDataObj)
 	if err != nil {
@@ -154,13 +154,13 @@ func (vs *volumeSnapshotter) updateSnapshotDataStatus(snapshotName string, snaps
 	}
 
 	if len(snapshotDataObj.Status.Conditions) < 1 ||
-		snapshotDataObj.Status.Conditions[0].Type != tprv1.VolumeSnapshotDataConditionReady {
+		snapshotDataObj.Status.Conditions[0].Type != crdv1.VolumeSnapshotDataConditionReady {
 		pv, err := vs.getPVFromVolumeSnapshot(snapshotName, snapshot)
 		if err != nil {
 			return err
 		}
 		spec := &pv.Spec
-		volumeType := tprv1.GetSupportedVolumeFromPVSpec(spec)
+		volumeType := crdv1.GetSupportedVolumeFromPVSpec(spec)
 		if len(volumeType) == 0 {
 			return fmt.Errorf("unsupported volume type found in PV %#v", spec)
 		}
@@ -173,9 +173,9 @@ func (vs *volumeSnapshotter) updateSnapshotDataStatus(snapshotName string, snaps
 			return fmt.Errorf("snapshot is not completed yet: %v", err)
 		}
 		glog.Infof("snapshot successfully created, updating VolumeSnapshotData status for %s", snapshotDataName)
-		status := []tprv1.VolumeSnapshotDataCondition{
+		status := []crdv1.VolumeSnapshotDataCondition{
 			{
-				Type:               tprv1.VolumeSnapshotDataConditionReady,
+				Type:               crdv1.VolumeSnapshotDataConditionReady,
 				Status:             v1.ConditionTrue,
 				Message:            "Snapshot data created succsessfully",
 				LastTransitionTime: metav1.Now(),
@@ -193,9 +193,9 @@ func (vs *volumeSnapshotter) updateSnapshotDataStatus(snapshotName string, snaps
 
 // This is the function responsible for determining the correct volume plugin to use,
 // asking it to make a snapshot and assigning it some name that it returns to the caller.
-func (vs *volumeSnapshotter) takeSnapshot(pv *v1.PersistentVolume) (*tprv1.VolumeSnapshotDataSource, error) {
+func (vs *volumeSnapshotter) takeSnapshot(pv *v1.PersistentVolume) (*crdv1.VolumeSnapshotDataSource, error) {
 	spec := &pv.Spec
-	volumeType := tprv1.GetSupportedVolumeFromPVSpec(spec)
+	volumeType := crdv1.GetSupportedVolumeFromPVSpec(spec)
 	if len(volumeType) == 0 {
 		return nil, fmt.Errorf("unsupported volume type found in PV %#v", spec)
 	}
@@ -215,8 +215,8 @@ func (vs *volumeSnapshotter) takeSnapshot(pv *v1.PersistentVolume) (*tprv1.Volum
 
 // This is the function responsible for determining the correct volume plugin to use,
 // asking it to make a snapshot and assigning it some name that it returns to the caller.
-func (vs *volumeSnapshotter) deleteSnapshot(spec *v1.PersistentVolumeSpec, source *tprv1.VolumeSnapshotDataSource) error {
-	volumeType := tprv1.GetSupportedVolumeFromPVSpec(spec)
+func (vs *volumeSnapshotter) deleteSnapshot(spec *v1.PersistentVolumeSpec, source *crdv1.VolumeSnapshotDataSource) error {
+	volumeType := crdv1.GetSupportedVolumeFromPVSpec(spec)
 	if len(volumeType) == 0 {
 		return fmt.Errorf("unsupported volume type found in PV %#v", spec)
 	}
@@ -235,7 +235,7 @@ func (vs *volumeSnapshotter) deleteSnapshot(spec *v1.PersistentVolumeSpec, sourc
 
 // Below are the closures meant to build the functions for the GoRoutineMap operations.
 
-func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot *tprv1.VolumeSnapshot) func() error {
+func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot *crdv1.VolumeSnapshot) func() error {
 	// Create a snapshot:
 	// 1. If Snapshot references SnapshotData object, try to find it
 	//   1a. If doesn't exist, log error and finish, if it exists already, check its SnapshotRef
@@ -262,18 +262,18 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 			return fmt.Errorf("Failed to take snapshot of the volume %s: %q", pvName, err)
 		}
 		// Snapshot has been created, made an object for it
-		readyCondition := tprv1.VolumeSnapshotDataCondition{
-			Type:    tprv1.VolumeSnapshotDataConditionPending,
+		readyCondition := crdv1.VolumeSnapshotDataCondition{
+			Type:    crdv1.VolumeSnapshotDataConditionPending,
 			Status:  v1.ConditionTrue,
 			Message: "Snapshot data is being created",
 		}
 		snapName := "k8s-volume-snapshot-" + string(uuid.NewUUID())
 
-		snapshotData := &tprv1.VolumeSnapshotData{
+		snapshotData := &crdv1.VolumeSnapshotData{
 			Metadata: metav1.ObjectMeta{
 				Name: snapName,
 			},
-			Spec: tprv1.VolumeSnapshotDataSpec{
+			Spec: crdv1.VolumeSnapshotDataSpec{
 				VolumeSnapshotRef: &v1.ObjectReference{
 					Kind: "VolumeSnapshot",
 					Name: snapshotName,
@@ -284,15 +284,15 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 				},
 				VolumeSnapshotDataSource: *snapshotDataSource,
 			},
-			Status: tprv1.VolumeSnapshotDataStatus{
-				Conditions: []tprv1.VolumeSnapshotDataCondition{
+			Status: crdv1.VolumeSnapshotDataStatus{
+				Conditions: []crdv1.VolumeSnapshotDataCondition{
 					readyCondition,
 				},
 			},
 		}
-		var result tprv1.VolumeSnapshotData
+		var result crdv1.VolumeSnapshotData
 		err = vs.restClient.Post().
-			Resource(tprv1.VolumeSnapshotDataResourcePlural).
+			Resource(crdv1.VolumeSnapshotDataResourcePlural).
 			Namespace(v1.NamespaceDefault).
 			Body(snapshotData).
 			Do().Into(&result)
@@ -311,7 +311,7 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 	}
 }
 
-func (vs *volumeSnapshotter) getSnapshotDeleteFunc(snapshotName string, snapshot *tprv1.VolumeSnapshot) func() error {
+func (vs *volumeSnapshotter) getSnapshotDeleteFunc(snapshotName string, snapshot *crdv1.VolumeSnapshot) func() error {
 	// Delete a snapshot
 	// 1. Find the SnapshotData corresponding to Snapshot
 	//   1a: Not found => finish (it's been deleted already)
@@ -341,7 +341,7 @@ func (vs *volumeSnapshotter) getSnapshotDeleteFunc(snapshotName string, snapshot
 		var result metav1.Status
 		err = vs.restClient.Delete().
 			Name(snapshotDataName).
-			Resource(tprv1.VolumeSnapshotDataResourcePlural).
+			Resource(crdv1.VolumeSnapshotDataResourcePlural).
 			Namespace(v1.NamespaceDefault).
 			Do().Into(&result)
 		if err != nil {
@@ -354,7 +354,7 @@ func (vs *volumeSnapshotter) getSnapshotDeleteFunc(snapshotName string, snapshot
 	}
 }
 
-func (vs *volumeSnapshotter) getSnapshotPromoteFunc(snapshotName string, snapshot *tprv1.VolumeSnapshot) func() error {
+func (vs *volumeSnapshotter) getSnapshotPromoteFunc(snapshotName string, snapshot *crdv1.VolumeSnapshot) func() error {
 	// Promote snapshot to a PVC
 	// 1. We have a PVC referencing a Snapshot object
 	// 2. Find the SnapshotData corresponding to tha Snapshot
@@ -364,7 +364,7 @@ func (vs *volumeSnapshotter) getSnapshotPromoteFunc(snapshotName string, snapsho
 	return func() error { return nil }
 }
 
-func (vs *volumeSnapshotter) CreateVolumeSnapshot(snapshot *tprv1.VolumeSnapshot) {
+func (vs *volumeSnapshotter) CreateVolumeSnapshot(snapshot *crdv1.VolumeSnapshot) {
 	snapshotName := cache.MakeSnapshotName(snapshot.Metadata.Namespace, snapshot.Metadata.Name)
 	operationName := snapshotOpCreatePrefix + snapshotName + snapshot.Spec.PersistentVolumeClaimName
 	glog.Infof("Snapshotter is about to create volume snapshot operation named %s, spec %#v", operationName, snapshot.Spec)
@@ -383,7 +383,7 @@ func (vs *volumeSnapshotter) CreateVolumeSnapshot(snapshot *tprv1.VolumeSnapshot
 	}
 }
 
-func (vs *volumeSnapshotter) DeleteVolumeSnapshot(snapshot *tprv1.VolumeSnapshot) {
+func (vs *volumeSnapshotter) DeleteVolumeSnapshot(snapshot *crdv1.VolumeSnapshot) {
 	snapshotName := cache.MakeSnapshotName(snapshot.Metadata.Namespace, snapshot.Metadata.Name)
 	operationName := snapshotOpDeletePrefix + snapshotName + snapshot.Spec.PersistentVolumeClaimName
 	glog.Infof("Snapshotter is about to create volume snapshot operation named %s", operationName)
@@ -402,7 +402,7 @@ func (vs *volumeSnapshotter) DeleteVolumeSnapshot(snapshot *tprv1.VolumeSnapshot
 	}
 }
 
-func (vs *volumeSnapshotter) PromoteVolumeSnapshotToPV(snapshot *tprv1.VolumeSnapshot) {
+func (vs *volumeSnapshotter) PromoteVolumeSnapshotToPV(snapshot *crdv1.VolumeSnapshot) {
 	snapshotName := cache.MakeSnapshotName(snapshot.Metadata.Namespace, snapshot.Metadata.Name)
 	operationName := snapshotOpPromotePrefix + snapshotName + snapshot.Spec.PersistentVolumeClaimName
 	glog.Infof("Snapshotter is about to create volume snapshot operation named %s", operationName)
@@ -422,7 +422,7 @@ func (vs *volumeSnapshotter) PromoteVolumeSnapshotToPV(snapshot *tprv1.VolumeSna
 }
 
 func (vs *volumeSnapshotter) UpdateVolumeSnapshot(snapshotName string) error {
-	var snapshotObj tprv1.VolumeSnapshot
+	var snapshotObj crdv1.VolumeSnapshot
 
 	glog.Infof("In UpdateVolumeSnapshot")
 	// Get a fresh copy of the VolumeSnapshotData from the API server
@@ -433,7 +433,7 @@ func (vs *volumeSnapshotter) UpdateVolumeSnapshot(snapshotName string) error {
 	}
 	err = vs.restClient.Get().
 		Name(snapName).
-		Resource(tprv1.VolumeSnapshotResourcePlural).
+		Resource(crdv1.VolumeSnapshotResourcePlural).
 		Namespace(snapNameSpace).
 		Do().Into(&snapshotObj)
 
@@ -441,7 +441,7 @@ func (vs *volumeSnapshotter) UpdateVolumeSnapshot(snapshotName string) error {
 	if err != nil {
 		return fmt.Errorf("Error copying snapshot object %s object from API server: %v", snapshotName, err)
 	}
-	snapshotCopy, ok := objCopy.(*tprv1.VolumeSnapshot)
+	snapshotCopy, ok := objCopy.(*crdv1.VolumeSnapshot)
 	if !ok {
 		return fmt.Errorf("Error: expecting type VolumeSnapshot but received type %T", objCopy)
 	}
@@ -452,9 +452,9 @@ func (vs *volumeSnapshotter) UpdateVolumeSnapshot(snapshotName string) error {
 	}
 
 	snapshotCopy.Spec.SnapshotDataName = snapshotDataObj.Metadata.Name
-	snapshotCopy.Status.Conditions = []tprv1.VolumeSnapshotCondition{
+	snapshotCopy.Status.Conditions = []crdv1.VolumeSnapshotCondition{
 		{
-			Type:               tprv1.VolumeSnapshotConditionReady,
+			Type:               crdv1.VolumeSnapshotConditionReady,
 			Status:             v1.ConditionTrue,
 			Message:            "Snapshot created succsessfully",
 			LastTransitionTime: metav1.Now(),
@@ -462,10 +462,10 @@ func (vs *volumeSnapshotter) UpdateVolumeSnapshot(snapshotName string) error {
 	}
 	glog.Infof("Updating VolumeSnapshot object")
 	// TODO: Make diff of the two objects and then use restClient.Patch to update it
-	var result tprv1.VolumeSnapshot
+	var result crdv1.VolumeSnapshot
 	err = vs.restClient.Put().
 		Name(snapName).
-		Resource(tprv1.VolumeSnapshotResourcePlural).
+		Resource(crdv1.VolumeSnapshotResourcePlural).
 		Namespace(snapNameSpace).
 		Body(snapshotCopy).
 		Do().Into(&result)
@@ -475,13 +475,13 @@ func (vs *volumeSnapshotter) UpdateVolumeSnapshot(snapshotName string) error {
 	return nil
 }
 
-func (vs *volumeSnapshotter) UpdateVolumeSnapshotData(snapshotDataName string, status *[]tprv1.VolumeSnapshotDataCondition) error {
-	var snapshotDataObj tprv1.VolumeSnapshotData
+func (vs *volumeSnapshotter) UpdateVolumeSnapshotData(snapshotDataName string, status *[]crdv1.VolumeSnapshotDataCondition) error {
+	var snapshotDataObj crdv1.VolumeSnapshotData
 
 	glog.Infof("In UpdateVolumeSnapshotData")
 	err := vs.restClient.Get().
 		Name(snapshotDataName).
-		Resource(tprv1.VolumeSnapshotDataResourcePlural).
+		Resource(crdv1.VolumeSnapshotDataResourcePlural).
 		Namespace(v1.NamespaceDefault).
 		Do().Into(&snapshotDataObj)
 
@@ -489,7 +489,7 @@ func (vs *volumeSnapshotter) UpdateVolumeSnapshotData(snapshotDataName string, s
 	if err != nil {
 		return fmt.Errorf("Error copying snapshot data object %s object from API server: %v", snapshotDataName, err)
 	}
-	snapshotDataCopy, ok := objCopy.(*tprv1.VolumeSnapshotData)
+	snapshotDataCopy, ok := objCopy.(*crdv1.VolumeSnapshotData)
 	if !ok {
 		return fmt.Errorf("Error: expecting type VolumeSnapshotData but received type %T", objCopy)
 	}
@@ -497,10 +497,10 @@ func (vs *volumeSnapshotter) UpdateVolumeSnapshotData(snapshotDataName string, s
 	snapshotDataCopy.Status.Conditions = *status
 	glog.Infof("Updating VolumeSnapshotData object")
 	// TODO: Make diff of the two objects and then use restClient.Patch to update it
-	var result tprv1.VolumeSnapshotData
+	var result crdv1.VolumeSnapshotData
 	err = vs.restClient.Put().
 		Name(snapshotDataName).
-		Resource(tprv1.VolumeSnapshotDataResourcePlural).
+		Resource(crdv1.VolumeSnapshotDataResourcePlural).
 		Namespace(v1.NamespaceDefault).
 		Body(snapshotDataCopy).
 		Do().Into(&result)
