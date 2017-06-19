@@ -23,8 +23,8 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/kubernetes-incubator/external-storage/lib/controller"
-	tprv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
-	tprclient "github.com/rootfs/snapshot/pkg/client"
+	crdv1 "github.com/rootfs/snapshot/pkg/apis/crd/v1"
+	crdclient "github.com/rootfs/snapshot/pkg/client"
 	"github.com/rootfs/snapshot/pkg/cloudprovider"
 	"github.com/rootfs/snapshot/pkg/cloudprovider/providers/aws"
 	"github.com/rootfs/snapshot/pkg/cloudprovider/providers/gce"
@@ -50,24 +50,24 @@ const (
 type snapshotProvisioner struct {
 	// Kubernetes Client.
 	client kubernetes.Interface
-	// TPR client
-	tprclient *rest.RESTClient
+	// CRD client
+	crdclient *rest.RESTClient
 	// Identity of this snapshotProvisioner, generated. Used to identify "this"
 	// provisioner's PVs.
 	identity string
 }
 
-func newSnapshotProvisioner(client kubernetes.Interface, tprclient *rest.RESTClient, id string) controller.Provisioner {
+func newSnapshotProvisioner(client kubernetes.Interface, crdclient *rest.RESTClient, id string) controller.Provisioner {
 	return &snapshotProvisioner{
 		client:    client,
-		tprclient: tprclient,
+		crdclient: crdclient,
 		identity:  id,
 	}
 }
 
 var _ controller.Provisioner = &snapshotProvisioner{}
 
-func (p *snapshotProvisioner) getPVFromVolumeSnapshotDataSpec(snapshotDataSpec *tprv1.VolumeSnapshotDataSpec) (*v1.PersistentVolume, error) {
+func (p *snapshotProvisioner) getPVFromVolumeSnapshotDataSpec(snapshotDataSpec *crdv1.VolumeSnapshotDataSpec) (*v1.PersistentVolume, error) {
 	if snapshotDataSpec.PersistentVolumeRef == nil {
 		return nil, fmt.Errorf("VolumeSnapshotDataSpec is not bound to any PV")
 	}
@@ -82,14 +82,14 @@ func (p *snapshotProvisioner) getPVFromVolumeSnapshotDataSpec(snapshotDataSpec *
 	return pv, nil
 }
 
-func (p *snapshotProvisioner) snapshotRestore(snapshotName string, snapshotData tprv1.VolumeSnapshotData, options controller.VolumeOptions) (*v1.PersistentVolumeSource, map[string]string, error) {
+func (p *snapshotProvisioner) snapshotRestore(snapshotName string, snapshotData crdv1.VolumeSnapshotData, options controller.VolumeOptions) (*v1.PersistentVolumeSource, map[string]string, error) {
 	// validate the PV supports snapshot and restore
 	spec := &snapshotData.Spec
 	pv, err := p.getPVFromVolumeSnapshotDataSpec(spec)
 	if err != nil {
 		return nil, nil, err
 	}
-	volumeType := tprv1.GetSupportedVolumeFromPVSpec(&pv.Spec)
+	volumeType := crdv1.GetSupportedVolumeFromPVSpec(&pv.Spec)
 	if len(volumeType) == 0 {
 		return nil, nil, fmt.Errorf("unsupported volume type found in PV %#v", *spec)
 	}
@@ -115,14 +115,14 @@ func (p *snapshotProvisioner) Provision(options controller.VolumeOptions) (*v1.P
 	if options.PVC.Spec.Selector != nil {
 		return nil, fmt.Errorf("claim Selector is not supported")
 	}
-	snapshotName, ok := options.PVC.Annotations[tprclient.SnapshotPVCAnnotation]
+	snapshotName, ok := options.PVC.Annotations[crdclient.SnapshotPVCAnnotation]
 	if !ok {
 		return nil, fmt.Errorf("snapshot annotation not found on PV")
 	}
 
-	var snapshot tprv1.VolumeSnapshot
-	err := p.tprclient.Get().
-		Resource(tprv1.VolumeSnapshotResourcePlural).
+	var snapshot crdv1.VolumeSnapshot
+	err := p.crdclient.Get().
+		Resource(crdv1.VolumeSnapshotResourcePlural).
 		Namespace(options.PVC.Namespace).
 		Name(snapshotName).
 		Do().Into(&snapshot)
@@ -134,9 +134,9 @@ func (p *snapshotProvisioner) Provision(options controller.VolumeOptions) (*v1.P
 	if len(snapshot.Spec.SnapshotDataName) == 0 {
 		return nil, fmt.Errorf("VolumeSnapshot %s is not bound to any VolumeSnapshotData", snapshotName, err)
 	}
-	var snapshotData tprv1.VolumeSnapshotData
-	err = p.tprclient.Get().
-		Resource(tprv1.VolumeSnapshotDataResourcePlural).
+	var snapshotData crdv1.VolumeSnapshotData
+	err = p.crdclient.Get().
+		Resource(crdv1.VolumeSnapshotDataResourcePlural).
 		Namespace(v1.NamespaceDefault).
 		Name(snapshot.Spec.SnapshotDataName).
 		Do().Into(&snapshotData)
@@ -192,7 +192,7 @@ func (p *snapshotProvisioner) Delete(volume *v1.PersistentVolume) error {
 		return &controller.IgnoredError{"identity annotation on PV does not match ours"}
 	}
 
-	volumeType := tprv1.GetSupportedVolumeFromPVSpec(&volume.Spec)
+	volumeType := crdv1.GetSupportedVolumeFromPVSpec(&volume.Spec)
 	if len(volumeType) == 0 {
 		return fmt.Errorf("unsupported volume type found in PV %#v", *volume)
 	}
@@ -247,10 +247,10 @@ func main() {
 	// build volume plugins map
 	buildVolumePlugins()
 
-	// make a tpr client to list VolumeSnapshot
-	snapshotClient, _, err := tprclient.NewClient(config)
+	// make a crd client to list VolumeSnapshot
+	snapshotClient, _, err := crdclient.NewClient(config)
 	if err != nil || snapshotClient == nil {
-		glog.Fatalf("Failed to make TPR client: %v", err)
+		glog.Fatalf("Failed to make CRD client: %v", err)
 	}
 
 	// Create the provisioner: it implements the Provisioner interface expected by

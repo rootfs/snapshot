@@ -26,7 +26,7 @@ import (
 
 	"github.com/golang/glog"
 
-	crdv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
+	crdv1 "github.com/rootfs/snapshot/pkg/apis/crd/v1"
 	"github.com/rootfs/snapshot/pkg/cloudprovider"
 	"github.com/rootfs/snapshot/pkg/cloudprovider/providers/aws"
 	"github.com/rootfs/snapshot/pkg/volume"

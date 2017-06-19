@@ -17,18 +17,19 @@ limitations under the License.
 package client
 
 import (
+	"reflect"
 	"time"
 
 	"github.com/golang/glog"
-	crdv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
+	crdv1 "github.com/rootfs/snapshot/pkg/apis/crd/v1"
+	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/kubernetes"
 	apiv1 "k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/rest"
 )
 
@@ -56,32 +57,43 @@ func NewClient(cfg *rest.Config) (*rest.RESTClient, *runtime.Scheme, error) {
 	return client, scheme, nil
 }
 
-func CreateTPR(clientset kubernetes.Interface) error {
-	tpr := &v1beta1.ThirdPartyResource{
+func CreateCRD(clientset apiextensionsclient.Interface) error {
+	crd := &apiextensionsv1beta1.CustomResourceDefinition{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: crdv1.VolumeSnapshotDataResource + "." + crdv1.GroupName,
+			Name: crdv1.VolumeSnapshotDataResourcePlural + "." + crdv1.GroupName,
 		},
-		Versions: []v1beta1.APIVersion{
-			{Name: crdv1.SchemeGroupVersion.Version},
+		Spec: apiextensionsv1beta1.CustomResourceDefinitionSpec{
+			Group:   crdv1.GroupName,
+			Version: crdv1.SchemeGroupVersion.Version,
+			Scope:   apiextensionsv1beta1.ClusterScoped,
+			Names: apiextensionsv1beta1.CustomResourceDefinitionNames{
+				Plural: crdv1.VolumeSnapshotDataResourcePlural,
+				Kind:   reflect.TypeOf(crdv1.VolumeSnapshotData{}).Name(),
+			},
 		},
-		Description: "Volume Snapshot Data ThirdPartyResource",
 	}
-	res, err := clientset.ExtensionsV1beta1().ThirdPartyResources().Create(tpr)
+	res, err := clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Create(crd)
+
 	if err != nil && !apierrors.IsAlreadyExists(err) {
 		glog.Fatalf("failed to create VolumeSnapshotDataResource: %#v, err: %#v",
 			res, err)
 	}
 
-	tpr = &v1beta1.ThirdPartyResource{
+	crd = &apiextensionsv1beta1.CustomResourceDefinition{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: crdv1.VolumeSnapshotResource + "." + crdv1.GroupName,
+			Name: crdv1.VolumeSnapshotResourcePlural + "." + crdv1.GroupName,
 		},
-		Versions: []v1beta1.APIVersion{
-			{Name: crdv1.SchemeGroupVersion.Version},
+		Spec: apiextensionsv1beta1.CustomResourceDefinitionSpec{
+			Group:   crdv1.GroupName,
+			Version: crdv1.SchemeGroupVersion.Version,
+			Scope:   apiextensionsv1beta1.NamespaceScoped,
+			Names: apiextensionsv1beta1.CustomResourceDefinitionNames{
+				Plural: crdv1.VolumeSnapshotResourcePlural,
+				Kind:   reflect.TypeOf(crdv1.VolumeSnapshot{}).Name(),
+			},
 		},
-		Description: "Volume Snapshot ThirdPartyResource",
 	}
-	res, err = clientset.ExtensionsV1beta1().ThirdPartyResources().Create(tpr)
+	res, err = clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Create(crd)
 	if err != nil && !apierrors.IsAlreadyExists(err) {
 		glog.Fatalf("failed to create VolumeSnapshotResource: %#v, err: %#v",
 			res, err)

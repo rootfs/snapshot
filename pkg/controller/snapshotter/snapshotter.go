@@ -30,7 +30,7 @@ import (
 	"k8s.io/kubernetes/pkg/util/goroutinemap"
 	"k8s.io/kubernetes/pkg/util/goroutinemap/exponentialbackoff"
 
-	crdv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
+	crdv1 "github.com/rootfs/snapshot/pkg/apis/crd/v1"
 	"github.com/rootfs/snapshot/pkg/controller/cache"
 	"github.com/rootfs/snapshot/pkg/volume"
 )

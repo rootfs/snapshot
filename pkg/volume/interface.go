@@ -19,7 +19,7 @@ package volume
 import (
 	"k8s.io/client-go/pkg/api/v1"
 
-	crdv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
+	crdv1 "github.com/rootfs/snapshot/pkg/apis/crd/v1"
 	"github.com/rootfs/snapshot/pkg/cloudprovider"
 )
 

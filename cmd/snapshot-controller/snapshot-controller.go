@@ -38,6 +38,7 @@ import (
 	"github.com/rootfs/snapshot/pkg/volume/aws_ebs"
 	"github.com/rootfs/snapshot/pkg/volume/gce_pd"
 	"github.com/rootfs/snapshot/pkg/volume/hostpath"
+	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 )
 
 const (
@@ -61,12 +62,13 @@ func main() {
 	}
 
 	clientset, err := kubernetes.NewForConfig(config)
+	aeclientset, err := apiextensionsclient.NewForConfig(config)
 	if err != nil {
 		panic(err)
 	}
 
 	// initialize CRD resource if it does not exist
-	err = client.CreateCRD(clientset)
+	err = client.CreateCRD(aeclientset)
 	if err != nil {
 		panic(err)
 	}
