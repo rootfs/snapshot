@@ -191,7 +191,7 @@ func (c *snapshotController) onSnapshotAdd(obj interface{}) {
 		return
 	}
 	glog.Infof("[CONTROLLER] OnAdd %s, Snapshot %#v", snapshot.Metadata.SelfLink, snapshot)
-	c.desiredStateOfWorld.AddSnapshot(cache.MakeSnapshotName(snapshot.Metadata.Namespace, snapshot.Metadata.Name), snapshot)
+	c.desiredStateOfWorld.AddSnapshot(snapshot)
 }
 
 func (c *snapshotController) onSnapshotUpdate(oldObj, newObj interface{}) {
@@ -200,7 +200,7 @@ func (c *snapshotController) onSnapshotUpdate(oldObj, newObj interface{}) {
 	glog.Infof("[CONTROLLER] OnUpdate oldObj: %#v", oldSnapshot.Spec)
 	glog.Infof("[CONTROLLER] OnUpdate newObj: %#v", newSnapshot.Spec)
 	if oldSnapshot.Spec.SnapshotDataName != newSnapshot.Spec.SnapshotDataName {
-		c.desiredStateOfWorld.AddSnapshot(cache.MakeSnapshotName(newSnapshot.Metadata.Namespace, newSnapshot.Metadata.Name), newSnapshot)
+		c.desiredStateOfWorld.AddSnapshot(newSnapshot)
 	}
 }
 

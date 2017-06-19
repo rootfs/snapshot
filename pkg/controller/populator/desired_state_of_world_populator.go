@@ -105,7 +105,7 @@ func (dswp *desiredStateOfWorldPopulator) findAndAddActiveSnapshots() {
 		snapshotName := cache.MakeSnapshotName(snapshot.Metadata.Namespace, snapshot.Metadata.Name)
 		if !dswp.desiredStateOfWorld.SnapshotExists(snapshotName) {
 			glog.V(1).Infof("Adding snapshot %s to dsw because it exists in snapshot informer.", snapshotName)
-			dswp.desiredStateOfWorld.AddSnapshot(snapshotName, snapshot)
+			dswp.desiredStateOfWorld.AddSnapshot(snapshot)
 		}
 	}
 }
