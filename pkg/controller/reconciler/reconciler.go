@@ -110,10 +110,10 @@ func (rc *reconciler) reconcile() {
 	for name, snapshot := range rc.actualStateOfWorld.GetSnapshots() {
 		if !rc.desiredStateOfWorld.SnapshotExists(name) {
 			// Call snapshotter to start deleting the snapshot: it should
-			// use the volume plugin to actuelly remove the on-disk snapshot.
+			// use the volume plugin to actually remove the on-disk snapshot.
 			// It's likely that the operation exists already: it should be fired by the controller right
 			// after the event has arrived.
-			rc.snapshotter.DeleteVolumeSnapshot(name, snapshot)
+			rc.snapshotter.DeleteVolumeSnapshot(snapshot)
 		}
 	}
 	// Ensure the snapshots that should be created are created
@@ -124,7 +124,7 @@ func (rc *reconciler) reconcile() {
 			// and update adn put the Snapshot object to the actualStateOfWorld once the operation finishes.
 			// It's likely that the operation exists already: it should be fired by the controller right
 			// after the event has arrived.
-			rc.snapshotter.CreateVolumeSnapshot(name, snapshot)
+			rc.snapshotter.CreateVolumeSnapshot(snapshot)
 		} else {
 			// The VolumeSnapshot is in both states of world: check its OK and fix it eventually.
 			aswSnapshot := rc.actualStateOfWorld.GetSnapshot(name)

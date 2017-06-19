@@ -32,7 +32,7 @@ import (
 type DesiredStateOfWorld interface {
 	// Adds snapshot to the list of snapshots. No-op if the snapshot
 	// is already in the list.
-	AddSnapshot(string, *tprv1.VolumeSnapshot) error
+	AddSnapshot(*tprv1.VolumeSnapshot) error
 
 	// Deletes the snapshot from the list of known snapshots. No-op if the snapshot
 	// does not exist.
@@ -47,7 +47,7 @@ type DesiredStateOfWorld interface {
 
 type desiredStateOfWorld struct {
 	// List of snapshots that exist in the desired state of world
-	// it maps [snapshotName] snapshotSpec
+	// it maps [snapshotName] VolumeSnapshot
 	snapshots map[string]*tprv1.VolumeSnapshot
 	sync.RWMutex
 }
@@ -61,7 +61,7 @@ func NewDesiredStateOfWorld() DesiredStateOfWorld {
 }
 
 // Adds a snapshot to the list of snapshots to be created
-func (dsw *desiredStateOfWorld) AddSnapshot(snapshotName string, snapshot *tprv1.VolumeSnapshot) error {
+func (dsw *desiredStateOfWorld) AddSnapshot(snapshot *tprv1.VolumeSnapshot) error {
 	if snapshot == nil {
 		return fmt.Errorf("nil snapshot spec")
 	}
@@ -69,6 +69,7 @@ func (dsw *desiredStateOfWorld) AddSnapshot(snapshotName string, snapshot *tprv1
 	dsw.Lock()
 	defer dsw.Unlock()
 
+	snapshotName := MakeSnapshotName(snapshot.Metadata.Namespace, snapshot.Metadata.Name)
 	glog.Infof("Adding new snapshot to desired state of world: %s", snapshotName)
 	dsw.snapshots[snapshotName] = snapshot
 	return nil

@@ -44,9 +44,9 @@ const (
 // It creates and deletes the snapshots and promotes snapshots to volumes (PV). The create
 // and delete operations need to be idempotent and count with the fact the API object writes
 type VolumeSnapshotter interface {
-	CreateVolumeSnapshot(snapshotName string, snapshot *tprv1.VolumeSnapshot)
-	DeleteVolumeSnapshot(snapshotName string, snapshot *tprv1.VolumeSnapshot)
-	PromoteVolumeSnapshotToPV(snapshotName string, snapshot *tprv1.VolumeSnapshot)
+	CreateVolumeSnapshot(snapshot *tprv1.VolumeSnapshot)
+	DeleteVolumeSnapshot(snapshot *tprv1.VolumeSnapshot)
+	PromoteVolumeSnapshotToPV(snapshot *tprv1.VolumeSnapshot)
 	UpdateVolumeSnapshot(snapshotName string) error
 	UpdateVolumeSnapshotData(snapshotDataName string, status *[]tprv1.VolumeSnapshotDataCondition) error
 }
@@ -187,12 +187,12 @@ func (vs *volumeSnapshotter) updateSnapshotDataStatus(snapshotName string, snaps
 		}
 
 	}
-	vs.actualStateOfWorld.AddSnapshot(snapshotName, snapshot)
+	vs.actualStateOfWorld.AddSnapshot(snapshot)
 	return nil
 }
 
 // This is the function responsible for determining the correct volume plugin to use,
-// asking it to make a snapshot and assignig it some name that it returns to the caller.
+// asking it to make a snapshot and assigning it some name that it returns to the caller.
 func (vs *volumeSnapshotter) takeSnapshot(pv *v1.PersistentVolume) (*tprv1.VolumeSnapshotDataSource, error) {
 	spec := &pv.Spec
 	volumeType := tprv1.GetSupportedVolumeFromPVSpec(spec)
@@ -214,7 +214,7 @@ func (vs *volumeSnapshotter) takeSnapshot(pv *v1.PersistentVolume) (*tprv1.Volum
 }
 
 // This is the function responsible for determining the correct volume plugin to use,
-// asking it to make a snapshot and assignig it some name that it returns to the caller.
+// asking it to make a snapshot and assigning it some name that it returns to the caller.
 func (vs *volumeSnapshotter) deleteSnapshot(spec *v1.PersistentVolumeSpec, source *tprv1.VolumeSnapshotDataSource) error {
 	volumeType := tprv1.GetSupportedVolumeFromPVSpec(spec)
 	if len(volumeType) == 0 {
@@ -237,9 +237,9 @@ func (vs *volumeSnapshotter) deleteSnapshot(spec *v1.PersistentVolumeSpec, sourc
 
 func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot *tprv1.VolumeSnapshot) func() error {
 	// Create a snapshot:
-	// 1. If Snapshot referencs SnapshotData object, try to find it
+	// 1. If Snapshot references SnapshotData object, try to find it
 	//   1a. If doesn't exist, log error and finish, if it exists already, check its SnapshotRef
-	//   1b. If it's empty, check its Spec UID (or fins out what PV/PVC does and copyt the mechanism)
+	//   1b. If it's empty, check its Spec UID (or fins out what PV/PVC does and copies the mechanism)
 	//   1c. If it matches the user (TODO: how to find out?), bind the two objects and finish
 	//   1d. If it doesn't match, log error and finish.
 	// 2. Create the SnapshotData object
@@ -364,7 +364,8 @@ func (vs *volumeSnapshotter) getSnapshotPromoteFunc(snapshotName string, snapsho
 	return func() error { return nil }
 }
 
-func (vs *volumeSnapshotter) CreateVolumeSnapshot(snapshotName string, snapshot *tprv1.VolumeSnapshot) {
+func (vs *volumeSnapshotter) CreateVolumeSnapshot(snapshot *tprv1.VolumeSnapshot) {
+	snapshotName := cache.MakeSnapshotName(snapshot.Metadata.Namespace, snapshot.Metadata.Name)
 	operationName := snapshotOpCreatePrefix + snapshotName + snapshot.Spec.PersistentVolumeClaimName
 	glog.Infof("Snapshotter is about to create volume snapshot operation named %s, spec %#v", operationName, snapshot.Spec)
 
@@ -382,7 +383,8 @@ func (vs *volumeSnapshotter) CreateVolumeSnapshot(snapshotName string, snapshot 
 	}
 }
 
-func (vs *volumeSnapshotter) DeleteVolumeSnapshot(snapshotName string, snapshot *tprv1.VolumeSnapshot) {
+func (vs *volumeSnapshotter) DeleteVolumeSnapshot(snapshot *tprv1.VolumeSnapshot) {
+	snapshotName := cache.MakeSnapshotName(snapshot.Metadata.Namespace, snapshot.Metadata.Name)
 	operationName := snapshotOpDeletePrefix + snapshotName + snapshot.Spec.PersistentVolumeClaimName
 	glog.Infof("Snapshotter is about to create volume snapshot operation named %s", operationName)
 
@@ -400,7 +402,8 @@ func (vs *volumeSnapshotter) DeleteVolumeSnapshot(snapshotName string, snapshot 
 	}
 }
 
-func (vs *volumeSnapshotter) PromoteVolumeSnapshotToPV(snapshotName string, snapshot *tprv1.VolumeSnapshot) {
+func (vs *volumeSnapshotter) PromoteVolumeSnapshotToPV(snapshot *tprv1.VolumeSnapshot) {
+	snapshotName := cache.MakeSnapshotName(snapshot.Metadata.Namespace, snapshot.Metadata.Name)
 	operationName := snapshotOpPromotePrefix + snapshotName + snapshot.Spec.PersistentVolumeClaimName
 	glog.Infof("Snapshotter is about to create volume snapshot operation named %s", operationName)
 

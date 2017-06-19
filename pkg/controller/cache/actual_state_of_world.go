@@ -30,7 +30,7 @@ import (
 type ActualStateOfWorld interface {
 	// Adds snapshot to the list of snapshots. No-op if the snapshot
 	// is already in the list.
-	AddSnapshot(string, *tprv1.VolumeSnapshot) error
+	AddSnapshot(*tprv1.VolumeSnapshot) error
 
 	// Deletes the snapshot from the list of known snapshots. No-op if the snapshot
 	// does not exist.
@@ -48,8 +48,7 @@ type ActualStateOfWorld interface {
 
 type actualStateOfWorld struct {
 	// List of snapshots that need to be created
-	// it maps [snapshotName] pvcName
-	// FIXME: This needs to be changed to something else (spec?)
+	// it maps [snapshotName] VolumeSnapshot
 	snapshots map[string]*tprv1.VolumeSnapshot
 	sync.RWMutex
 }
@@ -63,10 +62,11 @@ func NewActualStateOfWorld() ActualStateOfWorld {
 }
 
 // Adds a snapshot to the list of snapshots to be created.
-func (asw *actualStateOfWorld) AddSnapshot(snapshotName string, snapshot *tprv1.VolumeSnapshot) error {
+func (asw *actualStateOfWorld) AddSnapshot(snapshot *tprv1.VolumeSnapshot) error {
 	asw.Lock()
 	defer asw.Unlock()
 
+	snapshotName := MakeSnapshotName(snapshot.Metadata.Namespace, snapshot.Metadata.Name)
 	glog.Infof("Adding new snapshot to actual state of world: %s", snapshotName)
 	asw.snapshots[snapshotName] = snapshot
 	return nil
