@@ -39,7 +39,6 @@ import (
 	"github.com/rootfs/snapshot/pkg/volume"
 
 	"github.com/rootfs/snapshot/pkg/controller/populator"
-	k8scache "k8s.io/client-go/tools/cache"
 )
 
 const (
@@ -85,8 +84,8 @@ type snapshotController struct {
 	// recorder is used to record events in the API server
 	recorder record.EventRecorder
 
-	snapshotStore      k8scache.Store
-	snapshotController k8scache.Controller
+	snapshotStore      kcache.Store
+	snapshotController kcache.Controller
 
 	// desiredStateOfWorldPopulator runs an asynchronous periodic loop to
 	// populate the current snapshots using snapshotInformer.
@@ -165,10 +164,16 @@ func NewSnapshotController(client *rest.RESTClient,
 // Run starts an Snapshot resource controller
 func (c *snapshotController) Run(ctx <-chan struct{}) {
 	glog.Infof("Starting snapshot controller")
-	defer glog.Infof("Shutting down snapshot controller")
 
 	go c.snapshotController.Run(ctx)
+	for n := 0; n < 10; n++ {
+		if c.snapshotController.HasSynced() {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
 	if !c.snapshotController.HasSynced() {
+		glog.Errorf("Error syncing the controller")
 		return
 	}
 	go c.reconciler.Run(ctx)
