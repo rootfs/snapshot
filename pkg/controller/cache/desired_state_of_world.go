@@ -26,20 +26,20 @@ import (
 
 	"github.com/golang/glog"
 
-	tprv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
+	crdv1 "github.com/rootfs/snapshot/pkg/apis/crd/v1"
 )
 
 type DesiredStateOfWorld interface {
 	// Adds snapshot to the list of snapshots. No-op if the snapshot
 	// is already in the list.
-	AddSnapshot(*tprv1.VolumeSnapshot) error
+	AddSnapshot(*crdv1.VolumeSnapshot) error
 
 	// Deletes the snapshot from the list of known snapshots. No-op if the snapshot
 	// does not exist.
 	DeleteSnapshot(snapshotName string) error
 
 	// Return a copy of the known snapshots
-	GetSnapshots() map[string]*tprv1.VolumeSnapshot
+	GetSnapshots() map[string]*crdv1.VolumeSnapshot
 
 	// Check whether the specified snapshot exists
 	SnapshotExists(snapshotName string) bool
@@ -48,20 +48,20 @@ type DesiredStateOfWorld interface {
 type desiredStateOfWorld struct {
 	// List of snapshots that exist in the desired state of world
 	// it maps [snapshotName] VolumeSnapshot
-	snapshots map[string]*tprv1.VolumeSnapshot
+	snapshots map[string]*crdv1.VolumeSnapshot
 	sync.RWMutex
 }
 
 // NewDesiredStateOfWorld returns a new instance of DesiredStateOfWorld.
 func NewDesiredStateOfWorld() DesiredStateOfWorld {
-	m := make(map[string]*tprv1.VolumeSnapshot)
+	m := make(map[string]*crdv1.VolumeSnapshot)
 	return &desiredStateOfWorld{
 		snapshots: m,
 	}
 }
 
 // Adds a snapshot to the list of snapshots to be created
-func (dsw *desiredStateOfWorld) AddSnapshot(snapshot *tprv1.VolumeSnapshot) error {
+func (dsw *desiredStateOfWorld) AddSnapshot(snapshot *crdv1.VolumeSnapshot) error {
 	if snapshot == nil {
 		return fmt.Errorf("nil snapshot spec")
 	}
@@ -87,11 +87,11 @@ func (dsw *desiredStateOfWorld) DeleteSnapshot(snapshotName string) error {
 }
 
 // Returns a copy of the list of the snapshots known to the actual state of world.
-func (dsw *desiredStateOfWorld) GetSnapshots() map[string]*tprv1.VolumeSnapshot {
+func (dsw *desiredStateOfWorld) GetSnapshots() map[string]*crdv1.VolumeSnapshot {
 	dsw.RLock()
 	defer dsw.RUnlock()
 
-	snapshots := make(map[string]*tprv1.VolumeSnapshot)
+	snapshots := make(map[string]*crdv1.VolumeSnapshot)
 
 	for snapName, snapshot := range dsw.snapshots {
 		snapshots[snapName] = snapshot

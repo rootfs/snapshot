@@ -32,7 +32,7 @@ import (
 
 	"k8s.io/kubernetes/pkg/api"
 
-	tprv1 "github.com/rootfs/snapshot/pkg/apis/tpr/v1"
+	crdv1 "github.com/rootfs/snapshot/pkg/apis/crd/v1"
 	"github.com/rootfs/snapshot/pkg/controller/cache"
 	"github.com/rootfs/snapshot/pkg/controller/reconciler"
 	"github.com/rootfs/snapshot/pkg/controller/snapshotter"
@@ -107,7 +107,7 @@ func NewSnapshotController(client *rest.RESTClient,
 	// Watch snapshot objects
 	source := kcache.NewListWatchFromClient(
 		sc.snapshotClient,
-		tprv1.VolumeSnapshotResourcePlural,
+		crdv1.VolumeSnapshotResourcePlural,
 		apiv1.NamespaceAll,
 		fields.Everything())
 
@@ -115,7 +115,7 @@ func NewSnapshotController(client *rest.RESTClient,
 		source,
 
 		// The object type.
-		&tprv1.VolumeSnapshot{},
+		&crdv1.VolumeSnapshot{},
 
 		// resyncPeriod
 		// Every resyncPeriod, all resources in the kcache will retrigger events.
@@ -185,7 +185,7 @@ func (c *snapshotController) onSnapshotAdd(obj interface{}) {
 		return
 	}
 
-	snapshot, ok := objCopy.(*tprv1.VolumeSnapshot)
+	snapshot, ok := objCopy.(*crdv1.VolumeSnapshot)
 	if !ok {
 		glog.Warning("expecting type VolumeSnapshot but received type %T", objCopy)
 		return
@@ -195,8 +195,8 @@ func (c *snapshotController) onSnapshotAdd(obj interface{}) {
 }
 
 func (c *snapshotController) onSnapshotUpdate(oldObj, newObj interface{}) {
-	oldSnapshot := oldObj.(*tprv1.VolumeSnapshot)
-	newSnapshot := newObj.(*tprv1.VolumeSnapshot)
+	oldSnapshot := oldObj.(*crdv1.VolumeSnapshot)
+	newSnapshot := newObj.(*crdv1.VolumeSnapshot)
 	glog.Infof("[CONTROLLER] OnUpdate oldObj: %#v", oldSnapshot.Spec)
 	glog.Infof("[CONTROLLER] OnUpdate newObj: %#v", newSnapshot.Spec)
 	if oldSnapshot.Spec.SnapshotDataName != newSnapshot.Spec.SnapshotDataName {
@@ -205,7 +205,7 @@ func (c *snapshotController) onSnapshotUpdate(oldObj, newObj interface{}) {
 }
 
 func (c *snapshotController) onSnapshotDelete(obj interface{}) {
-	deletedSnapshot, ok := obj.(*tprv1.VolumeSnapshot)
+	deletedSnapshot, ok := obj.(*crdv1.VolumeSnapshot)
 	if !ok {
 		// DeletedFinalStateUnkown is an expected data type here
 		deletedState, ok := obj.(kcache.DeletedFinalStateUnknown)
@@ -213,7 +213,7 @@ func (c *snapshotController) onSnapshotDelete(obj interface{}) {
 			glog.Errorf("Error: unkown type passed as snapshot for deletion: %T", obj)
 			return
 		}
-		deletedSnapshot, ok = deletedState.Obj.(*tprv1.VolumeSnapshot)
+		deletedSnapshot, ok = deletedState.Obj.(*crdv1.VolumeSnapshot)
 		if !ok {
 			glog.Errorf("Error: unkown data type in DeletedState: %T", deletedState.Obj)
 			return
@@ -227,7 +227,7 @@ func (c *snapshotController) onSnapshotDelete(obj interface{}) {
 		return
 	}
 
-	snapshot, ok := objCopy.(*tprv1.VolumeSnapshot)
+	snapshot, ok := objCopy.(*crdv1.VolumeSnapshot)
 	if !ok {
 		glog.Warning("expecting type VolumeSnapshot but received type %T", objCopy)
 		return
