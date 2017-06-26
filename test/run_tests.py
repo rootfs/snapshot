@@ -71,7 +71,7 @@ if __name__ == '__main__':
     # start the provisioner
     if args.provlog:
         ctrllog = open(args.provlog, mode='w')
-    provcmd = os.path.join(snapsrcdir, '_output/bin/snapshot-controller')
+    provcmd = os.path.join(snapsrcdir, '_output/bin/snapshot-provisioner')
     prov = subprocess.Popen([provcmd + ' -v 10 -alsologtostderr -kubeconfig ' + kubeconfig],
             shell=True, stdout=provlog, stderr=provlog, cwd=snapsrcdir)
     time.sleep(10)
