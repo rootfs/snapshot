@@ -6,7 +6,7 @@ Pre-alpha
 
 ## Demo
 
- - [SIG PM 06/13/2017](https://youtu.be/7-mBY_ZitS8?t=24m41s)1
+ - [SIG PM 06/13/2017](https://youtu.be/7-mBY_ZitS8?t=24m41s)
 
 
 ## Quick Howto
