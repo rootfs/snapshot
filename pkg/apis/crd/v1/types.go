@@ -191,6 +191,12 @@ type AWSElasticBlockStoreVolumeSnapshotSource struct {
 	SnapshotID string `json:"snapshotId"`
 }
 
+// Cinder volume snapshot source
+type CinderVolumeSnapshotSource struct {
+	// Unique id of the cinder volume snapshot resource. Used to identify the snapshot in OpenStack
+	SnapshotID string `json:"snapshotId"`
+}
+
 // GCE PD volume snapshot source
 type GCEPersistentDiskSnapshotSource struct {
 	// Unique id of the persistent disk snapshot resource. Used to identify the disk snapshot in GCE
@@ -214,6 +220,9 @@ type VolumeSnapshotDataSource struct {
 	// GCEPersistentDiskSnapshotSource represents an GCE PD snapshot resource
 	// +optional
 	GCEPersistentDiskSnapshot *GCEPersistentDiskSnapshotSource `json:"gcePersistentDisk,omitempty"`
+	// CinderVolumeSnapshotSource represents Cinder snapshot resource
+	// +optional
+	CinderSnapshot *CinderVolumeSnapshotSource `json:"cinderVolume,omitempty"`
 }
 
 func GetSupportedVolumeFromPVSpec(spec *core_v1.PersistentVolumeSpec) string {

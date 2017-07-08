@@ -26,6 +26,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang/glog"
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
@@ -217,6 +218,57 @@ func newOpenStack(cfg Config) (*OpenStack, error) {
 	}
 
 	return &os, nil
+}
+
+func (os *OpenStack) LoadBalancer() (cloudprovider.LoadBalancer, bool) {
+	glog.V(4).Info("openstack.LoadBalancer() called")
+
+	// TODO: Search for and support Rackspace loadbalancer API, and others.
+	network, err := os.NewNetworkV2()
+	if err != nil {
+		return nil, false
+	}
+
+	compute, err := os.NewComputeV2()
+	if err != nil {
+		return nil, false
+	}
+
+	lbVersion := os.lbOpts.LBVersion
+	if lbVersion == "" {
+		// No version specified, try newest supported by server
+		netExts, err := networkExtensions(network)
+		if err != nil {
+			glog.Warningf("Failed to list neutron extensions: %v", err)
+			return nil, false
+		}
+
+		if netExts["lbaasv2"] {
+			lbVersion = "v2"
+		} else if netExts["lbaas"] {
+			lbVersion = "v1"
+		} else {
+			glog.Warningf("Failed to find neutron LBaaS extension (v1 or v2)")
+			return nil, false
+		}
+		glog.V(3).Infof("Using LBaaS extension %v", lbVersion)
+	}
+
+	glog.V(1).Info("Claiming to support LoadBalancer")
+
+	if lbVersion == "v2" {
+		return &LbaasV2{LoadBalancer{network, compute, os.lbOpts}}, true
+	} else if lbVersion == "v1" {
+		return &LbaasV1{LoadBalancer{network, compute, os.lbOpts}}, true
+	} else {
+		glog.Warningf("Config error: unrecognised lb-version \"%v\"", lbVersion)
+		return nil, false
+	}
+}
+
+// ScrubDNS filters DNS settings for pods.
+func (os *OpenStack) ScrubDNS(nameServers, searches []string) ([]string, []string) {
+	return nameServers, searches
 }
 
 // Initialize passes a Kubernetes clientBuilder interface to the cloud provider
@@ -411,4 +463,59 @@ func (os *OpenStack) snapshotService() (snapshotService, error) {
 		return nil, err
 	}
 	return &SnapshotsV2{sClient, os.bsOpts}, nil
+}
+
+func (os *OpenStack) Routes() (cloudprovider.Routes, bool) {
+	glog.V(4).Info("openstack.Routes() called")
+
+	network, err := os.NewNetworkV2()
+	if err != nil {
+		return nil, false
+	}
+
+	netExts, err := networkExtensions(network)
+	if err != nil {
+		glog.Warningf("Failed to list neutron extensions: %v", err)
+		return nil, false
+	}
+
+	if !netExts["extraroute"] {
+		glog.V(3).Infof("Neutron extraroute extension not found, required for Routes support")
+		return nil, false
+	}
+
+	compute, err := os.NewComputeV2()
+	if err != nil {
+		return nil, false
+	}
+
+	r, err := NewRoutes(compute, network, os.routeOpts)
+	if err != nil {
+		glog.Warningf("Error initialising Routes support: %v", err)
+		return nil, false
+	}
+
+	glog.V(1).Info("Claiming to support Routes")
+
+	return r, true
+}
+
+func (os *OpenStack) Zones() (cloudprovider.Zones, bool) {
+	glog.V(1).Info("Claiming to support Zones")
+
+	return os, true
+}
+func (os *OpenStack) GetZone() (cloudprovider.Zone, error) {
+	md, err := getMetadata()
+	if err != nil {
+		return cloudprovider.Zone{}, err
+	}
+
+	zone := cloudprovider.Zone{
+		FailureDomain: md.AvailabilityZone,
+		Region:        os.region,
+	}
+	glog.V(1).Infof("Current zone is %v", zone)
+
+	return zone, nil
 }
