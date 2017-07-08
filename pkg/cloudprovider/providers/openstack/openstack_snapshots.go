@@ -75,7 +75,7 @@ func (snapshots *SnapshotsV2) deleteSnapshot(snapshotID string) error {
 }
 
 // Create a snapshot from the specified volume
-func (os *OpenStack) CreateSnapshot(sourceVolumeID, name, description string, tags *map[string]string) (string, error) {
+func (os *OpenStack) CreateSnapshot(sourceVolumeID, name, description string, tags map[string]string) (string, error) {
 	snapshots, err := os.snapshotService()
 	if err != nil || snapshots == nil {
 		glog.Errorf("Unable to initialize cinder client for region: %s", os.region)
@@ -88,7 +88,7 @@ func (os *OpenStack) CreateSnapshot(sourceVolumeID, name, description string, ta
 		Description: description,
 	}
 	if tags != nil {
-		opts.Metadata = *tags
+		opts.Metadata = tags
 	}
 
 	snapshotID, err := snapshots.createSnapshot(opts)

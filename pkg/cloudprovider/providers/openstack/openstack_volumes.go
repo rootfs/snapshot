@@ -227,7 +227,7 @@ func (os *OpenStack) getVolume(volumeID string) (Volume, error) {
 }
 
 // Create a volume of given size (in GiB)
-func (os *OpenStack) CreateVolume(name string, size int, vtype, availability string, tags *map[string]string) (string, string, error) {
+func (os *OpenStack) CreateVolume(name string, size int, vtype, availability, snapshotID string, tags *map[string]string) (string, string, error) {
 	volumes, err := os.volumeService("")
 	if err != nil || volumes == nil {
 		glog.Errorf("Unable to initialize cinder client for region: %s", os.region)
@@ -235,10 +235,11 @@ func (os *OpenStack) CreateVolume(name string, size int, vtype, availability str
 	}
 
 	opts := VolumeCreateOpts{
-		Name:         name,
-		Size:         size,
-		VolumeType:   vtype,
-		Availability: availability,
+		Name:             name,
+		Size:             size,
+		VolumeType:       vtype,
+		Availability:     availability,
+		SourceSnapshotID: snapshotID,
 	}
 	if tags != nil {
 		opts.Metadata = *tags
