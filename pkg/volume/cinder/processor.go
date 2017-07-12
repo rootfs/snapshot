@@ -133,7 +133,8 @@ func (c *cinderPlugin) SnapshotRestore(snapshotData *crdv1.VolumeSnapshotData, p
 		}
 	}
 
-	volumeID, AZ, err := c.cloud.CreateVolume(volName, szGB, vType, zone, snapID, &tags)
+	// FIXME(j-griffith): Should probably use int64 in gophercloud?
+	volumeID, _, err := c.cloud.CreateVolume(volName, int(szGB), vType, zone, snapID, &tags)
 	if err != nil {
 		glog.Errorf("error create volume from snapshot: %v", err)
 		return nil, nil, err
@@ -141,21 +142,23 @@ func (c *cinderPlugin) SnapshotRestore(snapshotData *crdv1.VolumeSnapshotData, p
 	glog.V(2).Infof("Successfully created Cinder Volume from Snapshot, Volume: %s", volumeID)
 	pv := &v1.PersistentVolumeSource{
 		Cinder: &v1.CinderVolumeSource{
-			VolumeID:  volumeID,
-			FSType:    "ext4",
-			Partition: 0,
-			ReadOnly:  false,
+			VolumeID: volumeID,
+			FSType:   "ext4",
+			ReadOnly: false,
 		},
 	}
 	return pv, nil, nil
 }
 
-// Describe an EBS volume snapshot status for create or delete.
-// return status (completed or pending or error), and error
-func (c *cinderPlugin) DescribeSnapshot(snapshotData *crdv1.VolumeSnapshotData) (isCompleted bool, err error) {
+// DescribeSnapshot retrieves info for the specified Snapshot
+func (c *cinderPlugin) DescribeSnapshot(snapshotData *crdv1.VolumeSnapshotData) (bool, error) {
 	if snapshotData == nil || snapshotData.Spec.CinderSnapshot == nil {
 		return false, fmt.Errorf("invalid VolumeSnapshotDataSource: %v", snapshotData)
 	}
 	snapshotID := snapshotData.Spec.CinderSnapshot.SnapshotID
-	return plugin.cloud.DescribeSnapshot(snapshotID), nil
+	isComplete, err := c.cloud.DescribeSnapshot(snapshotID)
+	if err != nil {
+		return false, err
+	}
+	return isComplete, nil
 }

@@ -28,8 +28,10 @@ import (
 	"github.com/rootfs/snapshot/pkg/cloudprovider"
 	"github.com/rootfs/snapshot/pkg/cloudprovider/providers/aws"
 	"github.com/rootfs/snapshot/pkg/cloudprovider/providers/gce"
+	"github.com/rootfs/snapshot/pkg/cloudprovider/providers/openstack"
 	"github.com/rootfs/snapshot/pkg/volume"
 	"github.com/rootfs/snapshot/pkg/volume/aws_ebs"
+	"github.com/rootfs/snapshot/pkg/volume/cinder"
 	"github.com/rootfs/snapshot/pkg/volume/gce_pd"
 	"github.com/rootfs/snapshot/pkg/volume/hostpath"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -209,7 +211,7 @@ var (
 	master          = flag.String("master", "", "Master URL")
 	kubeconfig      = flag.String("kubeconfig", "", "Absolute path to the kubeconfig")
 	id              = flag.String("id", "", "Unique provisioner identity")
-	cloudProvider   = flag.String("cloudprovider", "", "aws|gce")
+	cloudProvider   = flag.String("cloudprovider", "", "aws|gce|openstack")
 	cloudConfigFile = flag.String("cloudconfig", "", "Path to a Cloud config. Only required if cloudprovider is set.")
 	volumePlugins   = make(map[string]volume.VolumePlugin)
 )
@@ -283,6 +285,12 @@ func buildVolumePlugins() {
 				gcePlugin.Init(cloud)
 				volumePlugins[gce_pd.GetPluginName()] = gcePlugin
 				glog.Info("Register cloudprovider %s", gce_pd.GetPluginName())
+			}
+			if *cloudProvider == openstack.ProviderName {
+				cinderPlugin := cinder.RegisterPlugin()
+				cinderPlugin.Init(cloud)
+				volumePlugins[cinder.GetPluginName()] = cinderPlugin
+				glog.Info("Register cloudprovider %s", cinder.GetPluginName())
 			}
 		} else {
 			glog.Warningf("failed to initialize aws cloudprovider: %v, supported cloudproviders are %#v", err, cloudprovider.CloudProviders())

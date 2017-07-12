@@ -23,10 +23,10 @@ import (
 	"path"
 	"strings"
 
-	k8s_volume "k8s.io/kubernetes/pkg/volume"
+	k8sVolume "k8s.io/kubernetes/pkg/volume"
 
 	"github.com/gophercloud/gophercloud"
-	volumes_v2 "github.com/gophercloud/gophercloud/openstack/blockstorage/v2/volumes"
+	volumesV2 "github.com/gophercloud/gophercloud/openstack/blockstorage/v2/volumes"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/volumeattach"
 
 	"github.com/golang/glog"
@@ -38,31 +38,33 @@ type volumeService interface {
 	deleteVolume(volumeName string) error
 }
 
-// Volumes implementation for v1
+// VolumesV1 implementation for v1
 type VolumesV1 struct {
 	blockstorage *gophercloud.ServiceClient
 	opts         BlockStorageOpts
 }
 
-// Volumes implementation for v2
+// VolumesV2 implementation for v2
 type VolumesV2 struct {
 	blockstorage *gophercloud.ServiceClient
 	opts         BlockStorageOpts
 }
 
+// Volume reprsents the Cinder Volume object
 type Volume struct {
-	// ID of the instance, to which this volume is attached. "" if not attached
-	AttachedServerId string
-	// Device file path
+	// AttachedServerID is a UUID representing the Server Volume is attached to
+	AttachedServerID string
+	// AttachedDevice is device file path
 	AttachedDevice string
-	// Unique identifier for the volume.
+	// ID is the volumes Cinder UUID.
 	ID string
-	// Human-readable display name for the volume.
+	// Name is a Human-readable display name for the volume.
 	Name string
-	// Current status of the volume.
+	// Status is the current state of the volume.
 	Status string
 }
 
+// VolumeCreateOpts valid options for creating a Volume
 type VolumeCreateOpts struct {
 	Size             int
 	Availability     string
@@ -73,6 +75,7 @@ type VolumeCreateOpts struct {
 	SourceSnapshotID string
 }
 
+// Valid Volume status strings
 const (
 	VolumeAvailableStatus = "available"
 	VolumeInUseStatus     = "in-use"
@@ -82,7 +85,7 @@ const (
 
 func (volumes *VolumesV2) createVolume(opts VolumeCreateOpts) (string, string, error) {
 
-	create_opts := volumes_v2.CreateOpts{
+	createOpts := volumesV2.CreateOpts{
 		Name:             opts.Name,
 		Size:             opts.Size,
 		VolumeType:       opts.VolumeType,
@@ -90,7 +93,7 @@ func (volumes *VolumesV2) createVolume(opts VolumeCreateOpts) (string, string, e
 		Metadata:         opts.Metadata,
 	}
 
-	vol, err := volumes_v2.Create(volumes.blockstorage, create_opts).Extract()
+	vol, err := volumesV2.Create(volumes.blockstorage, createOpts).Extract()
 	if err != nil {
 		return "", "", err
 	}
@@ -98,7 +101,7 @@ func (volumes *VolumesV2) createVolume(opts VolumeCreateOpts) (string, string, e
 }
 
 func (volumes *VolumesV2) getVolume(volumeID string) (Volume, error) {
-	volumeV2, err := volumes_v2.Get(volumes.blockstorage, volumeID).Extract()
+	volumeV2, err := volumesV2.Get(volumes.blockstorage, volumeID).Extract()
 	if err != nil {
 		glog.Errorf("Error occurred getting volume by ID: %s", volumeID)
 		return Volume{}, err
@@ -111,7 +114,7 @@ func (volumes *VolumesV2) getVolume(volumeID string) (Volume, error) {
 	}
 
 	if len(volumeV2.Attachments) > 0 {
-		volume.AttachedServerId = volumeV2.Attachments[0].ServerID
+		volume.AttachedServerID = volumeV2.Attachments[0].ServerID
 		volume.AttachedDevice = volumeV2.Attachments[0].Device
 	}
 
@@ -119,7 +122,7 @@ func (volumes *VolumesV2) getVolume(volumeID string) (Volume, error) {
 }
 
 func (volumes *VolumesV2) deleteVolume(volumeID string) error {
-	err := volumes_v2.Delete(volumes.blockstorage, volumeID).ExtractErr()
+	err := volumesV2.Delete(volumes.blockstorage, volumeID).ExtractErr()
 	if err != nil {
 		glog.Errorf("Cannot delete volume %s: %v", volumeID, err)
 	}
@@ -127,6 +130,7 @@ func (volumes *VolumesV2) deleteVolume(volumeID string) error {
 	return err
 }
 
+// OperationPending checks status, makes sure we're not in error state
 func (os *OpenStack) OperationPending(diskName string) (bool, string, error) {
 	volume, err := os.getVolume(diskName)
 	if err != nil {
@@ -143,7 +147,7 @@ func (os *OpenStack) OperationPending(diskName string) (bool, string, error) {
 	return true, volumeStatus, nil
 }
 
-// Attaches given cinder volume to the compute running kubelet
+// AttachDisk attaches specified cinder volume to the compute running kubelet
 func (os *OpenStack) AttachDisk(instanceID, volumeID string) (string, error) {
 	volume, err := os.getVolume(volumeID)
 	if err != nil {
@@ -159,13 +163,13 @@ func (os *OpenStack) AttachDisk(instanceID, volumeID string) (string, error) {
 		return "", err
 	}
 
-	if volume.AttachedServerId != "" {
-		if instanceID == volume.AttachedServerId {
+	if volume.AttachedServerID != "" {
+		if instanceID == volume.AttachedServerID {
 			glog.V(4).Infof("Disk %s is already attached to instance %s", volumeID, instanceID)
 			return volume.ID, nil
 		}
-		glog.V(2).Infof("Disk %s is attached to a different instance (%s), detaching", volumeID, volume.AttachedServerId)
-		err = os.DetachDisk(volume.AttachedServerId, volumeID)
+		glog.V(2).Infof("Disk %s is attached to a different instance (%s), detaching", volumeID, volume.AttachedServerID)
+		err = os.DetachDisk(volume.AttachedServerID, volumeID)
 		if err != nil {
 			return "", err
 		}
@@ -198,21 +202,20 @@ func (os *OpenStack) DetachDisk(instanceID, volumeID string) error {
 	if err != nil {
 		return err
 	}
-	if volume.AttachedServerId != instanceID {
+	if volume.AttachedServerID != instanceID {
 		errMsg := fmt.Sprintf("Disk: %s has no attachments or is not attached to compute: %s", volume.Name, instanceID)
 		glog.Errorf(errMsg)
 		return errors.New(errMsg)
-	} else {
-		// This is a blocking call and effects kubelet's performance directly.
-		// We should consider kicking it out into a separate routine, if it is bad.
-		err = volumeattach.Delete(cClient, instanceID, volume.ID).ExtractErr()
-		if err != nil {
-			glog.Errorf("Failed to delete volume %s from compute %s attached %v", volume.ID, instanceID, err)
-			return err
-		}
-		glog.V(2).Infof("Successfully detached volume: %s from compute: %s", volume.ID, instanceID)
 	}
 
+	// This is a blocking call and effects kubelet's performance directly.
+	// We should consider kicking it out into a separate routine, if it is bad.
+	err = volumeattach.Delete(cClient, instanceID, volume.ID).ExtractErr()
+	if err != nil {
+		glog.Errorf("Failed to delete volume %s from compute %s attached %v", volume.ID, instanceID, err)
+		return err
+	}
+	glog.V(2).Infof("Successfully detached volume: %s from compute: %s", volume.ID, instanceID)
 	return nil
 }
 
@@ -226,7 +229,7 @@ func (os *OpenStack) getVolume(volumeID string) (Volume, error) {
 	return volumes.getVolume(volumeID)
 }
 
-// Create a volume of given size (in GiB)
+// CreateVolume of given size (in GiB)
 func (os *OpenStack) CreateVolume(name string, size int, vtype, availability, snapshotID string, tags *map[string]string) (string, string, error) {
 	volumes, err := os.volumeService("")
 	if err != nil || volumes == nil {
@@ -283,6 +286,7 @@ func (os *OpenStack) GetDevicePath(volumeID string) string {
 	return ""
 }
 
+// DeleteVolume deletes the specified volume
 func (os *OpenStack) DeleteVolume(volumeID string) error {
 	used, err := os.diskIsUsed(volumeID)
 	if err != nil {
@@ -290,7 +294,7 @@ func (os *OpenStack) DeleteVolume(volumeID string) error {
 	}
 	if used {
 		msg := fmt.Sprintf("Cannot delete the volume %q, it's still attached to a node", volumeID)
-		return k8s_volume.NewDeletedVolumeInUseError(msg)
+		return k8sVolume.NewDeletedVolumeInUseError(msg)
 	}
 
 	volumes, err := os.volumeService("")
@@ -307,7 +311,7 @@ func (os *OpenStack) DeleteVolume(volumeID string) error {
 
 }
 
-// Get device path of attached volume to the compute running kubelet, as known by cinder
+// GetAttachmentDiskPath retrieves device path of attached volume to the compute running kubelet, as known by cinder
 func (os *OpenStack) GetAttachmentDiskPath(instanceID, volumeID string) (string, error) {
 	// See issue #33128 - Cinder does not always tell you the right device path, as such
 	// we must only use this value as a last resort.
@@ -320,31 +324,30 @@ func (os *OpenStack) GetAttachmentDiskPath(instanceID, volumeID string) (string,
 		glog.Errorf(errmsg)
 		return "", errors.New(errmsg)
 	}
-	if volume.AttachedServerId != "" {
-		if instanceID == volume.AttachedServerId {
+	if volume.AttachedServerID != "" {
+		if instanceID == volume.AttachedServerID {
 			// Attachment[0]["device"] points to the device path
 			// see http://developer.openstack.org/api-ref-blockstorage-v1.html
 			return volume.AttachedDevice, nil
-		} else {
-			errMsg := fmt.Sprintf("Disk %q is attached to a different compute: %q, should be detached before proceeding", volumeID, volume.AttachedServerId)
-			glog.Errorf(errMsg)
-			return "", errors.New(errMsg)
 		}
+		errMsg := fmt.Sprintf("Disk %q is attached to a different compute: %q, should be detached before proceeding", volumeID, volume.AttachedServerID)
+		glog.Errorf(errMsg)
+		return "", errors.New(errMsg)
 	}
-	return "", fmt.Errorf("volume %s has no ServerId.", volumeID)
+	return "", fmt.Errorf("volume %s has no ServerId", volumeID)
 }
 
-// query if a volume is attached to a compute instance
+// DiskIsAttached query if a volume is attached to a compute instance
 func (os *OpenStack) DiskIsAttached(instanceID, volumeID string) (bool, error) {
 	volume, err := os.getVolume(volumeID)
 	if err != nil {
 		return false, err
 	}
 
-	return instanceID == volume.AttachedServerId, nil
+	return instanceID == volume.AttachedServerID, nil
 }
 
-// query if a list of volumes are attached to a compute instance
+// DisksAreAttached query if a list of volumes are attached to a compute instance
 func (os *OpenStack) DisksAreAttached(instanceID string, volumeIDs []string) (map[string]bool, error) {
 	attached := make(map[string]bool)
 	for _, volumeID := range volumeIDs {
@@ -360,10 +363,10 @@ func (os *OpenStack) diskIsUsed(volumeID string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return volume.AttachedServerId != "", nil
+	return volume.AttachedServerID != "", nil
 }
 
-// query if we should trust the cinder provide deviceName, See issue #33128
+// ShouldTrustDevicePath query if we should trust the cinder provide deviceName, See issue #33128
 func (os *OpenStack) ShouldTrustDevicePath() bool {
 	return os.bsOpts.TrustDevicePath
 }
