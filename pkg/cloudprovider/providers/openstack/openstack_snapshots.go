@@ -17,17 +17,21 @@ limitations under the License.
 package openstack
 
 import (
+	"fmt"
+
 	"github.com/gophercloud/gophercloud"
-	snapshots_v2 "github.com/gophercloud/gophercloud/openstack/blockstorage/v2/snapshots"
+	snapshotsV2 "github.com/gophercloud/gophercloud/openstack/blockstorage/v2/snapshots"
 
 	"github.com/golang/glog"
 )
 
+// SnapshotsV2 is the Cinder V2 Snapshot service from gophercloud
 type SnapshotsV2 struct {
 	blockstorage *gophercloud.ServiceClient
 	opts         BlockStorageOpts
 }
 
+// Snapshot is the representation of the Cinder Snapshot object
 type Snapshot struct {
 	ID             string
 	Name           string
@@ -35,6 +39,7 @@ type Snapshot struct {
 	SourceVolumeID string
 }
 
+// SnapshotCreateOpts are the valid create options for Cinder Snapshots
 type SnapshotCreateOpts struct {
 	VolumeID    string
 	Name        string
@@ -46,11 +51,12 @@ type SnapshotCreateOpts struct {
 type snapshotService interface {
 	createSnapshot(opts SnapshotCreateOpts) (string, error)
 	deleteSnapshot(snapshotName string) error
+	getSnapshot(snapshotID string) (Snapshot, error)
 }
 
 func (snapshots *SnapshotsV2) createSnapshot(opts SnapshotCreateOpts) (string, error) {
 
-	create_opts := snapshots_v2.CreateOpts{
+	createOpts := snapshotsV2.CreateOpts{
 		VolumeID:    opts.VolumeID,
 		Force:       false,
 		Name:        opts.Name,
@@ -58,15 +64,20 @@ func (snapshots *SnapshotsV2) createSnapshot(opts SnapshotCreateOpts) (string, e
 		Metadata:    opts.Metadata,
 	}
 
-	snap, err := snapshots_v2.Create(snapshots.blockstorage, create_opts).Extract()
+	snap, err := snapshotsV2.Create(snapshots.blockstorage, createOpts).Extract()
 	if err != nil {
 		return "", err
 	}
 	return snap.ID, nil
 }
 
+func (snapshots *SnapshotsV2) getSnapshot(snapshotID string) (Snapshot, error) {
+	var snap Snapshot
+	return snap, nil
+}
+
 func (snapshots *SnapshotsV2) deleteSnapshot(snapshotID string) error {
-	err := snapshots_v2.Delete(snapshots.blockstorage, snapshotID).ExtractErr()
+	err := snapshotsV2.Delete(snapshots.blockstorage, snapshotID).ExtractErr()
 	if err != nil {
 		glog.Errorf("Cannot delete snapshot %s: %v", snapshotID, err)
 	}
@@ -74,8 +85,8 @@ func (snapshots *SnapshotsV2) deleteSnapshot(snapshotID string) error {
 	return err
 }
 
-// Create a snapshot from the specified volume
-func (os *OpenStack) CreateSnapshot(sourceVolumeID, name, description string, tags *map[string]string) (string, error) {
+// CreateSnapshot from the specified volume
+func (os *OpenStack) CreateSnapshot(sourceVolumeID, name, description string, tags map[string]string) (string, error) {
 	snapshots, err := os.snapshotService()
 	if err != nil || snapshots == nil {
 		glog.Errorf("Unable to initialize cinder client for region: %s", os.region)
@@ -88,7 +99,7 @@ func (os *OpenStack) CreateSnapshot(sourceVolumeID, name, description string, ta
 		Description: description,
 	}
 	if tags != nil {
-		opts.Metadata = *tags
+		opts.Metadata = tags
 	}
 
 	snapshotID, err := snapshots.createSnapshot(opts)
@@ -102,7 +113,7 @@ func (os *OpenStack) CreateSnapshot(sourceVolumeID, name, description string, ta
 	return snapshotID, nil
 }
 
-// Delete the specified snapshot
+// DeleteSnapshot deletes the specified snapshot
 func (os *OpenStack) DeleteSnapshot(snapshotID string) error {
 	snapshots, err := os.snapshotService()
 	if err != nil || snapshots == nil {
@@ -117,14 +128,25 @@ func (os *OpenStack) DeleteSnapshot(snapshotID string) error {
 	return nil
 }
 
-/*
-// Retrieve list of Snapshots
-func (os *OpenStack) ListSnapshots() ([]Snapshot, error) {
-    snapshots, err := os.snapshotService("")
-	if err != nil || snapshots == nil {
+// FIXME(j-griffith): Name doesn't fit at all here, this is actually more like is `IsAvailable`
+// DescribeSnapshot returns the status of the snapshot
+func (os *OpenStack) DescribeSnapshot(snapshotID string) (isCompleted bool, err error) {
+	ss, err := os.snapshotService()
+	if err != nil || ss == nil {
 		glog.Errorf("Unable to initialize cinder client for region: %s", os.region)
-		return []Snapshot, err
+		return false, err
 	}
-	snapshots_v2.List().Extract()
+
+	snap, err := ss.getSnapshot(snapshotID)
+	if err != nil {
+		glog.Errorf("error requesting snapshot %s: %v", snapshotID, err)
+	}
+
+	if err != nil {
+		return false, err
+	}
+	if snap.Status != "available" {
+		return false, fmt.Errorf("current snapshot status is: %s", snap.Status)
+	}
+	return true, nil
 }
-*/
