@@ -80,7 +80,7 @@ func (dsw *desiredStateOfWorld) DeleteSnapshot(snapshotName string) error {
 	dsw.Lock()
 	defer dsw.Unlock()
 
-	glog.Infof("Deleteing snapshot from desired state of world: %s", snapshotName)
+	glog.Infof("Deleting snapshot from desired state of world: %s", snapshotName)
 
 	delete(dsw.snapshots, snapshotName)
 	return nil

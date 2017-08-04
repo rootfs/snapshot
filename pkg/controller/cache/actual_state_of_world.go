@@ -77,7 +77,7 @@ func (asw *actualStateOfWorld) DeleteSnapshot(snapshotName string) error {
 	asw.Lock()
 	defer asw.Unlock()
 
-	glog.Infof("Deleteing snapshot from actual state of world: %s", snapshotName)
+	glog.Infof("Deleting snapshot from actual state of world: %s", snapshotName)
 	delete(asw.snapshots, snapshotName)
 	return nil
 }
