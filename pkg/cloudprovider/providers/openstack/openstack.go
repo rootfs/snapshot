@@ -178,6 +178,16 @@ func (c *Caller) Call(f func()) {
 	}
 }
 
+func init() {
+        cloudprovider.RegisterCloudProvider(ProviderName, func(config io.Reader) (cloudprovider.Interface, error) {
+                cfg, err := readConfig(config)
+                if err != nil {
+                        return nil, err
+                }
+                return newOpenStack(cfg)
+        })
+}
+
 func newOpenStack(cfg Config) (*OpenStack, error) {
 	provider, err := openstack.NewClient(cfg.Global.AuthUrl)
 	if err != nil {

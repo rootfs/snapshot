@@ -91,6 +91,7 @@ func (volumes *VolumesV2) createVolume(opts VolumeCreateOpts) (string, string, e
 		VolumeType:       opts.VolumeType,
 		AvailabilityZone: opts.Availability,
 		Metadata:         opts.Metadata,
+		SnapshotID:       opts.SourceSnapshotID,
 	}
 
 	vol, err := volumesV2.Create(volumes.blockstorage, createOpts).Extract()
