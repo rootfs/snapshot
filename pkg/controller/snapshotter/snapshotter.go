@@ -18,6 +18,7 @@ package snapshotter
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/golang/glog"
 
@@ -64,6 +65,10 @@ const (
 	snapshotOpCreatePrefix  string = "create"
 	snapshotOpDeletePrefix  string = "delete"
 	snapshotOpPromotePrefix string = "promote"
+	// Number of retries when we create a VolumeSnapshotData object.
+	createVolumeSnapshotDataRetryCount = 5
+	// Interval between retries when we create a VolumeSnapshotData object.
+	createVolumeSnapshotDataInterval = 10 * time.Second
 )
 
 func NewVolumeSnapshotter(
@@ -127,10 +132,14 @@ func (vs *volumeSnapshotter) getSnapshotDataFromSnapshotName(snapshotName string
 		return nil
 	}
 	for _, snapData := range snapshotDataList.Items {
-		if snapData.Spec.VolumeSnapshotRef.Name == snapshotName {
-			snapshotDataObj = snapData
-			found = true
-			break
+		if snapData.Spec.VolumeSnapshotRef != nil {
+			name := snapData.Spec.VolumeSnapshotRef.Namespace + "/" + snapData.Spec.VolumeSnapshotRef.Name
+			// if snapData.Spec.VolumeSnapshotRef.Name == snapshotName
+			if name == snapshotName || snapData.Spec.VolumeSnapshotRef.Name == snapshotName {
+				snapshotDataObj = snapData
+				found = true
+				break
+			}
 		}
 	}
 	if !found {
@@ -140,6 +149,7 @@ func (vs *volumeSnapshotter) getSnapshotDataFromSnapshotName(snapshotName string
 
 	return &snapshotDataObj
 }
+
 func (vs *volumeSnapshotter) updateSnapshotDataStatus(snapshotName string, snapshot *crdv1.VolumeSnapshot) error {
 	var snapshotDataObj crdv1.VolumeSnapshotData
 	snapshotDataName := snapshot.Spec.SnapshotDataName
@@ -181,9 +191,11 @@ func (vs *volumeSnapshotter) updateSnapshotDataStatus(snapshotName string, snaps
 				LastTransitionTime: metav1.Now(),
 			},
 		}
+
+		// Bind VolumeSnapshot to VolumeSnapshotData
 		err = vs.UpdateVolumeSnapshotData(snapshotDataName, &status)
 		if err != nil {
-			return err
+			return fmt.Errorf("Error update snapshotData object %s: %v", snapshotName, err)
 		}
 
 	}
@@ -248,6 +260,7 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 	// 5. Add the Snapshot to the ActualStateOfWorld
 	// 6. Finish (we have created snapshot for an user)
 	return func() error {
+		glog.Infof("Enter getSnapshotCreateFunc: snapshotName %s snapshot [%#v]", snapshotName, snapshot)
 		if snapshot.Spec.SnapshotDataName != "" {
 			// update snapshot data status and if complete, adds to asw
 			return vs.updateSnapshotDataStatus(snapshotName, snapshot)
@@ -291,20 +304,35 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 			},
 		}
 		var result crdv1.VolumeSnapshotData
-		err = vs.restClient.Post().
-			Resource(crdv1.VolumeSnapshotDataResourcePlural).
-			Namespace(v1.NamespaceDefault).
-			Body(snapshotData).
-			Do().Into(&result)
+		for i := 0; i < createVolumeSnapshotDataRetryCount; i++ {
+			err = vs.restClient.Post().
+				Resource(crdv1.VolumeSnapshotDataResourcePlural).
+				Namespace(v1.NamespaceDefault).
+				Body(snapshotData).
+				Do().Into(&result)
+			if err != nil {
+				// Re-Try it as errors writing to the API server are common
+				glog.Infof("Error creating the VolumeSnapshotData %s: %v. Retrying...", snapshotName, err)
+				time.Sleep(createVolumeSnapshotDataInterval)
+			} else {
+				break
+			}
+		}
 
 		if err != nil {
-			//FIXME: Errors writing to the API server are common: this needs to be re-tried
 			glog.Errorf("Error creating the VolumeSnapshotData %s: %v", snapshotName, err)
+			// Don't proceed to create snapshot using the plugin due to error creating
+			// VolumeSnapshotData
+			return fmt.Errorf("Failed to create the VolumeSnapshotData %s for snapshot %s", snapName, snapshotName)
 		}
+
 		// Update the VolumeSnapshot object too
 		err = vs.UpdateVolumeSnapshot(snapshotName)
 		if err != nil {
 			glog.Errorf("Error updating volume snapshot %s: %v", snapshotName, err)
+			// NOTE(xyang): Return error if failed to update VolumeSnapshot after
+			// create snapshot request is sent to the plugin and VolumeSnapshotData is updated
+			return fmt.Errorf("Failed to update VolumeSnapshot for snapshot %s", snapshotName)
 		}
 
 		return nil
@@ -451,6 +479,7 @@ func (vs *volumeSnapshotter) UpdateVolumeSnapshot(snapshotName string) error {
 		return fmt.Errorf("Error getting VolumeSnapshotData for VolumeSnapshot %s", snapshotName)
 	}
 
+	glog.Infof("UpdateVolumeSnapshot: Setting VolumeSnapshotData name in VolumeSnapshotSpec of VolumeSnapshot object")
 	snapshotCopy.Spec.SnapshotDataName = snapshotDataObj.Metadata.Name
 	snapshotCopy.Status.Conditions = []crdv1.VolumeSnapshotCondition{
 		{
