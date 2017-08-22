@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/client-go/pkg/api/v1"
 
+        "github.com/golang/glog"
 	crdv1 "github.com/rootfs/snapshot/pkg/apis/crd/v1"
 	"github.com/rootfs/snapshot/pkg/cloudprovider"
 	"github.com/rootfs/snapshot/pkg/volume"
@@ -50,7 +51,7 @@ func GetPluginName() string {
 func (h *hostPathPlugin) Init(_ cloudprovider.Interface) {
 }
 
-func (h *hostPathPlugin) SnapshotCreate(pv *v1.PersistentVolume) (*crdv1.VolumeSnapshotDataSource, error) {
+func (h *hostPathPlugin) SnapshotCreate(pv *v1.PersistentVolume, tags *map[string]string) (*crdv1.VolumeSnapshotDataSource, error) {
 	spec := &pv.Spec
 	if spec == nil || spec.HostPath == nil {
 		return nil, fmt.Errorf("invalid PV spec %v", spec)
@@ -83,6 +84,18 @@ func (a *hostPathPlugin) DescribeSnapshot(snapshotData *crdv1.VolumeSnapshotData
 		return false, err
 	}
 	return true, nil
+}
+
+// FindSnapshot finds a VolumeSnapshot by matching metadata
+func (a *hostPathPlugin) FindSnapshot(tags *map[string]string) (*crdv1.VolumeSnapshotDataSource, error) {
+        glog.Infof("FindSnapshot by tags: %#v", *tags)
+
+	// TODO: Implement FindSnapshot
+        return &crdv1.VolumeSnapshotDataSource{
+                HostPath: &crdv1.HostPathVolumeSnapshotSource{
+                        Path: "",
+                },
+        }, nil
 }
 
 func (h *hostPathPlugin) SnapshotRestore(snapshotData *crdv1.VolumeSnapshotData, _ *v1.PersistentVolumeClaim, _ string, _ map[string]string) (*v1.PersistentVolumeSource, map[string]string, error) {

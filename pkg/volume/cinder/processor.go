@@ -68,7 +68,7 @@ func (c *cinderPlugin) VolumeDelete(pv *v1.PersistentVolume) error {
 }
 
 // SnapshotCreate creates a VolumeSnapshot from a PersistentVolumeSpec
-func (c *cinderPlugin) SnapshotCreate(pv *v1.PersistentVolume) (*crdv1.VolumeSnapshotDataSource, error) {
+func (c *cinderPlugin) SnapshotCreate(pv *v1.PersistentVolume, tags *map[string]string) (*crdv1.VolumeSnapshotDataSource, error) {
 	spec := &pv.Spec
 	if spec == nil || spec.Cinder == nil {
 		return nil, fmt.Errorf("invalid PV spec %v", spec)
@@ -76,9 +76,8 @@ func (c *cinderPlugin) SnapshotCreate(pv *v1.PersistentVolume) (*crdv1.VolumeSna
 	volumeID := spec.Cinder.VolumeID
 	snapshotName := string(pv.Name) + fmt.Sprintf("%d", time.Now().UnixNano())
 	snapshotDescription := "kubernetes snapshot"
-	tags := make(map[string]string)
-	glog.Infof("issuing Cinder.CreateSnapshot - SourceVol: %s, Name: %s", volumeID, snapshotName)
-	snapID, err := c.cloud.CreateSnapshot(volumeID, snapshotName, snapshotDescription, tags)
+	glog.Infof("issuing Cinder.CreateSnapshot - SourceVol: %s, Name: %s, tags: %#v", volumeID, snapshotName, *tags)
+	snapID, err := c.cloud.CreateSnapshot(volumeID, snapshotName, snapshotDescription, *tags)
 	if err != nil {
 		return nil, err
 	}
@@ -161,4 +160,25 @@ func (c *cinderPlugin) DescribeSnapshot(snapshotData *crdv1.VolumeSnapshotData) 
 		return false, err
 	}
 	return isComplete, nil
+}
+
+// FindSnapshot finds a VolumeSnapshot by matching metadata
+func (c *cinderPlugin) FindSnapshot(tags *map[string]string) (*crdv1.VolumeSnapshotDataSource, error) {
+        glog.Infof("Cinder.FindSnapshot by tags: %#v", *tags)
+        snapID, err := c.cloud.FindSnapshot(*tags)
+        if err != nil {
+		glog.Infof("Cinder.FindSnapshot by tags: %#v. Error: %v", *tags, err)
+                //return nil, err
+        }
+
+	if len(snapID) > 0 {
+		glog.Infof("Found snapshot %s by tags: %#v", snapID, *tags)
+		return &crdv1.VolumeSnapshotDataSource{
+			CinderSnapshot: &crdv1.CinderVolumeSnapshotSource{
+				SnapshotID: snapID,
+			},
+		}, nil
+	}
+
+	return nil, nil
 }

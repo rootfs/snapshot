@@ -25,6 +25,10 @@ import (
 	"github.com/golang/glog"
 	"k8s.io/apimachinery/pkg/util/wait"
 
+        metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+        v1 "k8s.io/client-go/pkg/api/v1"
+
+	crdv1 "github.com/rootfs/snapshot/pkg/apis/crd/v1"
 	"github.com/rootfs/snapshot/pkg/controller/cache"
 	"github.com/rootfs/snapshot/pkg/controller/snapshotter"
 )
@@ -132,7 +136,15 @@ func (rc *reconciler) reconcile() {
 				// Seems the write to API server failed before. Find the SnapshotData and fix
 				// this VolumeSnapshot reference and status
 				glog.Infof("Volume snapshot %s is missing the snapshot data name - updating.", name)
-				err := rc.snapshotter.UpdateVolumeSnapshot(name)
+				snapConditions := []crdv1.VolumeSnapshotCondition{
+					{
+						Type:               crdv1.VolumeSnapshotConditionReady,
+						Status:             v1.ConditionTrue,
+						Message:            "Snapshot created succsessfully",
+						LastTransitionTime: metav1.Now(),
+					},
+				}
+				_, err := rc.snapshotter.UpdateVolumeSnapshot(name, &snapConditions, true)
 				if err != nil {
 					glog.Errorf("Error updating VolumeSnapshot %s: %v", name, err)
 				}

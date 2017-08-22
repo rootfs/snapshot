@@ -356,6 +356,9 @@ type Volumes interface {
 	// Describe an EBS volume snapshot status for create or delete.
 	// return status (completed or pending or error), and error
 	DescribeSnapshot(snapshotId string) (isCompleted bool, err error)
+
+	// Find snapshot by tags
+	FindSnapshot(tags map[string]string) (string, error)
 }
 
 // InstanceGroups is an interface for managing cloud-managed instance groups / autoscaling instance groups
@@ -1962,6 +1965,11 @@ func (c *Cloud) DescribeSnapshot(snapshotId string) (isCompleted bool, err error
 		return false, fmt.Errorf("snapshot state is error: %s", *result[0].StateMessage)
 	}
 	return false, fmt.Errorf(*result[0].StateMessage)
+}
+
+// FindSnapshot returns the found snapshot
+func (c *Cloud) FindSnapshot(tags map[string]string) (string, error) {
+	return "", nil
 }
 
 // Gets the current load balancer state
