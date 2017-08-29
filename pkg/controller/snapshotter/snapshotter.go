@@ -428,6 +428,7 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 			}
 
 			var snapshotDataSource *crdv1.VolumeSnapshotDataSource = nil
+			var snapStatus *[]crdv1.VolumeSnapshotCondition = nil
 			// Look for snapshot by the plugin if metadata already existed in VolumeSnapshot
 			if bFoundVolumeSnapshotMetadata {
 				spec := &pv.Spec
@@ -442,11 +443,15 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 
 				// Check whether the real snapshot is already created by the plugin
 				glog.Infof("getSnapshotCreateFunc: FindSnapshot %s ...", snapshotName)
-				// TODO(xyang): FindSnapshot should return status of the snapshot through the plugin.
-				snapshotDataSource, err = plugin.FindSnapshot(tags)
+				snapshotDataSource, snapStatus, err = plugin.FindSnapshot(tags)
 				if err != nil {
 					// Don't bail out because the error could be "error requesting snapshot : Resource not found".
 					glog.Infof("Error occurred when looking for snapshot by metadata: %v", err)
+				}
+				if snapStatus != nil {
+					// TODO(xyang): FindSnapshot returns snapStatus *[]crdv1.VolumeSnapshotCondition
+					// Should use it to update VolumeSnapshot status.
+					glog.Infof("VolumeSnapshotConditions for snapshot %s is %#v.", snapshotName, snapStatus)
 				}
 			}
 
