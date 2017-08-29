@@ -87,16 +87,15 @@ func (a *hostPathPlugin) DescribeSnapshot(snapshotData *crdv1.VolumeSnapshotData
 }
 
 // FindSnapshot finds a VolumeSnapshot by matching metadata
-func (a *hostPathPlugin) FindSnapshot(tags *map[string]string) (*crdv1.VolumeSnapshotDataSource, error) {
+func (a *hostPathPlugin) FindSnapshot(tags *map[string]string) (*crdv1.VolumeSnapshotDataSource, *[]crdv1.VolumeSnapshotCondition, error) {
         glog.Infof("FindSnapshot by tags: %#v", *tags)
 
 	// TODO: Implement FindSnapshot
         return &crdv1.VolumeSnapshotDataSource{
                 HostPath: &crdv1.HostPathVolumeSnapshotSource{
 			Path: "",
-			Status: "",
                 },
-        }, nil
+        }, nil, nil
 }
 
 func (h *hostPathPlugin) SnapshotRestore(snapshotData *crdv1.VolumeSnapshotData, _ *v1.PersistentVolumeClaim, _ string, _ map[string]string) (*v1.PersistentVolumeSource, map[string]string, error) {

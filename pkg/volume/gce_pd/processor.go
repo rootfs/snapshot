@@ -176,16 +176,15 @@ func (plugin *gcePersistentDiskPlugin) DescribeSnapshot(snapshotData *crdv1.Volu
 }
 
 // FindSnapshot finds a VolumeSnapshot by matching metadata
-func (a *gcePersistentDiskPlugin) FindSnapshot(tags *map[string]string) (*crdv1.VolumeSnapshotDataSource, error) {
+func (a *gcePersistentDiskPlugin) FindSnapshot(tags *map[string]string) (*crdv1.VolumeSnapshotDataSource, *[]crdv1.VolumeSnapshotCondition, error) {
         glog.Infof("FindSnapshot by tags: %#v", *tags)
 
         // TODO: Implement FindSnapshot
         return &crdv1.VolumeSnapshotDataSource{
                 GCEPersistentDiskSnapshot: &crdv1.GCEPersistentDiskSnapshotSource{
 			SnapshotName: "",
-			Status: "",
                 },
-        }, nil
+        }, nil, nil
 }
 
 func (plugin *gcePersistentDiskPlugin) VolumeDelete(pv *v1.PersistentVolume) error {
