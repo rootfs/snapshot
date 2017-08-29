@@ -51,10 +51,10 @@ func GetPluginName() string {
 func (h *hostPathPlugin) Init(_ cloudprovider.Interface) {
 }
 
-func (h *hostPathPlugin) SnapshotCreate(pv *v1.PersistentVolume, tags *map[string]string) (*crdv1.VolumeSnapshotDataSource, error) {
+func (h *hostPathPlugin) SnapshotCreate(pv *v1.PersistentVolume, tags *map[string]string) (*crdv1.VolumeSnapshotDataSource, *[]crdv1.VolumeSnapshotCondition, error) {
 	spec := &pv.Spec
 	if spec == nil || spec.HostPath == nil {
-		return nil, fmt.Errorf("invalid PV spec %v", spec)
+		return nil, nil, fmt.Errorf("invalid PV spec %v", spec)
 	}
 	path := spec.HostPath.Path
 	file := depot + string(uuid.NewUUID()) + ".tgz"
@@ -64,7 +64,7 @@ func (h *hostPathPlugin) SnapshotCreate(pv *v1.PersistentVolume, tags *map[strin
 			Path: file,
 		},
 	}
-	return res, cmd.Run()
+	return res, nil, cmd.Run()
 }
 
 func (h *hostPathPlugin) SnapshotDelete(src *crdv1.VolumeSnapshotDataSource, _ *v1.PersistentVolume) error {

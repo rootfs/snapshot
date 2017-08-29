@@ -2902,6 +2902,7 @@ func (gce *GCECloud) getSnapshotByName(snapshotName string) (*gceSnapshot, error
 	return nil, nil
 }
 
+// TODO: CreateSnapshot should return snapshot status
 func (gce *GCECloud) CreateSnapshot(diskName string, zone string, snapshotName string, tags map[string]string) error {
 	isManaged := false
 	for _, managedZone := range gce.managedZones {

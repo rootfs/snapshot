@@ -69,25 +69,25 @@ func (c *cinderPlugin) VolumeDelete(pv *v1.PersistentVolume) error {
 }
 
 // SnapshotCreate creates a VolumeSnapshot from a PersistentVolumeSpec
-func (c *cinderPlugin) SnapshotCreate(pv *v1.PersistentVolume, tags *map[string]string) (*crdv1.VolumeSnapshotDataSource, error) {
+func (c *cinderPlugin) SnapshotCreate(pv *v1.PersistentVolume, tags *map[string]string) (*crdv1.VolumeSnapshotDataSource, *[]crdv1.VolumeSnapshotCondition, error) {
 	spec := &pv.Spec
 	if spec == nil || spec.Cinder == nil {
-		return nil, fmt.Errorf("invalid PV spec %v", spec)
+		return nil, nil, fmt.Errorf("invalid PV spec %v", spec)
 	}
 	volumeID := spec.Cinder.VolumeID
 	snapshotName := string(pv.Name) + fmt.Sprintf("%d", time.Now().UnixNano())
 	snapshotDescription := "kubernetes snapshot"
 	glog.Infof("issuing Cinder.CreateSnapshot - SourceVol: %s, Name: %s, tags: %#v", volumeID, snapshotName, *tags)
-	snapID, err := c.cloud.CreateSnapshot(volumeID, snapshotName, snapshotDescription, *tags)
+	snapID, status, err := c.cloud.CreateSnapshot(volumeID, snapshotName, snapshotDescription, *tags)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	return &crdv1.VolumeSnapshotDataSource{
 		CinderSnapshot: &crdv1.CinderVolumeSnapshotSource{
 			SnapshotID: snapID,
 		},
-	}, nil
+	}, c.convertSnapshotStatus(status), nil
 }
 
 // SnapshotDelete deletes a VolumeSnapshot

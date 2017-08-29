@@ -59,13 +59,13 @@ type SnapshotListOpts struct {
 }
 
 type snapshotService interface {
-	createSnapshot(opts SnapshotCreateOpts) (string, error)
+	createSnapshot(opts SnapshotCreateOpts) (string, string, error)
 	deleteSnapshot(snapshotName string) error
 	getSnapshot(snapshotID string) (Snapshot, error)
 	listSnapshots(opts SnapshotListOpts) ([]Snapshot, error)
 }
 
-func (snapshots *SnapshotsV2) createSnapshot(opts SnapshotCreateOpts) (string, error) {
+func (snapshots *SnapshotsV2) createSnapshot(opts SnapshotCreateOpts) (string, string, error) {
 
 	createOpts := snapshotsV2.CreateOpts{
 		VolumeID:    opts.VolumeID,
@@ -77,9 +77,9 @@ func (snapshots *SnapshotsV2) createSnapshot(opts SnapshotCreateOpts) (string, e
 
 	snap, err := snapshotsV2.Create(snapshots.blockstorage, createOpts).Extract()
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	return snap.ID, nil
+	return snap.ID, snap.Status, nil
 }
 
 func (snapshots *SnapshotsV2) getSnapshot(snapshotID string) (Snapshot, error) {
@@ -143,11 +143,11 @@ func (snapshots *SnapshotsV2) listSnapshots(opts SnapshotListOpts) ([]Snapshot, 
 }
 
 // CreateSnapshot from the specified volume
-func (os *OpenStack) CreateSnapshot(sourceVolumeID, name, description string, tags map[string]string) (string, error) {
+func (os *OpenStack) CreateSnapshot(sourceVolumeID, name, description string, tags map[string]string) (string, string, error) {
 	snapshots, err := os.snapshotService()
 	if err != nil || snapshots == nil {
 		glog.Errorf("Unable to initialize cinder client for region: %s", os.region)
-		return "", err
+		return "", "", err
 	}
 
 	opts := SnapshotCreateOpts{
@@ -159,15 +159,15 @@ func (os *OpenStack) CreateSnapshot(sourceVolumeID, name, description string, ta
 		opts.Metadata = tags
 	}
 
-	snapshotID, err := snapshots.createSnapshot(opts)
+	snapshotID, status, err := snapshots.createSnapshot(opts)
 
 	if err != nil {
 		glog.Errorf("Failed to snapshot volume %s : %v", sourceVolumeID, err)
-		return "", err
+		return "", "", err
 	}
 
 	glog.Infof("Created snapshot %v from volume: %v", snapshotID, sourceVolumeID)
-	return snapshotID, nil
+	return snapshotID, status, nil
 }
 
 // DeleteSnapshot deletes the specified snapshot
