@@ -102,6 +102,7 @@ func (a *awsEBSPlugin) FindSnapshot(tags *map[string]string) (*crdv1.VolumeSnaps
         return &crdv1.VolumeSnapshotDataSource{
 		AWSElasticBlockStore: &crdv1.AWSElasticBlockStoreVolumeSnapshotSource{
 			SnapshotID: "",
+			Status: "",
                 },
         }, nil
 }

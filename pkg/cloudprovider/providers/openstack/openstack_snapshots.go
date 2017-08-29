@@ -209,12 +209,12 @@ func (os *OpenStack) DescribeSnapshot(snapshotID string) (isCompleted bool, err 
 }
 
 // Find snapshot by metadata
-func (os *OpenStack) FindSnapshot(tags map[string]string) (string, error) {
-	var snapshotID string
+func (os *OpenStack) FindSnapshot(tags map[string]string) ([]string, []string, error) {
+	var snapshotIDs, statuses []string
         ss, err := os.snapshotService()
         if err != nil || ss == nil {
                 glog.Errorf("Unable to initialize cinder client for region: %s", os.region)
-                return "", err
+		return snapshotIDs, statuses, err
         }
 
         opts := SnapshotListOpts{}
@@ -222,7 +222,7 @@ func (os *OpenStack) FindSnapshot(tags map[string]string) (string, error) {
 
         if err != nil {
                 glog.Errorf("Failed to list snapshots. Error: %v", err)
-                return "", err
+		return snapshotIDs, statuses, err
         }
         glog.Infof("Listed [%v] snapshots.", len(snapshots))
 
@@ -236,14 +236,20 @@ func (os *OpenStack) FindSnapshot(tags map[string]string) (string, error) {
 				nameVal, ok := snapshot.Metadata[ctrlsnap.CloudSnapshotCreatedForVolumeSnapshotNameTag]
 				if ok {
 					if tags[ctrlsnap.CloudSnapshotCreatedForVolumeSnapshotNameTag] == nameVal {
-						snapshotID = snapshot.ID
-						glog.Infof("Found snapshot [%#v].", snapshot)
-						return snapshotID, nil
+						timeVal, ok := snapshot.Metadata[ctrlsnap.CloudSnapshotCreatedForVolumeSnapshotTimestampTag]
+						if ok {
+							if tags[ctrlsnap.CloudSnapshotCreatedForVolumeSnapshotTimestampTag] == timeVal {
+								snapshotIDs = append(snapshotIDs, snapshot.ID)
+								statuses = append(statuses, snapshot.Status)
+								glog.Infof("Add snapshot [%#v].", snapshot)
+							}
+						}
+
 					}
 				}
 			}
 		}
 	}
 
-        return "", nil
+	return snapshotIDs, statuses, nil
 }
