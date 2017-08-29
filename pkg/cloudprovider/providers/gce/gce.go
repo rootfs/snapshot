@@ -155,6 +155,9 @@ type Disks interface {
 	// return status (completed or pending or error), and error
 	DescribeSnapshot(snapshotToGet string) (isCompleted bool, err error)
 
+        // Find snapshot by tags
+        FindSnapshot(tags map[string]string) (string, error)
+
 	// GetAutoLabelsForPD returns labels to apply to PersistentVolume
 	// representing this PD, namely failure domain and zone.
 	// zone can be provided to specify the zone for the PD,
@@ -2857,6 +2860,11 @@ func (gce *GCECloud) DescribeSnapshot(snapshotToGet string) (isCompleted bool, e
 		return true, nil
 	}
 	return false, nil
+}
+
+// FindSnapshot returns the found snapshot
+func (gce *GCECloud) FindSnapshot(tags map[string]string) (string, error) {
+        return "", nil
 }
 
 func (gce *GCECloud) DeleteSnapshot(snapshotToDelete string) error {

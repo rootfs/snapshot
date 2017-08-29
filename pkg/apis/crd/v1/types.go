@@ -44,8 +44,16 @@ type VolumeSnapshotConditionType string
 
 // These are valid conditions of a volume snapshot.
 const (
-	// VolumeSnapshotReady is added when the snapshot has been successfully created and is ready to be used.
+	// VolumeSnapshotConditionPending means the snapshot is cut and the application
+	// can resume accessing data if core_v1.ConditionStatus is True. It corresponds
+	// to "Uploading" in GCE PD or "Pending" in AWS and core_v1.ConditionStatus is True.
+	// It also corresponds to "Creating" in OpenStack Cinder and core_v1.ConditionStatus
+	// is Unknown.
+        VolumeSnapshotConditionPending VolumeSnapshotConditionType = "Pending"
+	// VolumeSnapshotConditionReady is added when the snapshot has been successfully created and is ready to be used.
 	VolumeSnapshotConditionReady VolumeSnapshotConditionType = "Ready"
+	// VolumeSnapshotConditionError means an error occurred during snapshot creation.
+        VolumeSnapshotConditionError VolumeSnapshotConditionType = "Error"
 )
 
 // VolumeSnapshot Condition describes the state of a volume snapshot  at a certain point.

@@ -50,7 +50,7 @@ func (a *awsEBSPlugin) Init(cloud cloudprovider.Interface) {
 	a.cloud = cloud.(*aws.Cloud)
 }
 
-func (a *awsEBSPlugin) SnapshotCreate(pv *v1.PersistentVolume) (*crdv1.VolumeSnapshotDataSource, error) {
+func (a *awsEBSPlugin) SnapshotCreate(pv *v1.PersistentVolume, tags *map[string]string) (*crdv1.VolumeSnapshotDataSource, error) {
 	spec := &pv.Spec
 	if spec == nil || spec.AWSElasticBlockStore == nil {
 		return nil, fmt.Errorf("invalid PV spec %v", spec)
@@ -92,6 +92,18 @@ func (a *awsEBSPlugin) DescribeSnapshot(snapshotData *crdv1.VolumeSnapshotData) 
 	}
 	snapshotId := snapshotData.Spec.AWSElasticBlockStore.SnapshotID
 	return a.cloud.DescribeSnapshot(snapshotId)
+}
+
+// FindSnapshot finds a VolumeSnapshot by matching metadata
+func (a *awsEBSPlugin) FindSnapshot(tags *map[string]string) (*crdv1.VolumeSnapshotDataSource, error) {
+        glog.Infof("FindSnapshot by tags: %#v", *tags)
+
+        // TODO: Implement FindSnapshot
+        return &crdv1.VolumeSnapshotDataSource{
+		AWSElasticBlockStore: &crdv1.AWSElasticBlockStoreVolumeSnapshotSource{
+			SnapshotID: "",
+                },
+        }, nil
 }
 
 func (a *awsEBSPlugin) SnapshotRestore(snapshotData *crdv1.VolumeSnapshotData, pvc *v1.PersistentVolumeClaim, pvName string, parameters map[string]string) (*v1.PersistentVolumeSource, map[string]string, error) {

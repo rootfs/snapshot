@@ -54,7 +54,7 @@ func (plugin *gcePersistentDiskPlugin) Init(cloud cloudprovider.Interface) {
 	plugin.cloud = cloud.(*gce.GCECloud)
 }
 
-func (plugin *gcePersistentDiskPlugin) SnapshotCreate(pv *v1.PersistentVolume) (*crdv1.VolumeSnapshotDataSource, error) {
+func (plugin *gcePersistentDiskPlugin) SnapshotCreate(pv *v1.PersistentVolume, tags *map[string]string) (*crdv1.VolumeSnapshotDataSource, error) {
 	spec := &pv.Spec
 	if spec == nil || spec.GCEPersistentDisk == nil {
 		return nil, fmt.Errorf("invalid PV spec %v", spec)
@@ -64,12 +64,12 @@ func (plugin *gcePersistentDiskPlugin) SnapshotCreate(pv *v1.PersistentVolume) (
 	snapshotName := createSnapshotName(string(pv.Name))
 	glog.Infof("Jing snapshotName %s", snapshotName)
 	// Gather provisioning options
-	tags := make(map[string]string)
+	//tags := make(map[string]string)
 	//tags["kubernetes.io/created-for/snapshot/namespace"] = claim.Namespace
 	//tags[CloudVolumeCreatedForClaimNameTag] = claim.Name
 	//tags[CloudVolumeCreatedForVolumeNameTag] = pvName
 
-	err := plugin.cloud.CreateSnapshot(diskName, zone, snapshotName, tags)
+	err := plugin.cloud.CreateSnapshot(diskName, zone, snapshotName, *tags)
 	if err != nil {
 		return nil, err
 	}
@@ -173,6 +173,18 @@ func (plugin *gcePersistentDiskPlugin) DescribeSnapshot(snapshotData *crdv1.Volu
 	}
 	snapshotId := snapshotData.Spec.GCEPersistentDiskSnapshot.SnapshotName
 	return plugin.cloud.DescribeSnapshot(snapshotId)
+}
+
+// FindSnapshot finds a VolumeSnapshot by matching metadata
+func (a *gcePersistentDiskPlugin) FindSnapshot(tags *map[string]string) (*crdv1.VolumeSnapshotDataSource, error) {
+        glog.Infof("FindSnapshot by tags: %#v", *tags)
+
+        // TODO: Implement FindSnapshot
+        return &crdv1.VolumeSnapshotDataSource{
+                GCEPersistentDiskSnapshot: &crdv1.GCEPersistentDiskSnapshotSource{
+                        SnapshotName: "",
+                },
+        }, nil
 }
 
 func (plugin *gcePersistentDiskPlugin) VolumeDelete(pv *v1.PersistentVolume) error {
