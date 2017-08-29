@@ -358,7 +358,7 @@ type Volumes interface {
 	DescribeSnapshot(snapshotId string) (isCompleted bool, err error)
 
 	// Find snapshot by tags
-	FindSnapshot(tags map[string]string) (string, error)
+	FindSnapshot(tags map[string]string) ([]string, []string, error)
 }
 
 // InstanceGroups is an interface for managing cloud-managed instance groups / autoscaling instance groups
@@ -1968,8 +1968,9 @@ func (c *Cloud) DescribeSnapshot(snapshotId string) (isCompleted bool, err error
 }
 
 // FindSnapshot returns the found snapshot
-func (c *Cloud) FindSnapshot(tags map[string]string) (string, error) {
-	return "", nil
+func (c *Cloud) FindSnapshot(tags map[string]string) ([]string, []string, error) {
+	var snapshotIDs, statuses []string
+	return snapshotIDs, statuses, nil
 }
 
 // Gets the current load balancer state

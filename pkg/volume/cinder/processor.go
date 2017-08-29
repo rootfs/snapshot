@@ -165,17 +165,18 @@ func (c *cinderPlugin) DescribeSnapshot(snapshotData *crdv1.VolumeSnapshotData) 
 // FindSnapshot finds a VolumeSnapshot by matching metadata
 func (c *cinderPlugin) FindSnapshot(tags *map[string]string) (*crdv1.VolumeSnapshotDataSource, error) {
         glog.Infof("Cinder.FindSnapshot by tags: %#v", *tags)
-        snapID, err := c.cloud.FindSnapshot(*tags)
+	snapIDs, statuses, err := c.cloud.FindSnapshot(*tags)
         if err != nil {
 		glog.Infof("Cinder.FindSnapshot by tags: %#v. Error: %v", *tags, err)
                 //return nil, err
         }
 
-	if len(snapID) > 0 {
-		glog.Infof("Found snapshot %s by tags: %#v", snapID, *tags)
+	if len(snapIDs) > 0 && len(statuses) > 0 {
+		glog.Infof("Found snapshot %s by tags: %#v", snapIDs[0], *tags)
 		return &crdv1.VolumeSnapshotDataSource{
 			CinderSnapshot: &crdv1.CinderVolumeSnapshotSource{
-				SnapshotID: snapID,
+				SnapshotID: snapIDs[0],
+				Status: statuses[0],
 			},
 		}, nil
 	}

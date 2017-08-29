@@ -36,7 +36,7 @@ type VolumeSnapshotStatus struct {
 	// +optional
 	CreationTimestamp metav1.Time `json:"creationTimestamp" protobuf:"bytes,1,opt,name=creationTimestamp"`
 
-	// Representes the lates available observations about the volume snapshot
+	// Representes the latest available observations about the volume snapshot
 	Conditions []VolumeSnapshotCondition `json:"conditions" protobuf:"bytes,2,rep,name=conditions"`
 }
 
@@ -191,24 +191,28 @@ type VolumeSnapshotDataSpec struct {
 type HostPathVolumeSnapshotSource struct {
 	// Path represents a tar file that stores the HostPath volume source
 	Path string `json:"snapshot"`
+	Status string `json:"snapshotStatus"`
 }
 
 // AWS EBS volume snapshot source
 type AWSElasticBlockStoreVolumeSnapshotSource struct {
 	// Unique id of the persistent disk snapshot resource. Used to identify the disk snapshot in AWS
 	SnapshotID string `json:"snapshotId"`
+	Status string `json:"snapshotStatus"`
 }
 
 // Cinder volume snapshot source
 type CinderVolumeSnapshotSource struct {
 	// Unique id of the cinder volume snapshot resource. Used to identify the snapshot in OpenStack
 	SnapshotID string `json:"snapshotId"`
+	Status string `json:"snapshotStatus"`
 }
 
 // GCE PD volume snapshot source
 type GCEPersistentDiskSnapshotSource struct {
 	// Unique id of the persistent disk snapshot resource. Used to identify the disk snapshot in GCE
 	SnapshotName string `json:"snapshotId"`
+	Status string `json:"snapshotStatus"`
 }
 
 // Represents the actual location and type of the snapshot. Only one of its members may be specified.

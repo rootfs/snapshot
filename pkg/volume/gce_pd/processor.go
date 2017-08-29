@@ -182,7 +182,8 @@ func (a *gcePersistentDiskPlugin) FindSnapshot(tags *map[string]string) (*crdv1.
         // TODO: Implement FindSnapshot
         return &crdv1.VolumeSnapshotDataSource{
                 GCEPersistentDiskSnapshot: &crdv1.GCEPersistentDiskSnapshotSource{
-                        SnapshotName: "",
+			SnapshotName: "",
+			Status: "",
                 },
         }, nil
 }

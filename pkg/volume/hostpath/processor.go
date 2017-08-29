@@ -93,7 +93,8 @@ func (a *hostPathPlugin) FindSnapshot(tags *map[string]string) (*crdv1.VolumeSna
 	// TODO: Implement FindSnapshot
         return &crdv1.VolumeSnapshotDataSource{
                 HostPath: &crdv1.HostPathVolumeSnapshotSource{
-                        Path: "",
+			Path: "",
+			Status: "",
                 },
         }, nil
 }
