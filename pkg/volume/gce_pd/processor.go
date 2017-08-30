@@ -54,10 +54,10 @@ func (plugin *gcePersistentDiskPlugin) Init(cloud cloudprovider.Interface) {
 	plugin.cloud = cloud.(*gce.GCECloud)
 }
 
-func (plugin *gcePersistentDiskPlugin) SnapshotCreate(pv *v1.PersistentVolume, tags *map[string]string) (*crdv1.VolumeSnapshotDataSource, error) {
+func (plugin *gcePersistentDiskPlugin) SnapshotCreate(pv *v1.PersistentVolume, tags *map[string]string) (*crdv1.VolumeSnapshotDataSource, *[]crdv1.VolumeSnapshotCondition, error) {
 	spec := &pv.Spec
 	if spec == nil || spec.GCEPersistentDisk == nil {
-		return nil, fmt.Errorf("invalid PV spec %v", spec)
+		return nil, nil, fmt.Errorf("invalid PV spec %v", spec)
 	}
 	diskName := spec.GCEPersistentDisk.PDName
 	zone := pv.Labels[metav1.LabelZoneFailureDomain]
@@ -71,13 +71,13 @@ func (plugin *gcePersistentDiskPlugin) SnapshotCreate(pv *v1.PersistentVolume, t
 
 	err := plugin.cloud.CreateSnapshot(diskName, zone, snapshotName, *tags)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	return &crdv1.VolumeSnapshotDataSource{
 		GCEPersistentDiskSnapshot: &crdv1.GCEPersistentDiskSnapshotSource{
 			SnapshotName: snapshotName,
 		},
-	}, nil
+	}, nil, nil
 }
 
 func (plugin *gcePersistentDiskPlugin) SnapshotRestore(snapshotData *crdv1.VolumeSnapshotData, pvc *v1.PersistentVolumeClaim, pvName string, parameters map[string]string) (*v1.PersistentVolumeSource, map[string]string, error) {

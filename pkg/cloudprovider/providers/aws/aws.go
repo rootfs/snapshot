@@ -348,7 +348,7 @@ type Volumes interface {
 	DisksAreAttached(map[types.NodeName][]KubernetesVolumeID) (map[types.NodeName]map[KubernetesVolumeID]bool, error)
 
 	// Create an EBS volume snapshot
-	CreateSnapshot(snapshotOptions *SnapshotOptions) (snapshotId string, err error)
+	CreateSnapshot(snapshotOptions *SnapshotOptions) (snapshotId string, status string, err error)
 
 	// Delete an EBS volume snapshot
 	DeleteSnapshot(snapshotId string) (bool, error)
@@ -1912,7 +1912,7 @@ func (c *Cloud) DisksAreAttached(nodeDisks map[types.NodeName][]KubernetesVolume
 }
 
 // CreateSnapshot creates an EBS volume snapshot
-func (c *Cloud) CreateSnapshot(snapshotOptions *SnapshotOptions) (snapshotId string, err error) {
+func (c *Cloud) CreateSnapshot(snapshotOptions *SnapshotOptions) (snapshotId string, status string, err error) {
 	request := &ec2.CreateSnapshotInput{}
 	request.VolumeId = aws.String(snapshotOptions.VolumeId)
 	request.DryRun = aws.Bool(false)
@@ -1920,12 +1920,12 @@ func (c *Cloud) CreateSnapshot(snapshotOptions *SnapshotOptions) (snapshotId str
 	request.Description = aws.String(descriptions)
 	res, err := c.ec2.CreateSnapshot(request)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	if res == nil {
-		return "", fmt.Errorf("nil CreateSnapshotResponse")
+		return "", "", fmt.Errorf("nil CreateSnapshotResponse")
 	}
-	return *res.SnapshotId, nil
+	return *res.SnapshotId, "", nil
 
 }
 

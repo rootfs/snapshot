@@ -50,10 +50,10 @@ func (a *awsEBSPlugin) Init(cloud cloudprovider.Interface) {
 	a.cloud = cloud.(*aws.Cloud)
 }
 
-func (a *awsEBSPlugin) SnapshotCreate(pv *v1.PersistentVolume, tags *map[string]string) (*crdv1.VolumeSnapshotDataSource, error) {
+func (a *awsEBSPlugin) SnapshotCreate(pv *v1.PersistentVolume, tags *map[string]string) (*crdv1.VolumeSnapshotDataSource, *[]crdv1.VolumeSnapshotCondition, error) {
 	spec := &pv.Spec
 	if spec == nil || spec.AWSElasticBlockStore == nil {
-		return nil, fmt.Errorf("invalid PV spec %v", spec)
+		return nil, nil, fmt.Errorf("invalid PV spec %v", spec)
 	}
 	volumeId := spec.AWSElasticBlockStore.VolumeID
 	if ind := strings.LastIndex(volumeId, "/"); ind >= 0 {
@@ -62,15 +62,16 @@ func (a *awsEBSPlugin) SnapshotCreate(pv *v1.PersistentVolume, tags *map[string]
 	snapshotOpt := &aws.SnapshotOptions{
 		VolumeId: volumeId,
 	}
-	snapshotId, err := a.cloud.CreateSnapshot(snapshotOpt)
+	// TODO: Convert AWS EBS snapshot status to crdv1.VolumeSnapshotCondition
+	snapshotId, _, err := a.cloud.CreateSnapshot(snapshotOpt)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	return &crdv1.VolumeSnapshotDataSource{
 		AWSElasticBlockStore: &crdv1.AWSElasticBlockStoreVolumeSnapshotSource{
 			SnapshotID: snapshotId,
 		},
-	}, nil
+	}, nil, nil
 }
 
 func (a *awsEBSPlugin) SnapshotDelete(src *crdv1.VolumeSnapshotDataSource, _ *v1.PersistentVolume) error {

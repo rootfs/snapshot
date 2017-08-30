@@ -306,25 +306,25 @@ func (vs *volumeSnapshotter) updateSnapshotDataStatus(snapshotName string, snaps
 
 // This is the function responsible for determining the correct volume plugin to use,
 // asking it to make a snapshot and assigning it some name that it returns to the caller.
-func (vs *volumeSnapshotter) takeSnapshot(pv *v1.PersistentVolume, tags *map[string]string) (*crdv1.VolumeSnapshotDataSource, error) {
+func (vs *volumeSnapshotter) takeSnapshot(pv *v1.PersistentVolume, tags *map[string]string) (*crdv1.VolumeSnapshotDataSource, *[]crdv1.VolumeSnapshotCondition, error) {
 	spec := &pv.Spec
 	volumeType := crdv1.GetSupportedVolumeFromPVSpec(spec)
 	if len(volumeType) == 0 {
-		return nil, fmt.Errorf("unsupported volume type found in PV %#v", spec)
+		return nil, nil, fmt.Errorf("unsupported volume type found in PV %#v", spec)
 	}
 	plugin, ok := (*vs.volumePlugins)[volumeType]
 	if !ok {
-		return nil, fmt.Errorf("%s is not supported volume for %#v", volumeType, spec)
+		return nil, nil, fmt.Errorf("%s is not supported volume for %#v", volumeType, spec)
 	}
 
-	snap, err := plugin.SnapshotCreate(pv, tags)
+	snap, snapConditions, err := plugin.SnapshotCreate(pv, tags)
 	if err != nil {
 		glog.Warningf("failed to snapshot %#v, err: %v", spec, err)
 	} else {
-		glog.Infof("snapshot created: %v", snap)
-		return snap, nil
+		glog.Infof("snapshot created: %v. Conditions: %#v", snap, snapConditions)
+		return snap, snapConditions, nil
 	}
-	return nil, nil
+	return nil, nil, nil
 }
 
 // This is the function responsible for determining the correct volume plugin to use,
@@ -458,11 +458,15 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 			// If snapshot not created yet, create it now; otherwise use the existing snapshot
 			if snapshotDataSource == nil {
 				glog.Infof("getSnapshotCreateFunc: takeSnapshot %s ...", snapshotName)
-				 // TODO(xyang): takeSnapshot should return status of the snapshot through the plugin.
-				snapshotDataSource, err = vs.takeSnapshot(pv, tags)
+				snapshotDataSource, snapStatus, err = vs.takeSnapshot(pv, tags)
 				if err != nil || snapshotDataSource == nil {
 					return fmt.Errorf("Failed to take snapshot of the volume %s: %q", pvName, err)
 				}
+                                if snapStatus != nil {
+                                        // TODO(xyang): takeSnapshot returns snapStatus *[]crdv1.VolumeSnapshotCondition
+                                        // Should use it to update VolumeSnapshot status.
+                                        glog.Infof("VolumeSnapshotConditions for snapshot %s is %#v.", snapshotName, snapStatus)
+                                }
 			}
 
 			// Check whether the VolumeSnapshotData object is already created
