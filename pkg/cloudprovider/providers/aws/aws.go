@@ -1964,6 +1964,7 @@ func (c *Cloud) DescribeSnapshot(snapshotId string) (status string, isCompleted 
 	if *result[0].State == ec2.SnapshotStateError {
 		return *result[0].State, false, fmt.Errorf("snapshot state is error: %s", *result[0].StateMessage)
 	}
+	// TODO: DescribeSnapshot should return err==nil if status is Pending
 	return *result[0].State, false, fmt.Errorf(*result[0].StateMessage)
 }
 
