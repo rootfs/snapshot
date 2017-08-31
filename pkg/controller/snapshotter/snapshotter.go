@@ -75,9 +75,9 @@ const (
 	// CloudSnapshotCreatedForVolumeSnapshotNameTag is a name of a tag attached to a real snapshot in cloud
 	// (e.g. AWS EBS or GCE PD) with name of a volumesnapshot used to create this snapshot.
 	CloudSnapshotCreatedForVolumeSnapshotNameTag = "kubernetes.io/created-for/snapshot/name"
-        // CloudSnapshotCreatedForVolumeSnapshotTimestampTag is a name of a tag attached to a real snapshot in cloud
-        // (e.g. AWS EBS or GCE PD) with timestamp when the create snapshot request is issued.
-        CloudSnapshotCreatedForVolumeSnapshotTimestampTag = "kubernetes.io/created-for/snapshot/timestamp"
+	// CloudSnapshotCreatedForVolumeSnapshotTimestampTag is a name of a tag attached to a real snapshot in cloud
+	// (e.g. AWS EBS or GCE PD) with timestamp when the create snapshot request is issued.
+	CloudSnapshotCreatedForVolumeSnapshotTimestampTag = "kubernetes.io/created-for/snapshot/timestamp"
 )
 
 func NewVolumeSnapshotter(
@@ -161,31 +161,31 @@ func (vs *volumeSnapshotter) getSnapshotDataFromSnapshotName(snapshotName string
 // Query status of the snapshot from plugin and update the status of VolumeSnapshot and VolumeSnapshotData
 // if needed. Finish waiting when the snapshot becomes available/ready or error.
 func (vs *volumeSnapshotter) waitForPluginSnapshot(snapshotName string, snapshot *crdv1.VolumeSnapshot) error {
-        var snapshotDataObj crdv1.VolumeSnapshotData
-        snapshotDataName := snapshot.Spec.SnapshotDataName
-        glog.Infof("In waitForPluginSnapshot: %s", snapshotName)
-        err := vs.restClient.Get().
-                Name(snapshotDataName).
-                Resource(crdv1.VolumeSnapshotDataResourcePlural).
-                Namespace(v1.NamespaceDefault).
-                Do().Into(&snapshotDataObj)
-        if err != nil {
-                return err
-        }
+	var snapshotDataObj crdv1.VolumeSnapshotData
+	snapshotDataName := snapshot.Spec.SnapshotDataName
+	glog.Infof("In waitForPluginSnapshot: %s", snapshotName)
+	err := vs.restClient.Get().
+		Name(snapshotDataName).
+		Resource(crdv1.VolumeSnapshotDataResourcePlural).
+		Namespace(v1.NamespaceDefault).
+		Do().Into(&snapshotDataObj)
+	if err != nil {
+		return err
+	}
 
-        pv, err := vs.getPVFromVolumeSnapshot(snapshotName, snapshot)
-        if err != nil {
-                return err
-        }
-        spec := &pv.Spec
-        volumeType := crdv1.GetSupportedVolumeFromPVSpec(spec)
-        if len(volumeType) == 0 {
-                return fmt.Errorf("unsupported volume type found in PV %#v", spec)
-        }
-        plugin, ok := (*vs.volumePlugins)[volumeType]
-        if !ok {
-                return fmt.Errorf("%s is not supported volume for %#v", volumeType, spec)
-        }
+	pv, err := vs.getPVFromVolumeSnapshot(snapshotName, snapshot)
+	if err != nil {
+		return err
+	}
+	spec := &pv.Spec
+	volumeType := crdv1.GetSupportedVolumeFromPVSpec(spec)
+	if len(volumeType) == 0 {
+		return fmt.Errorf("unsupported volume type found in PV %#v", spec)
+	}
+	plugin, ok := (*vs.volumePlugins)[volumeType]
+	if !ok {
+		return fmt.Errorf("%s is not supported volume for %#v", volumeType, spec)
+	}
 
 	var completed bool = false
 	var conditions *[]crdv1.VolumeSnapshotCondition = nil
@@ -194,7 +194,7 @@ func (vs *volumeSnapshotter) waitForPluginSnapshot(snapshotName string, snapshot
 	for {
 		// TODO(xyang): Use status returned from DescribeSnapshot to update snapshot
 		conditions, completed, err = plugin.DescribeSnapshot(&snapshotDataObj)
-                if !completed {
+		if !completed {
 			glog.Infof("Snapshot %s creation is not complete yet. Status: [%#v] Retrying...", snapshotName, conditions)
 			if err != nil {
 				// Don't bail out here. The error message could be "current snapshot status is: creating".
@@ -211,41 +211,41 @@ func (vs *volumeSnapshotter) waitForPluginSnapshot(snapshotName string, snapshot
 	if completed {
 		glog.Infof("Snapshot %s successfully created and it is ready.", snapshotName)
 		// UpdateVolmeSnapshot
-                snapConditions := []crdv1.VolumeSnapshotCondition{
-                        {
-                                Type:               crdv1.VolumeSnapshotConditionReady,
-                                Status:             v1.ConditionTrue,
-                                Message:            "Snapshot created succsessfully",
-                                LastTransitionTime: metav1.Now(),
-                        },
-                }
-                _, err = vs.UpdateVolumeSnapshot(snapshotName, &snapConditions, true)
-                if err != nil {
-                        glog.Errorf("Error updating volume snapshot %s: %v", snapshotName, err)
-                        // NOTE(xyang): Return error if failed to update VolumeSnapshot after
-                        // create snapshot request is sent to the plugin and VolumeSnapshotData is updated
-                        return fmt.Errorf("Failed to update VolumeSnapshot for snapshot %s: %v", snapshotName, err)
-                }
+		snapConditions := []crdv1.VolumeSnapshotCondition{
+			{
+				Type:               crdv1.VolumeSnapshotConditionReady,
+				Status:             v1.ConditionTrue,
+				Message:            "Snapshot created succsessfully",
+				LastTransitionTime: metav1.Now(),
+			},
+		}
+		_, err = vs.UpdateVolumeSnapshot(snapshotName, &snapConditions, true)
+		if err != nil {
+			glog.Errorf("Error updating volume snapshot %s: %v", snapshotName, err)
+			// NOTE(xyang): Return error if failed to update VolumeSnapshot after
+			// create snapshot request is sent to the plugin and VolumeSnapshotData is updated
+			return fmt.Errorf("Failed to update VolumeSnapshot for snapshot %s: %v", snapshotName, err)
+		}
 
-                snapDataConditions := []crdv1.VolumeSnapshotDataCondition{
-                        {
-                                Type:               crdv1.VolumeSnapshotDataConditionReady,
-                                Status:             v1.ConditionTrue,
-                                Message:            "Snapshot data created succsessfully",
-                                LastTransitionTime: metav1.Now(),
-                        },
-                }
+		snapDataConditions := []crdv1.VolumeSnapshotDataCondition{
+			{
+				Type:               crdv1.VolumeSnapshotDataConditionReady,
+				Status:             v1.ConditionTrue,
+				Message:            "Snapshot data created succsessfully",
+				LastTransitionTime: metav1.Now(),
+			},
+		}
 
-                // Update VolumeSnapshotData status
-                err = vs.UpdateVolumeSnapshotData(snapshotDataName, &snapDataConditions)
-                if err != nil {
-                        return fmt.Errorf("Error update snapshotData object %s: %v", snapshotName, err)
-                }
+		// Update VolumeSnapshotData status
+		err = vs.UpdateVolumeSnapshotData(snapshotDataName, &snapDataConditions)
+		if err != nil {
+			return fmt.Errorf("Error update snapshotData object %s: %v", snapshotName, err)
+		}
 
 		glog.Infof("waitForPluginSnapshot: Snapshot %s created successfully. Adding it to Actual State of World.", snapshotName)
 		vs.actualStateOfWorld.AddSnapshot(snapshot)
 		return nil
-        }
+	}
 
 	return fmt.Errorf("Snapshot %s is NOT completed successfully.")
 }
@@ -380,15 +380,15 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 		index := len(snapshot.Status.Conditions) - 1
 		if len(snapshot.Status.Conditions) > 0 &&
 			((snapshot.Status.Conditions[index].Type == crdv1.VolumeSnapshotConditionReady &&
-			snapshot.Status.Conditions[index].Status == v1.ConditionTrue) ||
-			snapshot.Status.Conditions[index].Type == crdv1.VolumeSnapshotConditionError) {
+				snapshot.Status.Conditions[index].Status == v1.ConditionTrue) ||
+				snapshot.Status.Conditions[index].Type == crdv1.VolumeSnapshotConditionError) {
 			glog.Infof("getSnapshotCreateFunc: Snapshot %s is Ready.", snapshotName)
 			return nil
 		} else if len(snapshot.Status.Conditions) > 0 &&
 			snapshot.Status.Conditions[index].Type == crdv1.VolumeSnapshotConditionPending &&
 			(snapshot.Status.Conditions[index].Status == v1.ConditionTrue ||
-			snapshot.Status.Conditions[index].Status == v1.ConditionUnknown) {
-                        glog.Infof("getSnapshotCreateFunc: Snapshot %s is Pending.", snapshotName)
+				snapshot.Status.Conditions[index].Status == v1.ConditionUnknown) {
+			glog.Infof("getSnapshotCreateFunc: Snapshot %s is Pending.", snapshotName)
 			// Query the volume plugin for the status of the snapshot with snapshot id
 			// from VolumeSnapshotData object.
 			// Add snapshot to Actual State of World when snapshot is Ready.
@@ -396,9 +396,9 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 			if err != nil {
 				return fmt.Errorf("Failed to create snapshot %s.", snapshotName)
 			}
-                        glog.Infof("getSnapshotCreateFunc: Snapshot %s created successfully.", snapshotName)
-                        return nil
-                } else {
+			glog.Infof("getSnapshotCreateFunc: Snapshot %s created successfully.", snapshotName)
+			return nil
+		} else {
 			glog.Infof("getSnapshotCreateFunc: Creating snapshot %s ...", snapshotName)
 			pv, err := vs.getPVFromVolumeSnapshot(snapshotName, snapshot)
 			if err != nil {
@@ -462,11 +462,11 @@ func (vs *volumeSnapshotter) getSnapshotCreateFunc(snapshotName string, snapshot
 				if err != nil || snapshotDataSource == nil {
 					return fmt.Errorf("Failed to take snapshot of the volume %s: %q", pvName, err)
 				}
-                                if snapStatus != nil {
-                                        // TODO(xyang): takeSnapshot returns snapStatus *[]crdv1.VolumeSnapshotCondition
-                                        // Should use it to update VolumeSnapshot status.
-                                        glog.Infof("VolumeSnapshotConditions for snapshot %s is %#v.", snapshotName, snapStatus)
-                                }
+				if snapStatus != nil {
+					// TODO(xyang): takeSnapshot returns snapStatus *[]crdv1.VolumeSnapshotCondition
+					// Should use it to update VolumeSnapshot status.
+					glog.Infof("VolumeSnapshotConditions for snapshot %s is %#v.", snapshotName, snapStatus)
+				}
 			}
 
 			// Check whether the VolumeSnapshotData object is already created
@@ -658,24 +658,24 @@ func (vs *volumeSnapshotter) PromoteVolumeSnapshotToPV(snapshot *crdv1.VolumeSna
 }
 
 func (vs *volumeSnapshotter) getVolumeSnapshot(snapshotName string) (*crdv1.VolumeSnapshot, error) {
-        var snapshotObj crdv1.VolumeSnapshot
+	var snapshotObj crdv1.VolumeSnapshot
 
-        glog.Infof("In getVolumeSnapshot %s", snapshotName)
-        // Get a fresh copy of the VolumeSnapshotData from the API server
-        // Get a fresh copy of the VolumeSnapshot from the API server
-        snapNameSpace, snapName, err := cache.GetNameAndNameSpaceFromSnapshotName(snapshotName)
-        if err != nil {
-                return nil, fmt.Errorf("Error getting namespace and name from VolumeSnapshot name %s: %v", snapshotName, err)
-        }
-        glog.Infof("getVolumeSnapshot: Namespace %s Name %s", snapNameSpace, snapName)
-        err = vs.restClient.Get().
-                Name(snapName).
-                Resource(crdv1.VolumeSnapshotResourcePlural).
-                Namespace(snapNameSpace).
-                Do().Into(&snapshotObj)
-        if err != nil {
-                return nil, fmt.Errorf("Error getting VolumeSnapshot object %s. Error: %v", snapshotName, err)
-        }
+	glog.Infof("In getVolumeSnapshot %s", snapshotName)
+	// Get a fresh copy of the VolumeSnapshotData from the API server
+	// Get a fresh copy of the VolumeSnapshot from the API server
+	snapNameSpace, snapName, err := cache.GetNameAndNameSpaceFromSnapshotName(snapshotName)
+	if err != nil {
+		return nil, fmt.Errorf("Error getting namespace and name from VolumeSnapshot name %s: %v", snapshotName, err)
+	}
+	glog.Infof("getVolumeSnapshot: Namespace %s Name %s", snapNameSpace, snapName)
+	err = vs.restClient.Get().
+		Name(snapName).
+		Resource(crdv1.VolumeSnapshotResourcePlural).
+		Namespace(snapNameSpace).
+		Do().Into(&snapshotObj)
+	if err != nil {
+		return nil, fmt.Errorf("Error getting VolumeSnapshot object %s. Error: %v", snapshotName, err)
+	}
 
 	return &snapshotObj, nil
 }
@@ -707,17 +707,17 @@ func (vs *volumeSnapshotter) UpdateVolumeSnapshot(snapshotName string, status *[
 
 	// VolumeSnapshot Metadata Labels not found. Update VolumeSnapshot by creating the Metadata Lables...
 	if bFoundVolumeSnapshotMetadata == false {
-                tags := make(map[string]string)
+		tags := make(map[string]string)
 		tags["Timestamp"] = fmt.Sprintf("%d", time.Now().UnixNano())
 		snapshotCopy.Metadata.Labels = tags
-                glog.Infof("UpdateVolumeSnapshot [%s]: Metadata Name: %s Metadata Namespace: %s Setting tags in Metadata Labels: [%#v].", snapshotName, snapshotCopy.Metadata.Name, snapshotCopy.Metadata.Namespace, snapshotCopy.Metadata.Labels)
+		glog.Infof("UpdateVolumeSnapshot [%s]: Metadata Name: %s Metadata Namespace: %s Setting tags in Metadata Labels: [%#v].", snapshotName, snapshotCopy.Metadata.Name, snapshotCopy.Metadata.Namespace, snapshotCopy.Metadata.Labels)
 	} else {
 		glog.Infof("UpdateVolumeSnapshot: Setting VolumeSnapshotData name in VolumeSnapshotSpec of VolumeSnapshot object")
-                snapshotDataObj := vs.getSnapshotDataFromSnapshotName(snapshotName)
-                if snapshotDataObj == nil {
+		snapshotDataObj := vs.getSnapshotDataFromSnapshotName(snapshotName)
+		if snapshotDataObj == nil {
 			//TODO(xyang): Should we return error here?
-                        return nil, fmt.Errorf("Error getting VolumeSnapshotData for VolumeSnapshot %s", snapshotName)
-                }
+			return nil, fmt.Errorf("Error getting VolumeSnapshotData for VolumeSnapshot %s", snapshotName)
+		}
 
 		snapshotCopy.Spec.SnapshotDataName = snapshotDataObj.Metadata.Name
 		/*snapshotCopy.Status.Conditions = []crdv1.VolumeSnapshotCondition{
@@ -747,11 +747,11 @@ func (vs *volumeSnapshotter) UpdateVolumeSnapshot(snapshotName string, status *[
 	}
 
 	cloudTags := make(map[string]string)
-        cloudTags[CloudSnapshotCreatedForVolumeSnapshotNamespaceTag] = result.Metadata.Namespace
-        cloudTags[CloudSnapshotCreatedForVolumeSnapshotNameTag] = result.Metadata.Name
-        cloudTags[CloudSnapshotCreatedForVolumeSnapshotTimestampTag] = result.Metadata.Labels["Timestamp"]
+	cloudTags[CloudSnapshotCreatedForVolumeSnapshotNamespaceTag] = result.Metadata.Namespace
+	cloudTags[CloudSnapshotCreatedForVolumeSnapshotNameTag] = result.Metadata.Name
+	cloudTags[CloudSnapshotCreatedForVolumeSnapshotTimestampTag] = result.Metadata.Labels["Timestamp"]
 
-        glog.Infof("UpdateVolumeSnapshot: returning cloudTags [%#v]", cloudTags)
+	glog.Infof("UpdateVolumeSnapshot: returning cloudTags [%#v]", cloudTags)
 	return &cloudTags, nil
 }
 

@@ -99,14 +99,14 @@ func (a *awsEBSPlugin) DescribeSnapshot(snapshotData *crdv1.VolumeSnapshotData) 
 
 // FindSnapshot finds a VolumeSnapshot by matching metadata
 func (a *awsEBSPlugin) FindSnapshot(tags *map[string]string) (*crdv1.VolumeSnapshotDataSource, *[]crdv1.VolumeSnapshotCondition, error) {
-        glog.Infof("FindSnapshot by tags: %#v", *tags)
+	glog.Infof("FindSnapshot by tags: %#v", *tags)
 
-        // TODO: Implement FindSnapshot
-        return &crdv1.VolumeSnapshotDataSource{
+	// TODO: Implement FindSnapshot
+	return &crdv1.VolumeSnapshotDataSource{
 		AWSElasticBlockStore: &crdv1.AWSElasticBlockStoreVolumeSnapshotSource{
 			SnapshotID: "",
-                },
-        }, nil, nil
+		},
+	}, nil, nil
 }
 
 func (a *awsEBSPlugin) SnapshotRestore(snapshotData *crdv1.VolumeSnapshotData, pvc *v1.PersistentVolumeClaim, pvName string, parameters map[string]string) (*v1.PersistentVolumeSource, map[string]string, error) {

@@ -53,9 +53,9 @@ type SnapshotCreateOpts struct {
 
 // SnapshotListOpts are the valid list options for Cinder Snapshots
 type SnapshotListOpts struct {
-        Name        string
-        Status      string
-        VolumeID    string
+	Name     string
+	Status   string
+	VolumeID string
 }
 
 type snapshotService interface {
@@ -84,16 +84,16 @@ func (snapshots *SnapshotsV2) createSnapshot(opts SnapshotCreateOpts) (string, s
 
 func (snapshots *SnapshotsV2) getSnapshot(snapshotID string) (Snapshot, error) {
 	var snap Snapshot
-        glog.Infof("getSnapshot for snapshotID: %s.", snapshotID)
-        snapshot, err := snapshotsV2.Get(snapshots.blockstorage, snapshotID).Extract()
-        if err != nil {
-                return snap, err
-        }
-        glog.Infof("Snapshot details: %#v", snapshot)
-        snap.ID = snapshot.ID
-        snap.Name = snapshot. Name
-        snap.Status = snapshot.Status
-        snap.SourceVolumeID = snapshot.VolumeID
+	glog.Infof("getSnapshot for snapshotID: %s.", snapshotID)
+	snapshot, err := snapshotsV2.Get(snapshots.blockstorage, snapshotID).Extract()
+	if err != nil {
+		return snap, err
+	}
+	glog.Infof("Snapshot details: %#v", snapshot)
+	snap.ID = snapshot.ID
+	snap.Name = snapshot.Name
+	snap.Status = snapshot.Status
+	snap.SourceVolumeID = snapshot.VolumeID
 	snap.Description = snapshot.Description
 	snap.Metadata = snapshot.Metadata
 
@@ -110,28 +110,28 @@ func (snapshots *SnapshotsV2) deleteSnapshot(snapshotID string) error {
 }
 
 func (snapshots *SnapshotsV2) listSnapshots(opts SnapshotListOpts) ([]Snapshot, error) {
-        var snaplist []Snapshot
+	var snaplist []Snapshot
 
-        listOpts := snapshotsV2.ListOpts{
-                Name:        opts.Name,
-                Status:      opts.Status,
-                VolumeID:    opts.VolumeID,
-        }
+	listOpts := snapshotsV2.ListOpts{
+		Name:     opts.Name,
+		Status:   opts.Status,
+		VolumeID: opts.VolumeID,
+	}
 
-        snapPages, err := snapshotsV2.List(snapshots.blockstorage, listOpts).AllPages()
-        if err != nil {
-                return snaplist, err
-        }
-        allSnaps, err := snapshotsV2.ExtractSnapshots(snapPages)
-        if err != nil {
-                return snaplist, err
-        }
+	snapPages, err := snapshotsV2.List(snapshots.blockstorage, listOpts).AllPages()
+	if err != nil {
+		return snaplist, err
+	}
+	allSnaps, err := snapshotsV2.ExtractSnapshots(snapPages)
+	if err != nil {
+		return snaplist, err
+	}
 
-        for _, snapshot := range allSnaps {
+	for _, snapshot := range allSnaps {
 		glog.Infof("Snapshot details: %#v", snapshot)
 		var snap Snapshot
 		snap.ID = snapshot.ID
-		snap.Name = snapshot. Name
+		snap.Name = snapshot.Name
 		snap.Status = snapshot.Status
 		snap.SourceVolumeID = snapshot.VolumeID
 		snap.Description = snapshot.Description
@@ -139,7 +139,7 @@ func (snapshots *SnapshotsV2) listSnapshots(opts SnapshotListOpts) ([]Snapshot, 
 		snaplist = append(snaplist, snap)
 	}
 
-        return snaplist, nil
+	return snaplist, nil
 }
 
 // CreateSnapshot from the specified volume
@@ -211,24 +211,24 @@ func (os *OpenStack) DescribeSnapshot(snapshotID string) (status string, isCompl
 // Find snapshot by metadata
 func (os *OpenStack) FindSnapshot(tags map[string]string) ([]string, []string, error) {
 	var snapshotIDs, statuses []string
-        ss, err := os.snapshotService()
-        if err != nil || ss == nil {
-                glog.Errorf("Unable to initialize cinder client for region: %s", os.region)
+	ss, err := os.snapshotService()
+	if err != nil || ss == nil {
+		glog.Errorf("Unable to initialize cinder client for region: %s", os.region)
 		return snapshotIDs, statuses, err
-        }
+	}
 
-        opts := SnapshotListOpts{}
-        snapshots, err := ss.listSnapshots(opts)
+	opts := SnapshotListOpts{}
+	snapshots, err := ss.listSnapshots(opts)
 
-        if err != nil {
-                glog.Errorf("Failed to list snapshots. Error: %v", err)
+	if err != nil {
+		glog.Errorf("Failed to list snapshots. Error: %v", err)
 		return snapshotIDs, statuses, err
-        }
-        glog.Infof("Listed [%v] snapshots.", len(snapshots))
+	}
+	glog.Infof("Listed [%v] snapshots.", len(snapshots))
 
 	glog.Infof("Looking for matching tags [%#v] in snapshots.", tags)
 	// Loop around to find the snapshot with the matching input metadata
-	for _, snapshot:= range snapshots {
+	for _, snapshot := range snapshots {
 		glog.Infof("Looking for matching tags in snapshot [%#v].", snapshot)
 		namespaceVal, ok := snapshot.Metadata[ctrlsnap.CloudSnapshotCreatedForVolumeSnapshotNamespaceTag]
 		if ok {

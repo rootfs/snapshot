@@ -49,11 +49,11 @@ const (
 	// to "Uploading" in GCE PD or "Pending" in AWS and core_v1.ConditionStatus is True.
 	// It also corresponds to "Creating" in OpenStack Cinder and core_v1.ConditionStatus
 	// is Unknown.
-        VolumeSnapshotConditionPending VolumeSnapshotConditionType = "Pending"
+	VolumeSnapshotConditionPending VolumeSnapshotConditionType = "Pending"
 	// VolumeSnapshotConditionReady is added when the snapshot has been successfully created and is ready to be used.
 	VolumeSnapshotConditionReady VolumeSnapshotConditionType = "Ready"
 	// VolumeSnapshotConditionError means an error occurred during snapshot creation.
-        VolumeSnapshotConditionError VolumeSnapshotConditionType = "Error"
+	VolumeSnapshotConditionError VolumeSnapshotConditionType = "Error"
 )
 
 // VolumeSnapshot Condition describes the state of a volume snapshot  at a certain point.
@@ -243,9 +243,9 @@ func GetSupportedVolumeFromPVSpec(spec *core_v1.PersistentVolumeSpec) string {
 	if spec.GCEPersistentDisk != nil {
 		return "gce-pd"
 	}
-        if spec.Cinder != nil {
-                return "cinder"
-        }
+	if spec.Cinder != nil {
+		return "cinder"
+	}
 	return ""
 }
 

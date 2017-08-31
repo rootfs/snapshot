@@ -155,8 +155,8 @@ type Disks interface {
 	// return status (completed or pending or error), and error
 	DescribeSnapshot(snapshotToGet string) (status string, isCompleted bool, err error)
 
-        // Find snapshot by tags
-        FindSnapshot(tags map[string]string) ([]string, []string, error)
+	// Find snapshot by tags
+	FindSnapshot(tags map[string]string) ([]string, []string, error)
 
 	// GetAutoLabelsForPD returns labels to apply to PersistentVolume
 	// representing this PD, namely failure domain and zone.

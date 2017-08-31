@@ -25,8 +25,8 @@ import (
 	"github.com/golang/glog"
 	"k8s.io/apimachinery/pkg/util/wait"
 
-        metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-        v1 "k8s.io/client-go/pkg/api/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/client-go/pkg/api/v1"
 
 	crdv1 "github.com/rootfs/snapshot/pkg/apis/crd/v1"
 	"github.com/rootfs/snapshot/pkg/controller/cache"

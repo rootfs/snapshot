@@ -21,8 +21,8 @@ import (
 	"strings"
 	"time"
 
-	"k8s.io/client-go/pkg/api/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/pkg/api/v1"
 
 	"github.com/golang/glog"
 
@@ -166,47 +166,47 @@ func (c *cinderPlugin) DescribeSnapshot(snapshotData *crdv1.VolumeSnapshotData) 
 
 // convertSnapshotStatus converts Cinder snapshot status to crdv1.VolumeSnapshotCondition
 func (c *cinderPlugin) convertSnapshotStatus(status string) *[]crdv1.VolumeSnapshotCondition {
-        var snapConditions []crdv1.VolumeSnapshotCondition
-        if status == "available" {
-                snapConditions = []crdv1.VolumeSnapshotCondition{
-                        {
-                                Type:               crdv1.VolumeSnapshotConditionReady,
-                                Status:             v1.ConditionTrue,
-                                Message:            "Snapshot created succsessfully and it is ready",
-                                LastTransitionTime: metav1.Now(),
-                        },
-                }
-        } else if status == "creating" {
-                snapConditions = []crdv1.VolumeSnapshotCondition{
-                        {
-                                Type:               crdv1.VolumeSnapshotConditionPending,
-                                Status:             v1.ConditionUnknown,
-                                Message:            "Snapshot is being created",
-                                LastTransitionTime: metav1.Now(),
-                        },
-                }
-        } else {
-                snapConditions = []crdv1.VolumeSnapshotCondition{
-                        {
-                                Type:               crdv1.VolumeSnapshotConditionError,
-                                Status:             v1.ConditionTrue,
-                                Message:            "Snapshot creation failed",
-                                LastTransitionTime: metav1.Now(),
-                        },
-                }
-        }
+	var snapConditions []crdv1.VolumeSnapshotCondition
+	if status == "available" {
+		snapConditions = []crdv1.VolumeSnapshotCondition{
+			{
+				Type:               crdv1.VolumeSnapshotConditionReady,
+				Status:             v1.ConditionTrue,
+				Message:            "Snapshot created succsessfully and it is ready",
+				LastTransitionTime: metav1.Now(),
+			},
+		}
+	} else if status == "creating" {
+		snapConditions = []crdv1.VolumeSnapshotCondition{
+			{
+				Type:               crdv1.VolumeSnapshotConditionPending,
+				Status:             v1.ConditionUnknown,
+				Message:            "Snapshot is being created",
+				LastTransitionTime: metav1.Now(),
+			},
+		}
+	} else {
+		snapConditions = []crdv1.VolumeSnapshotCondition{
+			{
+				Type:               crdv1.VolumeSnapshotConditionError,
+				Status:             v1.ConditionTrue,
+				Message:            "Snapshot creation failed",
+				LastTransitionTime: metav1.Now(),
+			},
+		}
+	}
 
-        return &snapConditions
+	return &snapConditions
 }
 
 // FindSnapshot finds a VolumeSnapshot by matching metadata
 func (c *cinderPlugin) FindSnapshot(tags *map[string]string) (*crdv1.VolumeSnapshotDataSource, *[]crdv1.VolumeSnapshotCondition, error) {
-        glog.Infof("Cinder.FindSnapshot by tags: %#v", *tags)
+	glog.Infof("Cinder.FindSnapshot by tags: %#v", *tags)
 	snapIDs, statuses, err := c.cloud.FindSnapshot(*tags)
-        if err != nil {
+	if err != nil {
 		glog.Infof("Cinder.FindSnapshot by tags: %#v. Error: %v", *tags, err)
-                //return nil, err
-        }
+		//return nil, err
+	}
 
 	if len(snapIDs) > 0 && len(statuses) > 0 {
 		glog.Infof("Found snapshot %s by tags: %#v", snapIDs[0], *tags)
