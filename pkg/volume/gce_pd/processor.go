@@ -167,12 +167,14 @@ func (plugin *gcePersistentDiskPlugin) SnapshotDelete(src *crdv1.VolumeSnapshotD
 	return nil
 }
 
-func (plugin *gcePersistentDiskPlugin) DescribeSnapshot(snapshotData *crdv1.VolumeSnapshotData) (isCompleted bool, err error) {
+func (plugin *gcePersistentDiskPlugin) DescribeSnapshot(snapshotData *crdv1.VolumeSnapshotData) (snapConditions *[]crdv1.VolumeSnapshotCondition, isCompleted bool, err error) {
 	if snapshotData == nil || snapshotData.Spec.GCEPersistentDiskSnapshot == nil {
-		return false, fmt.Errorf("invalid VolumeSnapshotDataSource: %v", snapshotData)
+		return nil, false, fmt.Errorf("invalid VolumeSnapshotDataSource: %v", snapshotData)
 	}
 	snapshotId := snapshotData.Spec.GCEPersistentDiskSnapshot.SnapshotName
-	return plugin.cloud.DescribeSnapshot(snapshotId)
+	_, isCompleted, err = plugin.cloud.DescribeSnapshot(snapshotId)
+	// TODO: Convert GCE status to []crdv1.VolumeSnapshotCondition
+	return nil, isCompleted, err
 }
 
 // FindSnapshot finds a VolumeSnapshot by matching metadata

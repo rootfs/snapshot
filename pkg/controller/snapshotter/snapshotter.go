@@ -188,23 +188,22 @@ func (vs *volumeSnapshotter) waitForPluginSnapshot(snapshotName string, snapshot
         }
 
 	var completed bool = false
+	var conditions *[]crdv1.VolumeSnapshotCondition = nil
 	// Wait until the snapshot is successfully created by the plugin or an error occurs that
 	// fails the snapshot creation.
 	for {
-		completed, err = plugin.DescribeSnapshot(&snapshotDataObj)
+		// TODO(xyang): Use status returned from DescribeSnapshot to update snapshot
+		conditions, completed, err = plugin.DescribeSnapshot(&snapshotDataObj)
                 if !completed {
-			glog.Infof("Snapshot %s creation is not complete yet. Retrying...", snapshotName)
+			glog.Infof("Snapshot %s creation is not complete yet. Status: [%#v] Retrying...", snapshotName, conditions)
 			if err != nil {
 				// Don't bail out here. The error message could be "current snapshot status is: creating".
 				glog.Infof("Message received when creating snapshot %s: %v", snapshotName, err)
 			}
 			time.Sleep(createVolumeSnapshotDataInterval)
 		} else {
-			// TODO(xyang): DescribeSnapshot should return status of the snapshot.
-			// If status is Pending/Creating, update VolumeSnapshot status to Pending;
-			// If status is Available/Ready, update VolumeSnapshot status to Ready;
-			// If status is Error, update VolumeSnapshot status to Error.
-			glog.Infof("waitForPluginSnapshot: Snapshot %s creation is complete.", snapshotName)
+			// TODO(xyang): Use status returned from DescribeSnapshot.
+			glog.Infof("waitForPluginSnapshot: Snapshot %s creation is complete: %#v", snapshotName, conditions)
 			break
 		}
 	}
@@ -279,7 +278,8 @@ func (vs *volumeSnapshotter) updateSnapshotDataStatus(snapshotName string, snaps
 		if !ok {
 			return fmt.Errorf("%s is not supported volume for %#v", volumeType, spec)
 		}
-		completed, err := plugin.DescribeSnapshot(&snapshotDataObj)
+		// TODO(xyang): Use status from DescribeSnapshot to update snapshot.
+		_, completed, err := plugin.DescribeSnapshot(&snapshotDataObj)
 		if !completed {
 			return fmt.Errorf("snapshot is not completed yet: %v", err)
 		}

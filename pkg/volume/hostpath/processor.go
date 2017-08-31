@@ -75,15 +75,15 @@ func (h *hostPathPlugin) SnapshotDelete(src *crdv1.VolumeSnapshotDataSource, _ *
 	return os.Remove(path)
 }
 
-func (a *hostPathPlugin) DescribeSnapshot(snapshotData *crdv1.VolumeSnapshotData) (isCompleted bool, err error) {
+func (a *hostPathPlugin) DescribeSnapshot(snapshotData *crdv1.VolumeSnapshotData) (snapConditions *[]crdv1.VolumeSnapshotCondition, isCompleted bool, err error) {
 	if snapshotData == nil || snapshotData.Spec.HostPath == nil {
-		return false, fmt.Errorf("failed to retrieve Snapshot spec")
+		return nil, false, fmt.Errorf("failed to retrieve Snapshot spec")
 	}
 	path := snapshotData.Spec.HostPath.Path
 	if _, err := os.Stat(path); err != nil {
-		return false, err
+		return nil, false, err
 	}
-	return true, nil
+	return nil, true, nil
 }
 
 // FindSnapshot finds a VolumeSnapshot by matching metadata

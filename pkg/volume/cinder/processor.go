@@ -151,16 +151,17 @@ func (c *cinderPlugin) SnapshotRestore(snapshotData *crdv1.VolumeSnapshotData, p
 }
 
 // DescribeSnapshot retrieves info for the specified Snapshot
-func (c *cinderPlugin) DescribeSnapshot(snapshotData *crdv1.VolumeSnapshotData) (bool, error) {
+func (c *cinderPlugin) DescribeSnapshot(snapshotData *crdv1.VolumeSnapshotData) (*[]crdv1.VolumeSnapshotCondition, bool, error) {
 	if snapshotData == nil || snapshotData.Spec.CinderSnapshot == nil {
-		return false, fmt.Errorf("invalid VolumeSnapshotDataSource: %v", snapshotData)
+		return nil, false, fmt.Errorf("invalid VolumeSnapshotDataSource: %v", snapshotData)
 	}
 	snapshotID := snapshotData.Spec.CinderSnapshot.SnapshotID
-	isComplete, err := c.cloud.DescribeSnapshot(snapshotID)
+	status, isComplete, err := c.cloud.DescribeSnapshot(snapshotID)
+	glog.Infof("DescribeSnapshot: Snapshot %s, Status %s, isComplete: %v", snapshotID, status, isComplete)
 	if err != nil {
-		return false, err
+		return c.convertSnapshotStatus(status), false, err
 	}
-	return isComplete, nil
+	return c.convertSnapshotStatus(status), isComplete, nil
 }
 
 // convertSnapshotStatus converts Cinder snapshot status to crdv1.VolumeSnapshotCondition
