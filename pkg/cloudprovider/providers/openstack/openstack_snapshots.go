@@ -187,11 +187,11 @@ func (os *OpenStack) DeleteSnapshot(snapshotID string) error {
 
 // FIXME(j-griffith): Name doesn't fit at all here, this is actually more like is `IsAvailable`
 // DescribeSnapshot returns the status of the snapshot
-func (os *OpenStack) DescribeSnapshot(snapshotID string) (isCompleted bool, err error) {
+func (os *OpenStack) DescribeSnapshot(snapshotID string) (status string, isCompleted bool, err error) {
 	ss, err := os.snapshotService()
 	if err != nil || ss == nil {
 		glog.Errorf("Unable to initialize cinder client for region: %s", os.region)
-		return false, err
+		return "", false, err
 	}
 
 	snap, err := ss.getSnapshot(snapshotID)
@@ -200,12 +200,12 @@ func (os *OpenStack) DescribeSnapshot(snapshotID string) (isCompleted bool, err 
 	}
 
 	if err != nil {
-		return false, err
+		return "", false, err
 	}
 	if snap.Status != "available" {
-		return false, fmt.Errorf("current snapshot status is: %s", snap.Status)
+		return snap.Status, false, fmt.Errorf("current snapshot status is: %s", snap.Status)
 	}
-	return true, nil
+	return snap.Status, true, nil
 }
 
 // Find snapshot by metadata

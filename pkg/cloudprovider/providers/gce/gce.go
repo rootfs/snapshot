@@ -153,7 +153,7 @@ type Disks interface {
 
 	// Describe a GCE PD volume snapshot status for create or delete.
 	// return status (completed or pending or error), and error
-	DescribeSnapshot(snapshotToGet string) (isCompleted bool, err error)
+	DescribeSnapshot(snapshotToGet string) (status string, isCompleted bool, err error)
 
         // Find snapshot by tags
         FindSnapshot(tags map[string]string) ([]string, []string, error)
@@ -2847,19 +2847,19 @@ func (gce *GCECloud) CreateDiskFromSnapshot(snapshot string,
 	return err
 }
 
-func (gce *GCECloud) DescribeSnapshot(snapshotToGet string) (isCompleted bool, err error) {
+func (gce *GCECloud) DescribeSnapshot(snapshotToGet string) (status string, isCompleted bool, err error) {
 	snapshot, err := gce.getSnapshotByName(snapshotToGet)
 	if err != nil {
-		return false, err
+		return "", false, err
 	}
 	//no snapshot is found
 	if snapshot == nil {
-		return false, fmt.Errorf("snapshot %s is found", snapshotToGet)
+		return "", false, fmt.Errorf("snapshot %s is found", snapshotToGet)
 	}
 	if snapshot.Status == "READY" {
-		return true, nil
+		return snapshot.Status, true, nil
 	}
-	return false, nil
+	return snapshot.Status, false, nil
 }
 
 // FindSnapshot returns the found snapshots

@@ -35,7 +35,7 @@ type VolumePlugin interface {
 	SnapshotRestore(*crdv1.VolumeSnapshotData, *v1.PersistentVolumeClaim, string, map[string]string) (*v1.PersistentVolumeSource, map[string]string, error)
 	// Describe an EBS volume snapshot status for create or delete.
 	// return status (completed or pending or error), and error
-	DescribeSnapshot(snapshotData *crdv1.VolumeSnapshotData) (isCompleted bool, err error)
+	DescribeSnapshot(snapshotData *crdv1.VolumeSnapshotData) (snapConditions *[]crdv1.VolumeSnapshotCondition, isCompleted bool, err error)
 	// FindSnapshot finds a VolumeSnapshot by matching metadata
 	FindSnapshot(tags *map[string]string) (*crdv1.VolumeSnapshotDataSource, *[]crdv1.VolumeSnapshotCondition, error)
 	// VolumeDelete deletes a PV

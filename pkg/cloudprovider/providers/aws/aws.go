@@ -355,7 +355,7 @@ type Volumes interface {
 
 	// Describe an EBS volume snapshot status for create or delete.
 	// return status (completed or pending or error), and error
-	DescribeSnapshot(snapshotId string) (isCompleted bool, err error)
+	DescribeSnapshot(snapshotId string) (status string, isCompleted bool, err error)
 
 	// Find snapshot by tags
 	FindSnapshot(tags map[string]string) ([]string, []string, error)
@@ -1942,7 +1942,7 @@ func (c *Cloud) DeleteSnapshot(snapshotId string) (bool, error) {
 }
 
 // DescribeSnapshot returns the status of the snapshot
-func (c *Cloud) DescribeSnapshot(snapshotId string) (isCompleted bool, err error) {
+func (c *Cloud) DescribeSnapshot(snapshotId string) (status string, isCompleted bool, err error) {
 	request := &ec2.DescribeSnapshotsInput{
 		SnapshotIds: []*string{
 			aws.String(snapshotId),
@@ -1950,21 +1950,21 @@ func (c *Cloud) DescribeSnapshot(snapshotId string) (isCompleted bool, err error
 	}
 	result, err := c.ec2.DescribeSnapshots(request)
 	if err != nil {
-		return false, err
+		return "", false, err
 	}
 	if len(result) != 1 {
-		return false, fmt.Errorf("wrong result from DescribeSnapshots: %#v", result)
+		return "", false, fmt.Errorf("wrong result from DescribeSnapshots: %#v", result)
 	}
 	if result[0].State == nil {
-		return false, fmt.Errorf("missing state from DescribeSnapshots: %#v", result)
+		return "", false, fmt.Errorf("missing state from DescribeSnapshots: %#v", result)
 	}
 	if *result[0].State == ec2.SnapshotStateCompleted {
-		return true, nil
+		return *result[0].State, true, nil
 	}
 	if *result[0].State == ec2.SnapshotStateError {
-		return false, fmt.Errorf("snapshot state is error: %s", *result[0].StateMessage)
+		return *result[0].State, false, fmt.Errorf("snapshot state is error: %s", *result[0].StateMessage)
 	}
-	return false, fmt.Errorf(*result[0].StateMessage)
+	return *result[0].State, false, fmt.Errorf(*result[0].StateMessage)
 }
 
 // FindSnapshot returns the found snapshot

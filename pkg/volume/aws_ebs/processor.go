@@ -87,12 +87,14 @@ func (a *awsEBSPlugin) SnapshotDelete(src *crdv1.VolumeSnapshotDataSource, _ *v1
 	return nil
 }
 
-func (a *awsEBSPlugin) DescribeSnapshot(snapshotData *crdv1.VolumeSnapshotData) (isCompleted bool, err error) {
+func (a *awsEBSPlugin) DescribeSnapshot(snapshotData *crdv1.VolumeSnapshotData) (snapConditions *[]crdv1.VolumeSnapshotCondition, isCompleted bool, err error) {
 	if snapshotData == nil || snapshotData.Spec.AWSElasticBlockStore == nil {
-		return false, fmt.Errorf("invalid VolumeSnapshotDataSource: %v", snapshotData)
+		return nil, false, fmt.Errorf("invalid VolumeSnapshotDataSource: %v", snapshotData)
 	}
 	snapshotId := snapshotData.Spec.AWSElasticBlockStore.SnapshotID
-	return a.cloud.DescribeSnapshot(snapshotId)
+	_, isCompleted, err = a.cloud.DescribeSnapshot(snapshotId)
+	// TODO: Convert AWS status to []crdv1.VolumeSnapshotCondition
+	return nil, isCompleted, err
 }
 
 // FindSnapshot finds a VolumeSnapshot by matching metadata
