@@ -79,10 +79,10 @@ const (
 	// (e.g. AWS EBS or GCE PD) with timestamp when the create snapshot request is issued.
 	CloudSnapshotCreatedForVolumeSnapshotTimestampTag = "kubernetes.io/created-for/snapshot/timestamp"
 	// Statuses of snapshot creation process
-	statusReady string = "ready"
-	statusError string = "error"
+	statusReady   string = "ready"
+	statusError   string = "error"
 	statusPending string = "pending"
-	statusNew string = "new"
+	statusNew     string = "new"
 )
 
 func NewVolumeSnapshotter(
@@ -195,6 +195,10 @@ func (vs *volumeSnapshotter) waitForSnapshot(snapshotName string, snapshot *crdv
 	// fails the snapshot creation.
 	for {
 		conditions, _, err = (*plugin).DescribeSnapshot(snapshotDataObj)
+		if err != nil {
+			glog.Warningf("failed to get snapshot %v, err: %v", snapshotName, err)
+			continue
+		}
 		newstatus = vs.getSimplifiedSnapshotStatus(conditions)
 		if newstatus == statusPending {
 			if newstatus != status {
@@ -347,7 +351,7 @@ func (vs *volumeSnapshotter) getSimplifiedSnapshotStatus(conditions *[]crdv1.Vol
 	index := len(*conditions) - 1
 	if len(*conditions) > 0 &&
 		((*conditions)[index].Type == crdv1.VolumeSnapshotConditionReady &&
-		(*conditions)[index].Status == v1.ConditionTrue) {
+			(*conditions)[index].Status == v1.ConditionTrue) {
 		return statusReady
 	} else if len(*conditions) > 0 &&
 		(*conditions)[index].Type == crdv1.VolumeSnapshotConditionError {
@@ -355,7 +359,7 @@ func (vs *volumeSnapshotter) getSimplifiedSnapshotStatus(conditions *[]crdv1.Vol
 	} else if len(*conditions) > 0 &&
 		(*conditions)[index].Type == crdv1.VolumeSnapshotConditionPending &&
 		((*conditions)[index].Status == v1.ConditionTrue ||
-		(*conditions)[index].Status == v1.ConditionUnknown) {
+			(*conditions)[index].Status == v1.ConditionUnknown) {
 		return statusPending
 	} else {
 		return statusNew
@@ -466,26 +470,26 @@ func (vs *volumeSnapshotter) syncSnapshot(snapshotName string, snapshot *crdv1.V
 	return func() error {
 		status, snapshotDataObj, err := vs.getSnapshotStatus(snapshot)
 		switch status {
-			case statusReady:
-				return nil
-			case statusError:
-				glog.Infof("syncSnapshot: Error creating snapshot %s.", snapshotName)
-				return fmt.Errorf("Error creating snapshot %s.", snapshotName)
-			case statusPending:
-				glog.Infof("syncSnapshot: Snapshot %s is Pending.", snapshotName)
-				// Query the volume plugin for the status of the snapshot with snapshot id
-				// from VolumeSnapshotData object.
-				// Add snapshot to Actual State of World when snapshot is Ready.
-				err = vs.waitForSnapshot(snapshotName, snapshot, snapshotDataObj)
-				if err != nil {
-					return fmt.Errorf("Failed to create snapshot %s.", snapshotName)
-				}
-				glog.Infof("syncSnapshot: Snapshot %s created successfully.", snapshotName)
-				return nil
-			case statusNew:
-				glog.Infof("syncSnapshot: Creating snapshot %s ...", snapshotName)
-				ret := vs.createSnapshot(snapshotName, snapshot)
-				return ret
+		case statusReady:
+			return nil
+		case statusError:
+			glog.Infof("syncSnapshot: Error creating snapshot %s.", snapshotName)
+			return fmt.Errorf("Error creating snapshot %s.", snapshotName)
+		case statusPending:
+			glog.Infof("syncSnapshot: Snapshot %s is Pending.", snapshotName)
+			// Query the volume plugin for the status of the snapshot with snapshot id
+			// from VolumeSnapshotData object.
+			// Add snapshot to Actual State of World when snapshot is Ready.
+			err = vs.waitForSnapshot(snapshotName, snapshot, snapshotDataObj)
+			if err != nil {
+				return fmt.Errorf("Failed to create snapshot %s.", snapshotName)
+			}
+			glog.Infof("syncSnapshot: Snapshot %s created successfully.", snapshotName)
+			return nil
+		case statusNew:
+			glog.Infof("syncSnapshot: Creating snapshot %s ...", snapshotName)
+			ret := vs.createSnapshot(snapshotName, snapshot)
+			return ret
 		}
 		return fmt.Errorf("Error occurred when creating snapshot %s.", snapshotName)
 	}
@@ -495,7 +499,7 @@ func (vs *volumeSnapshotter) findSnapshot(snapshotName string, snapshot *crdv1.V
 	glog.Infof("findSnapshot: snapshot %s", snapshotName)
 	var snapshotDataSource *crdv1.VolumeSnapshotDataSource = nil
 	var conditions *[]crdv1.VolumeSnapshotCondition = nil
-	tags :=  vs.findVolumeSnapshotMetadata(snapshot)
+	tags := vs.findVolumeSnapshotMetadata(snapshot)
 	if tags != nil {
 		plugin, err := vs.getPlugin(snapshotName, snapshot)
 		if plugin == nil {
@@ -536,11 +540,11 @@ func (vs *volumeSnapshotter) createSnapshot(snapshotName string, snapshot *crdv1
 	}
 
 	glog.Infof("createSnapshot: Update status for VolumeSnapshot object %s.", snapshotName)
-        _, err = vs.UpdateVolumeSnapshot(snapshotName, snapStatus)
-        if err != nil {
-                glog.Errorf("createSnapshot: Error updating volume snapshot %s: %v", snapshotName, err)
-                return fmt.Errorf("Failed to update VolumeSnapshot for snapshot %s", snapshotName)
-        }
+	_, err = vs.UpdateVolumeSnapshot(snapshotName, snapStatus)
+	if err != nil {
+		glog.Errorf("createSnapshot: Error updating volume snapshot %s: %v", snapshotName, err)
+		return fmt.Errorf("Failed to update VolumeSnapshot for snapshot %s", snapshotName)
+	}
 
 	glog.Infof("createSnapshot: create VolumeSnapshotData object for VolumeSnapshot %s.", snapshotName)
 	snapshotDataObj, err := vs.createVolumeSnapshotData(snapshotName, snapshot, snapshotDataSource)
@@ -565,13 +569,13 @@ func (vs *volumeSnapshotter) createSnapshot(snapshotName string, snapshot *crdv1
 }
 
 func (vs *volumeSnapshotter) createVolumeSnapshotData(snapshotName string, snapshot *crdv1.VolumeSnapshot, snapshotDataSource *crdv1.VolumeSnapshotDataSource) (*crdv1.VolumeSnapshotData, error) {
-        var snapshotObj crdv1.VolumeSnapshot
-        // Need to get a fresh copy of the VolumeSnapshot with the updated status
-        err := vs.restClient.Get().
-                Name(snapshot.Metadata.Name).
-                Resource(crdv1.VolumeSnapshotResourcePlural).
-                Namespace(snapshot.Metadata.Namespace).
-                Do().Into(&snapshotObj)
+	var snapshotObj crdv1.VolumeSnapshot
+	// Need to get a fresh copy of the VolumeSnapshot with the updated status
+	err := vs.restClient.Get().
+		Name(snapshot.Metadata.Name).
+		Resource(crdv1.VolumeSnapshotResourcePlural).
+		Namespace(snapshot.Metadata.Namespace).
+		Do().Into(&snapshotObj)
 
 	conditions := snapshotObj.Status.Conditions
 	if len(conditions) == 0 {
@@ -759,38 +763,38 @@ func (vs *volumeSnapshotter) updateVolumeSnapshotMetadata(snapshot *crdv1.Volume
 		Do().Into(&snapshotObj)
 
 	// Copy the snapshot object before updating it
-        objCopy, err := vs.scheme.DeepCopy(&snapshotObj)
-        if err != nil {
-                return nil, fmt.Errorf("Error copying snapshot object %s object: %v", snapshot.Metadata.Name, err)
-        }
-        snapshotCopy, ok := objCopy.(*crdv1.VolumeSnapshot)
-        if !ok {
-                return nil, fmt.Errorf("Error: expecting type VolumeSnapshot but received type %T", objCopy)
-        }
+	objCopy, err := vs.scheme.DeepCopy(&snapshotObj)
+	if err != nil {
+		return nil, fmt.Errorf("Error copying snapshot object %s object: %v", snapshot.Metadata.Name, err)
+	}
+	snapshotCopy, ok := objCopy.(*crdv1.VolumeSnapshot)
+	if !ok {
+		return nil, fmt.Errorf("Error: expecting type VolumeSnapshot but received type %T", objCopy)
+	}
 
-        tags := make(map[string]string)
-        tags["Timestamp"] = fmt.Sprintf("%d", time.Now().UnixNano())
-        snapshotCopy.Metadata.Labels = tags
-        glog.Infof("updateVolumeSnapshotMetadata: Metadata Name: %s Metadata Namespace: %s Setting tags in Metadata Labels: %#v.", snapshotCopy.Metadata.Name, snapshotCopy.Metadata.Namespace, snapshotCopy.Metadata.Labels)
+	tags := make(map[string]string)
+	tags["Timestamp"] = fmt.Sprintf("%d", time.Now().UnixNano())
+	snapshotCopy.Metadata.Labels = tags
+	glog.Infof("updateVolumeSnapshotMetadata: Metadata Name: %s Metadata Namespace: %s Setting tags in Metadata Labels: %#v.", snapshotCopy.Metadata.Name, snapshotCopy.Metadata.Namespace, snapshotCopy.Metadata.Labels)
 
-        var result crdv1.VolumeSnapshot
-        err = vs.restClient.Put().
-                Name(snapshot.Metadata.Name).
-                Resource(crdv1.VolumeSnapshotResourcePlural).
-                Namespace(snapshotCopy.Metadata.Namespace).
-                Body(snapshotCopy).
-                Do().Into(&result)
-        if err != nil {
-                return nil, fmt.Errorf("Error updating snapshot object %s on the API server: %v", snapshot.Metadata.Name, err)
-        }
+	var result crdv1.VolumeSnapshot
+	err = vs.restClient.Put().
+		Name(snapshot.Metadata.Name).
+		Resource(crdv1.VolumeSnapshotResourcePlural).
+		Namespace(snapshotCopy.Metadata.Namespace).
+		Body(snapshotCopy).
+		Do().Into(&result)
+	if err != nil {
+		return nil, fmt.Errorf("Error updating snapshot object %s on the API server: %v", snapshot.Metadata.Name, err)
+	}
 
-        cloudTags := make(map[string]string)
-        cloudTags[CloudSnapshotCreatedForVolumeSnapshotNamespaceTag] = result.Metadata.Namespace
-        cloudTags[CloudSnapshotCreatedForVolumeSnapshotNameTag] = result.Metadata.Name
-        cloudTags[CloudSnapshotCreatedForVolumeSnapshotTimestampTag] = result.Metadata.Labels["Timestamp"]
+	cloudTags := make(map[string]string)
+	cloudTags[CloudSnapshotCreatedForVolumeSnapshotNamespaceTag] = result.Metadata.Namespace
+	cloudTags[CloudSnapshotCreatedForVolumeSnapshotNameTag] = result.Metadata.Name
+	cloudTags[CloudSnapshotCreatedForVolumeSnapshotTimestampTag] = result.Metadata.Labels["Timestamp"]
 
-        glog.Infof("updateVolumeSnapshotMetadata: returning cloudTags [%#v]", cloudTags)
-        return &cloudTags, nil
+	glog.Infof("updateVolumeSnapshotMetadata: returning cloudTags [%#v]", cloudTags)
+	return &cloudTags, nil
 }
 
 func (vs *volumeSnapshotter) UpdateVolumeSnapshot(snapshotName string, status *[]crdv1.VolumeSnapshotCondition) (*crdv1.VolumeSnapshot, error) {
@@ -847,45 +851,45 @@ func (vs *volumeSnapshotter) UpdateVolumeSnapshot(snapshotName string, status *[
 }
 
 func (vs *volumeSnapshotter) bindVolumeSnapshotDataToVolumeSnapshot(snapshotName string, snapshotDataName string) error {
-        var snapshotObj crdv1.VolumeSnapshot
+	var snapshotObj crdv1.VolumeSnapshot
 
-        glog.Infof("In bindVolumeSnapshotDataToVolumeSnapshot")
-        // Get a fresh copy of the VolumeSnapshot from the API server
-        snapNameSpace, snapName, err := cache.GetNameAndNameSpaceFromSnapshotName(snapshotName)
-        if err != nil {
-                return fmt.Errorf("Error getting namespace and name from VolumeSnapshot name %s: %v", snapshotName, err)
-        }
-        glog.Infof("bindVolumeSnapshotDataToVolumeSnapshot: Namespace %s Name %s", snapNameSpace, snapName)
-        err = vs.restClient.Get().
-                Name(snapName).
-                Resource(crdv1.VolumeSnapshotResourcePlural).
-                Namespace(snapNameSpace).
-                Do().Into(&snapshotObj)
+	glog.Infof("In bindVolumeSnapshotDataToVolumeSnapshot")
+	// Get a fresh copy of the VolumeSnapshot from the API server
+	snapNameSpace, snapName, err := cache.GetNameAndNameSpaceFromSnapshotName(snapshotName)
+	if err != nil {
+		return fmt.Errorf("Error getting namespace and name from VolumeSnapshot name %s: %v", snapshotName, err)
+	}
+	glog.Infof("bindVolumeSnapshotDataToVolumeSnapshot: Namespace %s Name %s", snapNameSpace, snapName)
+	err = vs.restClient.Get().
+		Name(snapName).
+		Resource(crdv1.VolumeSnapshotResourcePlural).
+		Namespace(snapNameSpace).
+		Do().Into(&snapshotObj)
 
-        objCopy, err := vs.scheme.DeepCopy(&snapshotObj)
-        if err != nil {
-                return fmt.Errorf("Error copying snapshot object %s object from API server: %v", snapshotName, err)
-        }
-        snapshotCopy, ok := objCopy.(*crdv1.VolumeSnapshot)
-        if !ok {
-                return fmt.Errorf("Error: expecting type VolumeSnapshot but received type %T", objCopy)
-        }
+	objCopy, err := vs.scheme.DeepCopy(&snapshotObj)
+	if err != nil {
+		return fmt.Errorf("Error copying snapshot object %s object from API server: %v", snapshotName, err)
+	}
+	snapshotCopy, ok := objCopy.(*crdv1.VolumeSnapshot)
+	if !ok {
+		return fmt.Errorf("Error: expecting type VolumeSnapshot but received type %T", objCopy)
+	}
 
 	snapshotCopy.Spec.SnapshotDataName = snapshotDataName
-        glog.Infof("bindVolumeSnapshotDataToVolumeSnapshot: Updating VolumeSnapshot object [%#v]", snapshotCopy)
-        // TODO: Make diff of the two objects and then use restClient.Patch to update it
-        var result crdv1.VolumeSnapshot
-        err = vs.restClient.Put().
-                Name(snapName).
-                Resource(crdv1.VolumeSnapshotResourcePlural).
-                Namespace(snapNameSpace).
-                Body(snapshotCopy).
-                Do().Into(&result)
-        if err != nil {
-                return fmt.Errorf("Error updating snapshot object %s on the API server: %v", snapshotName, err)
-        }
+	glog.Infof("bindVolumeSnapshotDataToVolumeSnapshot: Updating VolumeSnapshot object [%#v]", snapshotCopy)
+	// TODO: Make diff of the two objects and then use restClient.Patch to update it
+	var result crdv1.VolumeSnapshot
+	err = vs.restClient.Put().
+		Name(snapName).
+		Resource(crdv1.VolumeSnapshotResourcePlural).
+		Namespace(snapNameSpace).
+		Body(snapshotCopy).
+		Do().Into(&result)
+	if err != nil {
+		return fmt.Errorf("Error updating snapshot object %s on the API server: %v", snapshotName, err)
+	}
 
-        return nil
+	return nil
 }
 
 func (vs *volumeSnapshotter) UpdateVolumeSnapshotData(snapshotDataName string, status *[]crdv1.VolumeSnapshotDataCondition) error {

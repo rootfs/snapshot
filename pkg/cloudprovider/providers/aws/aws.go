@@ -313,6 +313,7 @@ type VolumeOptions struct {
 // VolumeOptions specifies volume snapshot options.
 type SnapshotOptions struct {
 	VolumeId string
+	Tags     *map[string]string
 }
 
 // Volumes is an interface for managing cloud-provisioned volumes
@@ -1925,7 +1926,18 @@ func (c *Cloud) CreateSnapshot(snapshotOptions *SnapshotOptions) (snapshotId str
 	if res == nil {
 		return "", "", fmt.Errorf("nil CreateSnapshotResponse")
 	}
-	return *res.SnapshotId, "", nil
+	if snapshotOptions.Tags != nil {
+		awsID := awsVolumeID(aws.StringValue(res.SnapshotId))
+		// apply tags
+		if err := c.tagging.createTags(c.ec2, string(awsID), ResourceLifecycleOwned, *snapshotOptions.Tags); err != nil {
+			_, delerr := c.DeleteSnapshot(*res.SnapshotId)
+			if delerr != nil {
+				return "", "", fmt.Errorf("error tagging snapshot %s, could not delete the snapshot: %v", *res.SnapshotId, delerr)
+			}
+			return "", "", fmt.Errorf("error tagging snapshot %s: %v", *res.SnapshotId, err)
+		}
+	}
+	return *res.SnapshotId, *res.State, nil
 
 }
 
@@ -1964,13 +1976,35 @@ func (c *Cloud) DescribeSnapshot(snapshotId string) (status string, isCompleted 
 	if *result[0].State == ec2.SnapshotStateError {
 		return *result[0].State, false, fmt.Errorf("snapshot state is error: %s", *result[0].StateMessage)
 	}
-	// TODO: DescribeSnapshot should return err==nil if status is Pending
-	return *result[0].State, false, fmt.Errorf(*result[0].StateMessage)
+	if *result[0].State == ec2.SnapshotStatePending {
+		return *result[0].State, false, nil
+	}
+	return *result[0].State, false, fmt.Errorf("unknown state")
 }
 
 // FindSnapshot returns the found snapshot
 func (c *Cloud) FindSnapshot(tags map[string]string) ([]string, []string, error) {
+	request := &ec2.DescribeSnapshotsInput{}
+	for k, v := range tags {
+		filter := &ec2.Filter{}
+		filter.SetName(k)
+		filter.SetValues([]*string{&v})
+
+		request.Filters = append(request.Filters, filter)
+	}
+
+	result, err := c.ec2.DescribeSnapshots(request)
+	if err != nil {
+		return nil, nil, err
+	}
 	var snapshotIDs, statuses []string
+	for _, snapshot := range result {
+		id := *snapshot.SnapshotId
+		status := *snapshot.State
+		glog.Infof("found %s, status %s", id, status)
+		snapshotIDs = append(snapshotIDs, id)
+		statuses = append(statuses, status)
+	}
 	return snapshotIDs, statuses, nil
 }
 
