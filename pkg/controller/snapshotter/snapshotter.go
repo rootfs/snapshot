@@ -839,7 +839,7 @@ func (vs *volumeSnapshotter) UpdateVolumeSnapshot(snapshotName string, status *[
 	if status != nil {
 		glog.Infof("UpdateVolumeSnapshot: Setting status in VolumeSnapshot object.")
 		ind := len(*status) - 1
-		snapshotCopy.Status.Conditions = append(snapshotCopy.Status.Conditions, (*status)[ind])
+		snapshotCopy.Status.Conditions = []crdv1.VolumeSnapshotCondition{(*status)[ind]}
 	}
 	glog.Infof("Updating VolumeSnapshot object [%#v]", snapshotCopy)
 	// TODO: Make diff of the two objects and then use restClient.Patch to update it
@@ -919,7 +919,7 @@ func (vs *volumeSnapshotter) UpdateVolumeSnapshotData(snapshotDataName string, s
 	}
 
 	ind := len(*status) - 1
-	snapshotDataCopy.Status.Conditions = append(snapshotDataCopy.Status.Conditions, (*status)[ind])
+	snapshotDataCopy.Status.Conditions = []crdv1.VolumeSnapshotDataCondition{(*status)[ind]}
 	glog.Infof("Updating VolumeSnapshotData object. Conditions: [%v]", snapshotDataCopy.Status.Conditions)
 	// TODO: Make diff of the two objects and then use restClient.Patch to update it
 	var result crdv1.VolumeSnapshotData

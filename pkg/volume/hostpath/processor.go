@@ -28,6 +28,7 @@ import (
 	crdv1 "github.com/rootfs/snapshot/pkg/apis/crd/v1"
 	"github.com/rootfs/snapshot/pkg/cloudprovider"
 	"github.com/rootfs/snapshot/pkg/volume"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -59,12 +60,33 @@ func (h *hostPathPlugin) SnapshotCreate(pv *v1.PersistentVolume, tags *map[strin
 	path := spec.HostPath.Path
 	file := depot + string(uuid.NewUUID()) + ".tgz"
 	cmd := exec.Command("tar", "czf", file, path)
+	runErr := cmd.Run()
+	cond := []crdv1.VolumeSnapshotCondition{}
+	if runErr == nil {
+		cond = []crdv1.VolumeSnapshotCondition{
+			{
+				Status:             v1.ConditionTrue,
+				Message:            "Snapshot created successfully",
+				LastTransitionTime: metav1.Now(),
+				Type:               crdv1.VolumeSnapshotConditionReady,
+			},
+		}
+	} else {
+		cond = []crdv1.VolumeSnapshotCondition{
+			{
+				Status:             v1.ConditionTrue,
+				Message:            fmt.Sprintf("Failed to create the snapshot: %v", runErr),
+				LastTransitionTime: metav1.Now(),
+				Type:               crdv1.VolumeSnapshotConditionError,
+			},
+		}
+	}
 	res := &crdv1.VolumeSnapshotDataSource{
 		HostPath: &crdv1.HostPathVolumeSnapshotSource{
 			Path: file,
 		},
 	}
-	return res, nil, cmd.Run()
+	return res, &cond, runErr
 }
 
 func (h *hostPathPlugin) SnapshotDelete(src *crdv1.VolumeSnapshotDataSource, _ *v1.PersistentVolume) error {
