@@ -841,7 +841,12 @@ func (vs *volumeSnapshotter) UpdateVolumeSnapshot(snapshotName string, status *[
 		// TODO(xyang): Only the last status is recorded for now. Will revisit later whether previous statuses
 		// should be kept and the last status should be added to existing ones.
 		ind := len(*status) - 1
-		snapshotCopy.Status.Conditions = []crdv1.VolumeSnapshotCondition{(*status)[ind]}
+		ind2 := len(snapshotCopy.Status.Conditions)
+		if ind2 < 1 || snapshotCopy.Status.Conditions[ind2-1].Type != (*status)[ind].Type {
+			snapshotCopy.Status.Conditions = append(snapshotCopy.Status.Conditions, (*status)[ind])
+		} else if snapshotCopy.Status.Conditions[ind2-1].Type == (*status)[ind].Type {
+			snapshotCopy.Status.Conditions[ind2-1] = (*status)[ind]
+		}
 	}
 	glog.Infof("Updating VolumeSnapshot object [%#v]", snapshotCopy)
 	// TODO: Make diff of the two objects and then use restClient.Patch to update it
@@ -923,7 +928,12 @@ func (vs *volumeSnapshotter) UpdateVolumeSnapshotData(snapshotDataName string, s
 	// TODO(xyang): Only the last status is recorded for now. Will revisit later whether previous statuses
 	// should be kept and the last status should be added to existing ones.
 	ind := len(*status) - 1
-	snapshotDataCopy.Status.Conditions = []crdv1.VolumeSnapshotDataCondition{(*status)[ind]}
+	ind2 := len(snapshotDataCopy.Status.Conditions)
+	if ind2 < 1 || snapshotDataCopy.Status.Conditions[ind2-1].Type != (*status)[ind].Type {
+		snapshotDataCopy.Status.Conditions = append(snapshotDataCopy.Status.Conditions, (*status)[ind])
+	} else if snapshotDataCopy.Status.Conditions[ind2-1].Type == (*status)[ind].Type {
+		snapshotDataCopy.Status.Conditions[ind2-1] = (*status)[ind]
+	}
 	glog.Infof("Updating VolumeSnapshotData object. Conditions: [%v]", snapshotDataCopy.Status.Conditions)
 	// TODO: Make diff of the two objects and then use restClient.Patch to update it
 	var result crdv1.VolumeSnapshotData
