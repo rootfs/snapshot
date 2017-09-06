@@ -203,7 +203,7 @@ func (vs *volumeSnapshotter) waitForSnapshot(snapshotName string, snapshot *crdv
 		if newstatus == statusPending {
 			if newstatus != status {
 				status = newstatus
-				glog.Infof("Snapshot %s creation is not complete yet. Status: [%#v] Retrying...", snapshotName, conditions)
+				glog.V(5).Info("Snapshot %s creation is not complete yet. Status: [%#v] Retrying...", snapshotName, conditions)
 				// UpdateVolmeSnapshot status
 				newSnapshot, err = vs.UpdateVolumeSnapshot(snapshotName, conditions)
 				if err != nil {
@@ -213,6 +213,8 @@ func (vs *volumeSnapshotter) waitForSnapshot(snapshotName string, snapshot *crdv
 			}
 			time.Sleep(createVolumeSnapshotDataInterval)
 			continue
+		} else if newstatus == statusError {
+			return fmt.Errorf("Status for snapshot %s is error.", snapshotName)
 		}
 		glog.Infof("waitForSnapshot: Snapshot %s creation is complete: %#v", snapshotName, conditions)
 
@@ -348,6 +350,10 @@ func (vs *volumeSnapshotter) deleteSnapshot(spec *v1.PersistentVolumeSpec, sourc
 }
 
 func (vs *volumeSnapshotter) getSimplifiedSnapshotStatus(conditions *[]crdv1.VolumeSnapshotCondition) string {
+	if conditions == nil {
+		glog.Errorf("Invalid input conditions for snapshot.")
+		return statusError
+	}
 	index := len(*conditions) - 1
 	if len(*conditions) > 0 &&
 		((*conditions)[index].Type == crdv1.VolumeSnapshotConditionReady &&
@@ -831,8 +837,9 @@ func (vs *volumeSnapshotter) UpdateVolumeSnapshot(snapshotName string, status *[
 	}
 
 	if status != nil {
-		glog.Infof("UpdateVolumeSnapshot: Setting Status in VolumeSnapshot object")
-		snapshotCopy.Status.Conditions = *status
+		glog.Infof("UpdateVolumeSnapshot: Setting status in VolumeSnapshot object.")
+		ind := len(*status) - 1
+		snapshotCopy.Status.Conditions = append(snapshotCopy.Status.Conditions, (*status)[ind])
 	}
 	glog.Infof("Updating VolumeSnapshot object [%#v]", snapshotCopy)
 	// TODO: Make diff of the two objects and then use restClient.Patch to update it
@@ -911,8 +918,9 @@ func (vs *volumeSnapshotter) UpdateVolumeSnapshotData(snapshotDataName string, s
 		return fmt.Errorf("Error: expecting type VolumeSnapshotData but received type %T", objCopy)
 	}
 
-	snapshotDataCopy.Status.Conditions = *status
-	glog.Infof("Updating VolumeSnapshotData object")
+	ind := len(*status) - 1
+	snapshotDataCopy.Status.Conditions = append(snapshotDataCopy.Status.Conditions, (*status)[ind])
+	glog.Infof("Updating VolumeSnapshotData object. Conditions: [%v]", snapshotDataCopy.Status.Conditions)
 	// TODO: Make diff of the two objects and then use restClient.Patch to update it
 	var result crdv1.VolumeSnapshotData
 	err = vs.restClient.Put().
