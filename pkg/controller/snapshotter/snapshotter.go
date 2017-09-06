@@ -203,7 +203,7 @@ func (vs *volumeSnapshotter) waitForSnapshot(snapshotName string, snapshot *crdv
 		if newstatus == statusPending {
 			if newstatus != status {
 				status = newstatus
-				glog.V(5).Info("Snapshot %s creation is not complete yet. Status: [%#v] Retrying...", snapshotName, conditions)
+				glog.V(5).Infof("Snapshot %s creation is not complete yet. Status: [%#v] Retrying...", snapshotName, conditions)
 				// UpdateVolmeSnapshot status
 				newSnapshot, err = vs.UpdateVolumeSnapshot(snapshotName, conditions)
 				if err != nil {
@@ -836,8 +836,10 @@ func (vs *volumeSnapshotter) UpdateVolumeSnapshot(snapshotName string, status *[
 		snapshotCopy.Spec.SnapshotDataName = snapshotDataObj.Metadata.Name
 	}
 
-	if status != nil {
+	if status != nil && len(*status) > 0 {
 		glog.Infof("UpdateVolumeSnapshot: Setting status in VolumeSnapshot object.")
+		// TODO(xyang): Only the last status is recorded for now. Will revisit later whether previous statuses
+		// should be kept and the last status should be added to existing ones.
 		ind := len(*status) - 1
 		snapshotCopy.Status.Conditions = []crdv1.VolumeSnapshotCondition{(*status)[ind]}
 	}
@@ -918,6 +920,8 @@ func (vs *volumeSnapshotter) UpdateVolumeSnapshotData(snapshotDataName string, s
 		return fmt.Errorf("Error: expecting type VolumeSnapshotData but received type %T", objCopy)
 	}
 
+	// TODO(xyang): Only the last status is recorded for now. Will revisit later whether previous statuses
+	// should be kept and the last status should be added to existing ones.
 	ind := len(*status) - 1
 	snapshotDataCopy.Status.Conditions = []crdv1.VolumeSnapshotDataCondition{(*status)[ind]}
 	glog.Infof("Updating VolumeSnapshotData object. Conditions: [%v]", snapshotDataCopy.Status.Conditions)
