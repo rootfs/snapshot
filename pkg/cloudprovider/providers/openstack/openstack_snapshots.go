@@ -147,7 +147,7 @@ func (os *OpenStack) CreateSnapshot(sourceVolumeID, name, description string, ta
 	snapshots, err := os.snapshotService()
 	if err != nil || snapshots == nil {
 		glog.Errorf("Unable to initialize cinder client for region: %s", os.region)
-		return "", "", err
+		return "", "", fmt.Errorf("Failed to create snapshot for volume %s: %v", sourceVolumeID, err)
 	}
 
 	opts := SnapshotCreateOpts{
@@ -191,7 +191,7 @@ func (os *OpenStack) DescribeSnapshot(snapshotID string) (status string, isCompl
 	ss, err := os.snapshotService()
 	if err != nil || ss == nil {
 		glog.Errorf("Unable to initialize cinder client for region: %s", os.region)
-		return "", false, err
+		return "", false, fmt.Errorf("Failed to describe snapshot %s: %v", snapshotID, err)
 	}
 
 	snap, err := ss.getSnapshot(snapshotID)
@@ -203,7 +203,7 @@ func (os *OpenStack) DescribeSnapshot(snapshotID string) (status string, isCompl
 		return "", false, err
 	}
 	if snap.Status != "available" {
-		return snap.Status, false, fmt.Errorf("current snapshot status is: %s", snap.Status)
+		return snap.Status, false, nil
 	}
 	return snap.Status, true, nil
 }
@@ -214,7 +214,7 @@ func (os *OpenStack) FindSnapshot(tags map[string]string) ([]string, []string, e
 	ss, err := os.snapshotService()
 	if err != nil || ss == nil {
 		glog.Errorf("Unable to initialize cinder client for region: %s", os.region)
-		return snapshotIDs, statuses, err
+		return snapshotIDs, statuses, fmt.Errorf("Failed to find snapshot by tags %v: %v", tags, err)
 	}
 
 	opts := SnapshotListOpts{}

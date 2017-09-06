@@ -144,7 +144,7 @@ func (rc *reconciler) reconcile() {
 						LastTransitionTime: metav1.Now(),
 					},
 				}
-				_, err := rc.snapshotter.UpdateVolumeSnapshot(name, &snapConditions, true)
+				_, err := rc.snapshotter.UpdateVolumeSnapshot(name, &snapConditions)
 				if err != nil {
 					glog.Errorf("Error updating VolumeSnapshot %s: %v", name, err)
 				}
