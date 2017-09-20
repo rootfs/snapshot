@@ -2,7 +2,7 @@
 
 ## Status
 
-Pre-alpha
+No longer maintained. Please use https://github.com/kubernetes-incubator/external-storage/
 
 ## Demo
 
